@@ -1,3 +1,4 @@
+// This component is no longer used by AppShell and can be considered for removal or refactoring.
 "use client"
 
 import * as React from "react"
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,

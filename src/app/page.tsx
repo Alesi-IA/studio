@@ -11,6 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Heart, MessageCircle, Send } from 'lucide-react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
+const stories = Array.from({ length: 10 }).map((_, i) => ({
+  id: `story-${i}`,
+  user: `usuario_${i}`,
+  avatar: `https://picsum.photos/seed/story${i}/80/80`,
+}));
 
 export default function FeedPage() {
   const feedImages = PlaceHolderImages.filter((img) =>
@@ -19,11 +26,27 @@ export default function FeedPage() {
 
   return (
     <div className="w-full">
-      <PageHeader
-        title="Noticias"
-        description="Mira las novedades en la comunidad de CannaConnect."
-        className="px-4 md:px-8"
-      />
+      <div className="p-4 md:px-8">
+        <ScrollArea className="w-full whitespace-nowrap rounded-md">
+          <div className="flex w-max space-x-4 pb-4">
+            {stories.map((story) => (
+              <figure key={story.id} className="shrink-0">
+                <div className="w-20 h-20 rounded-full p-1 ring-2 ring-primary ring-offset-2 ring-offset-background">
+                    <Avatar className="w-full h-full">
+                        <AvatarImage src={story.avatar} alt={story.user} />
+                        <AvatarFallback>{story.user.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                </div>
+                <figcaption className="pt-2 text-xs text-muted-foreground text-center truncate w-20">
+                  {story.user}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </div>
+
       <div className="mx-auto max-w-2xl space-y-8 px-4 py-6 md:px-8">
         {feedImages.map((post, index) => (
           <Card key={post.id} className="overflow-hidden">
