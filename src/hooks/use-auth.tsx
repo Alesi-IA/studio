@@ -43,7 +43,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        // Fetch user role from Firestore
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists() && userDoc.data().role === 'admin') {
             setIsAdmin(true);
         } else {
@@ -66,19 +68,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await updateProfile(userCredential.user, { displayName });
 
       // Create a user document in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      await setDoc(userDocRef, {
         uid: userCredential.user.uid,
         displayName,
         email,
-        role: 'user' // Default role
+        role: 'user', // Default role for new users
+        createdAt: new Date(),
       });
       
       setUser(userCredential.user);
+      // No need to fetch role here, it's 'user' by default
+      setIsAdmin(false);
     } catch (error: any) {
        toast({
         variant: 'destructive',
         title: 'Error de Registro',
-        description: error.message,
+        description: `No se pudo crear la cuenta. Por favor, revisa que las reglas de Firestore permitan la escritura en la colección 'users'. (${error.code})`,
       });
       console.error("Error signing up:", error);
       throw error;
@@ -92,7 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
        toast({
         variant: 'destructive',
         title: 'Error de Inicio de Sesión',
-        description: error.message,
+        description: "Email o contraseña incorrectos.",
       });
       console.error("Error signing in:", error);
       throw error;
@@ -115,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   const isOwner = (ownerId) => {
     return user?.uid === ownerId;
-  }
+  };
 
   const value = {
     user,
