@@ -78,7 +78,7 @@ export function AnalysisForm() {
 
             {previewUrl && (
               <div className="relative aspect-video w-full max-w-md mx-auto overflow-hidden rounded-lg border">
-                <Image src={previewUrl} alt="Vista previa de la planta" layout="fill" objectFit="contain" />
+                <Image src={previewUrl} alt="Vista previa de la planta" fill objectFit="contain" />
               </div>
             )}
           </form>

@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Calendar, BookOpen, MessageSquare, User, PlusCircle, Bot } from "lucide-react";
+import { Home, Search, Bot, Wrench, MessageSquare, PlusCircle } from "lucide-react";
 import { CannaConnectLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -14,19 +14,17 @@ import { NewPostForm } from "./new-post-form";
 
 const menuItems = [
   { href: "/", label: "Noticias", icon: Home },
-  { href: "/calendar", label: "Calendario", icon: Calendar },
-  { href: "/library", label: "Biblioteca", icon: BookOpen },
+  { href: "/search", label: "Buscar", icon: Search },
+  { href: "/tools", label: "Herramientas", icon: Wrench },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
-  { href: "/profile", label: "Perfil", icon: User },
 ];
 
 const desktopMenuItems = [
   { href: "/", label: "Noticias", icon: Home },
+  { href: "/search", label: "Buscar", icon: Search },
   { href: "/analyze", label: "Analizar", icon: Bot },
-  { href: "/calendar", label: "Calendario", icon: Calendar },
-  { href: "/library", label: "Biblioteca", icon: BookOpen },
+  { href: "/tools", label: "Herramientas", icon: Wrench },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
-  { href: "/profile", label: "Perfil", icon: User },
 ]
 
 
@@ -52,14 +50,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             </Link>
           </div>
-          <nav className="flex-1 p-2">
+          <nav className="flex-1 p-2 space-y-1">
             {desktopMenuItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent",
-                  pathname === item.href && "bg-accent text-primary"
+                  pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href ? "bg-accent text-primary" : ""
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -85,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/profile">
                   <Button variant="ghost" size="icon">
-                      <Avatar>
+                      <Avatar className="h-8 w-8">
                         <AvatarImage
                             src="https://picsum.photos/seed/user-main/40/40"
                             alt="@currentuser"
@@ -108,7 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               className={cn(
                 "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                pathname === item.href ? "text-primary" : ""
+                pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href ? "text-primary" : ""
               )}
             >
                 <item.icon className="h-6 w-6" />
@@ -127,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               className={cn(
                 "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                pathname === item.href ? "text-primary" : ""
+                pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href ? "text-primary" : ""
               )}
             >
                 <item.icon className="h-6 w-6" />
