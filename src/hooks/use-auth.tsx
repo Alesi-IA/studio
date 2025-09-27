@@ -35,88 +35,54 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  // ---- CAMBIO TEMPORAL PARA VISTA PREVIA ----
+  const mockUser = {
+    uid: 'admin_user_id',
+    displayName: 'Admin',
+    email: 'admin@cannaconnect.com',
+    photoURL: '',
+  } as User;
+
+  const [user, setUser] = useState<User | null>(mockUser);
+  const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Fetch user role from Firestore
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-            setIsAdmin(true);
-        } else {
-            setIsAdmin(false);
-        }
-        setUser(user);
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    // La lógica real de Firebase está comentada temporalmente para la vista previa
+    // const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    //   if (user) {
+    //     // Fetch user role from Firestore
+    //     const userDocRef = doc(db, 'users', user.uid);
+    //     const userDoc = await getDoc(userDocRef);
+    //     if (userDoc.exists() && userDoc.data().role === 'admin') {
+    //         setIsAdmin(true);
+    //     } else {
+    //         setIsAdmin(false);
+    //     }
+    //     setUser(user);
+    //   } else {
+    //     setUser(null);
+    //     setIsAdmin(false);
+    //   }
+    //   setLoading(false);
+    // });
+    // return () => unsubscribe();
   }, []);
 
   const signUp = async (displayName, email, password) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName });
-
-      // Create a user document in Firestore
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      await setDoc(userDocRef, {
-        uid: userCredential.user.uid,
-        displayName,
-        email,
-        role: 'user', // Default role for new users
-        createdAt: new Date(),
-      });
-      
-      setUser(userCredential.user);
-      // No need to fetch role here, it's 'user' by default
-      setIsAdmin(false);
-    } catch (error: any) {
-       toast({
-        variant: 'destructive',
-        title: 'Error de Registro',
-        description: `No se pudo crear la cuenta. Por favor, revisa que las reglas de Firestore permitan la escritura en la colección 'users'. (${error.code})`,
-      });
-      console.error("Error signing up:", error);
-      throw error;
-    }
+    console.log("Registro deshabilitado en modo vista previa.");
+    toast({ title: "Vista Previa", description: "El registro está deshabilitado en este modo."})
   };
 
   const logIn = async (email, password) => {
-     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-       toast({
-        variant: 'destructive',
-        title: 'Error de Inicio de Sesión',
-        description: "Email o contraseña incorrectos.",
-      });
-      console.error("Error signing in:", error);
-      throw error;
-    }
+    console.log("Inicio de sesión deshabilitado en modo vista previa.");
+    toast({ title: "Vista Previa", description: "El inicio de sesión está deshabilitado en este modo."})
   };
 
   const logOut = async () => {
-    try {
-      await signOut(auth);
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al Cerrar Sesión',
-        description: error.message,
-      });
-      console.error("Error signing out:", error);
-      throw error;
-    }
+    console.log("Cierre de sesión deshabilitado en modo vista previa.");
+    toast({ title: "Vista Previa", description: "El cierre de sesión está deshabilitado en este modo."})
   };
   
   const isOwner = (ownerId) => {
