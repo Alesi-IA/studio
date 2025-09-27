@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAuth } from '@/hooks/use-auth';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -42,9 +43,6 @@ const stories = Array.from({ length: 10 }).map((_, i) => ({
   avatar: `https://picsum.photos/seed/story${i}/80/80`,
 }));
 
-// Simulamos el handle del usuario que ha iniciado sesión. 'admin' puede editar/eliminar todo.
-const currentUserHandle = 'grower_handle_0'; // Este es nuestro admin
-// const currentUserHandle = 'grower_handle_1'; // Para probar con un usuario normal
 
 export default function FeedPage() {
   const [feedImages, setFeedImages] = useState<ImagePlaceholder[]>(
@@ -53,6 +51,8 @@ export default function FeedPage() {
   
   const [editingPost, setEditingPost] = useState<ImagePlaceholder | null>(null);
   const [editingDescription, setEditingDescription] = useState('');
+  const { user, isOwner, isAdmin } = useAuth();
+
 
   const handleDelete = (postId: string) => {
     setFeedImages((prev) => prev.filter((post) => post.id !== postId));
@@ -97,9 +97,9 @@ export default function FeedPage() {
 
       <div className="mx-auto max-w-2xl space-y-8 px-4 py-6 md:px-8">
         {feedImages.map((post, index) => {
-          const postAuthorHandle = `grower_handle_${index}`;
-          const isOwner = postAuthorHandle === currentUserHandle;
-          const isAdmin = currentUserHandle === 'grower_handle_0';
+          // Simulamos que el dueño del post es un UID de Firebase
+          const postOwnerId = `firebase_uid_${index}`;
+          const canManage = isOwner(postOwnerId) || isAdmin;
 
           return (
             <Card key={post.id} className="overflow-hidden">
@@ -107,7 +107,7 @@ export default function FeedPage() {
                 <Avatar>
                   <AvatarImage
                     src={`https://picsum.photos/seed/user${index}/40/40`}
-                    alt={`@${postAuthorHandle}`}
+                    alt={`@grower_handle_${index}`}
                   />
                   <AvatarFallback>{`U${index}`}</AvatarFallback>
                 </Avatar>
@@ -116,13 +116,13 @@ export default function FeedPage() {
                     href="/profile"
                     className="font-headline font-semibold hover:underline"
                   >
-                    {postAuthorHandle}
+                    {`grower_handle_${index}`}
                   </Link>
                   <p className="text-xs text-muted-foreground">
                     Cepa: Northern Lights
                   </p>
                 </div>
-                {(isOwner || isAdmin) && (
+                {canManage && (
                   <AlertDialog>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -193,7 +193,7 @@ export default function FeedPage() {
                       href="/profile"
                       className="font-headline font-semibold hover:underline"
                     >
-                      {postAuthorHandle}
+                      {`grower_handle_${index}`}
                     </Link>{' '}
                     {post.description}
                   </p>

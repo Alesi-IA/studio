@@ -1,36 +1,53 @@
 
+'use client';
+
 import { PageHeader } from '@/components/page-header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut } from 'lucide-react';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+
 
 export default function ProfilePage() {
   const userPosts = PlaceHolderImages.filter((img) =>
     img.id.startsWith('feed-')
   ).slice(0, 9);
+  
+  const { user, isAdmin, logOut } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logOut();
+    router.push('/login');
+  }
+
   return (
     <div className="w-full">
       <PageHeader
         title="Perfil"
         description="Tu espacio personal en CannaConnect."
+        actions={<Button onClick={handleLogout} variant="outline"><LogOut className="mr-2"/>Cerrar Sesión</Button>}
       />
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
-            <AvatarImage src="https://picsum.photos/seed/user0/128/128" />
-            <AvatarFallback>AD</AvatarFallback>
+            <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/128/128`} />
+            <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-3 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
-              <h2 className="font-headline text-2xl font-bold">grower_handle_0</h2>
-              <Badge variant="destructive" className="gap-1">
-                <ShieldCheck className="h-3 w-3" />
-                Administrador
-              </Badge>
+              <h2 className="font-headline text-2xl font-bold">{user?.displayName || 'Usuario'}</h2>
+              {isAdmin && (
+                <Badge variant="destructive" className="gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Administrador
+                </Badge>
+              )}
               <div className="flex items-center gap-2">
                 <Button variant="outline">Editar Perfil</Button>
                 <Button variant="ghost" size="icon">
@@ -52,10 +69,11 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">Siguiendo</p>
               </div>
             </div>
-            <p className="text-sm">
-              Dueño y operador de CannaConnect. Cultivador apasionado desde 2010. Especializado en técnicas de
-              suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver
-              sus hermosas plantas! 🌿
+            <p className="text-sm max-w-prose">
+              {isAdmin ? 
+                'Dueño y operador de CannaConnect. Cultivador apasionado desde 2010. Especializado en técnicas de suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver sus hermosas plantas! 🌿' : 
+                'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaConnect.'
+              }
             </p>
           </div>
         </div>

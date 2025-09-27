@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Bot, Wrench, MessageSquare, PlusCircle } from "lucide-react";
+import { Home, Search, Bot, Wrench, MessageSquare, PlusCircle, LogOut } from "lucide-react";
 import { CannaConnectLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -11,6 +11,8 @@ import { Button } from "../ui/button";
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { NewPostForm } from "./new-post-form";
+import { useAuth } from "@/hooks/use-auth";
+import { Skeleton } from "../ui/skeleton";
 
 const menuItems = [
   { href: "/", label: "Noticias", icon: Home },
@@ -31,9 +33,32 @@ const desktopMenuItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
+  const { user, loading, logOut } = useAuth();
+  
+  const showOnboarding = pathname === '/login' || pathname === '/register';
 
+  if (loading) {
+    return (
+        <div className="flex min-h-screen w-full items-center justify-center">
+            <CannaConnectLogo />
+        </div>
+    )
+  }
+  
+  if (!user && !showOnboarding) {
+      // Si no hay usuario y no estamos en login/registro, podemos mostrar el login.
+      // Opcional: podrías usar un efecto para redirigir a /login
+      if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+      }
+      return (
+        <div className="flex min-h-screen w-full items-center justify-center">
+            <p>Redirigiendo a inicio de sesión...</p>
+        </div>
+      );
+  }
 
-  if (pathname === '/login' || pathname === '/register') {
+  if (showOnboarding) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
 
@@ -65,13 +90,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="p-4 mt-auto">
+          <div className="p-4 mt-auto space-y-2">
             <DialogTrigger asChild>
               <Button className="w-full">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Nueva Publicación
               </Button>
             </DialogTrigger>
+             <Button variant="outline" className="w-full" onClick={logOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar Sesión
+            </Button>
           </div>
         </aside>
 
@@ -85,10 +114,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <Button variant="ghost" size="icon">
                       <Avatar className="h-8 w-8">
                         <AvatarImage
-                            src="https://picsum.photos/seed/user-main/40/40"
-                            alt="@currentuser"
+                            src={`https://picsum.photos/seed/${user?.uid}/40/40`}
+                            alt={user?.displayName || 'User'}
                         />
-                        <AvatarFallback>AD</AvatarFallback>
+                        <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
                       <span className="sr-only">Perfil</span>
                   </Button>
