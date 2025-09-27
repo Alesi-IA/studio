@@ -2,7 +2,6 @@
 'use client';
 
 import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import {
   Card,
   CardContent,
@@ -20,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
 import {
   AlertDialog,
@@ -31,11 +30,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { db, storage } from '@/lib/firebase/config';
+import { collection, getDocs, doc, deleteDoc, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { deleteObject, ref } from 'firebase/storage';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -43,33 +45,76 @@ const stories = Array.from({ length: 10 }).map((_, i) => ({
   avatar: `https://picsum.photos/seed/story${i}/80/80`,
 }));
 
+export interface Post {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  strain?: string;
+  description: string;
+  imageUrl: string;
+  imageHint?: string;
+  createdAt: any;
+  likes?: number;
+  comments?: number;
+}
+
 
 export default function FeedPage() {
-  const [feedImages, setFeedImages] = useState<ImagePlaceholder[]>(
-    PlaceHolderImages.filter((img) => img.id.startsWith('feed-'))
-  );
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const [editingPost, setEditingPost] = useState<ImagePlaceholder | null>(null);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingDescription, setEditingDescription] = useState('');
-  const { user, isOwner, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
 
 
-  const handleDelete = (postId: string) => {
-    setFeedImages((prev) => prev.filter((post) => post.id !== postId));
+  useEffect(() => {
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const postsData: Post[] = [];
+      querySnapshot.forEach((doc) => {
+        postsData.push({ id: doc.id, ...doc.data() } as Post);
+      });
+      setPosts(postsData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+
+  const handleDelete = async (post: Post) => {
+    try {
+        // Borrar documento de Firestore
+        await deleteDoc(doc(db, 'posts', post.id));
+
+        // Borrar imagen de Storage
+        const imageRef = ref(storage, post.imageUrl);
+        await deleteObject(imageRef);
+
+    } catch (error) {
+        console.error("Error al eliminar la publicación: ", error);
+    }
   };
 
-  const handleEditClick = (post: ImagePlaceholder) => {
+  const handleEditClick = (post: Post) => {
     setEditingPost(post);
     setEditingDescription(post.description);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingPost) return;
 
-    setFeedImages(prev => prev.map(p => 
-      p.id === editingPost.id ? { ...p, description: editingDescription } : p
-    ));
-    setEditingPost(null);
+    const postRef = doc(db, 'posts', editingPost.id);
+    try {
+      await updateDoc(postRef, {
+        description: editingDescription
+      });
+      setEditingPost(null);
+    } catch(error) {
+      console.error("Error al actualizar la publicación: ", error);
+    }
   };
 
   return (
@@ -96,31 +141,48 @@ export default function FeedPage() {
       </div>
 
       <div className="mx-auto max-w-2xl space-y-8 px-4 py-6 md:px-8">
-        {feedImages.map((post, index) => {
-          // Simulamos que el dueño del post es un UID de Firebase
-          const postOwnerId = `firebase_uid_${index}`;
-          const canManage = isOwner(postOwnerId) || isAdmin;
+        {loading && Array.from({length: 3}).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className='flex-row items-center gap-3'>
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className='flex-1 space-y-2'>
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            </CardHeader>
+            <CardContent className='p-0'>
+              <Skeleton className="aspect-[4/5] w-full" />
+            </CardContent>
+            <CardFooter className='flex-col items-start p-4 gap-4'>
+               <Skeleton className="h-6 w-1/2" />
+               <Skeleton className="h-4 w-full" />
+            </CardFooter>
+          </Card>
+        ))}
+
+        {!loading && posts.map((post) => {
+          const canManage = user?.uid === post.authorId || isAdmin;
 
           return (
             <Card key={post.id} className="overflow-hidden">
               <CardHeader className="flex flex-row items-center gap-3">
                 <Avatar>
                   <AvatarImage
-                    src={`https://picsum.photos/seed/user${index}/40/40`}
-                    alt={`@grower_handle_${index}`}
+                    src={post.authorAvatar || `https://picsum.photos/seed/${post.authorId}/40/40`}
+                    alt={post.authorName}
                   />
-                  <AvatarFallback>{`U${index}`}</AvatarFallback>
+                  <AvatarFallback>{post.authorName?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 gap-0.5 text-sm">
                   <Link
-                    href="/profile"
+                    href="#"
                     className="font-headline font-semibold hover:underline"
                   >
-                    {`grower_handle_${index}`}
+                    {post.authorName}
                   </Link>
-                  <p className="text-xs text-muted-foreground">
-                    Cepa: Northern Lights
-                  </p>
+                  {post.strain && <p className="text-xs text-muted-foreground">
+                    Cepa: {post.strain}
+                  </p>}
                 </div>
                 {canManage && (
                   <AlertDialog>
@@ -150,7 +212,7 @@ export default function FeedPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(post.id)}>
+                          <AlertDialogAction onClick={() => handleDelete(post)}>
                             Eliminar
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -186,19 +248,19 @@ export default function FeedPage() {
                 </div>
                 <div className="grid gap-1.5 text-sm w-full">
                   <p className="font-semibold">
-                    {Math.floor(Math.random() * 500) + 10} me gusta
+                    {post.likes || 0} me gusta
                   </p>
                   <p>
                     <Link
-                      href="/profile"
+                      href="#"
                       className="font-headline font-semibold hover:underline"
                     >
-                      {`grower_handle_${index}`}
+                      {post.authorName}
                     </Link>{' '}
                     {post.description}
                   </p>
                   <Link href="#" className="text-muted-foreground">
-                    Ver los {Math.floor(Math.random() * 50) + 2} comentarios
+                    Ver los {post.comments || 0} comentarios
                   </Link>
                 </div>
               </CardFooter>

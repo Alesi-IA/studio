@@ -8,6 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/use-auth';
+import { db, storage } from '@/lib/firebase/config';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface NewPostFormProps {
   onPostCreated: () => void;
@@ -18,6 +24,9 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -33,41 +42,68 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) {
-      alert('Por favor, selecciona una imagen.');
+    if (!file || !user) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Debes seleccionar una imagen e iniciar sesión.',
+      });
       return;
     }
     setLoading(true);
-    // Simular la subida de un post
-    console.log('Creando nuevo post:', {
-      fileName: file.name,
-      description: description,
-    });
+    
+    try {
+        // 1. Subir imagen a Firebase Storage
+        const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(imageRef, file);
+        const imageUrl = await getDownloadURL(snapshot.ref);
 
-    // En una aplicación real, aquí llamarías a una API para guardar el post.
-    // Para esta demostración, solo cerramos el diálogo después de una pequeña demora.
-    setTimeout(() => {
-      setLoading(false);
-      onPostCreated();
-      // Idealmente, también refrescarías el feed para mostrar el nuevo post.
-      // Como no tenemos un estado global o una API, esto es una simulación.
-      window.location.reload(); 
-    }, 1500);
+        // 2. Crear documento en Firestore
+        await addDoc(collection(db, 'posts'), {
+            authorId: user.uid,
+            authorName: user.displayName,
+            authorAvatar: user.photoURL,
+            description,
+            imageUrl,
+            createdAt: serverTimestamp(),
+            likes: 0,
+            comments: 0
+        });
+
+        toast({
+            title: '¡Éxito!',
+            description: 'Tu publicación ha sido creada.',
+        });
+        
+        onPostCreated();
+
+    } catch (error) {
+        console.error("Error al crear la publicación:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'No se pudo crear la publicación. Por favor, inténtalo de nuevo.',
+        });
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
       <div className="space-y-2">
-        {previewUrl ? (
-          <div className="relative aspect-square w-full overflow-hidden rounded-md">
-            <Image src={previewUrl} alt="Vista previa" fill className="object-cover" />
-          </div>
-        ) : (
-          <div className="flex justify-center items-center flex-col gap-2 h-64 border-2 border-dashed rounded-md">
-            <UploadCloud className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Arrastra y suelta o haz clic para subir</p>
-          </div>
-        )}
+        <label htmlFor="picture" className="cursor-pointer">
+            {previewUrl ? (
+              <div className="relative aspect-square w-full overflow-hidden rounded-md">
+                <Image src={previewUrl} alt="Vista previa" fill className="object-cover" />
+              </div>
+            ) : (
+              <div className="flex justify-center items-center flex-col gap-2 h-64 border-2 border-dashed rounded-md">
+                <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                <p className="text-muted-foreground">Arrastra y suelta o haz clic para subir</p>
+              </div>
+            )}
+        </label>
         <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
          <Button asChild variant="outline" className="w-full cursor-pointer">
             <label htmlFor="picture">
