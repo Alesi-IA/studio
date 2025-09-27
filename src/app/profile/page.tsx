@@ -21,12 +21,12 @@ export default function ProfilePage() {
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
-            <AvatarImage src="https://picsum.photos/seed/user-main/128/128" />
+            <AvatarImage src="https://picsum.photos/seed/user0/128/128" />
             <AvatarFallback>AD</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-3 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
-              <h2 className="font-headline text-2xl font-bold">Admin</h2>
+              <h2 className="font-headline text-2xl font-bold">grower_handle_0</h2>
               <Badge variant="destructive" className="gap-1">
                 <ShieldCheck className="h-3 w-3" />
                 Administrador
