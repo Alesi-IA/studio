@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bot, BookOpen, MessageSquare, User, PlusCircle } from "lucide-react";
+import { Home, Calendar, BookOpen, MessageSquare, User, PlusCircle, Bot } from "lucide-react";
 import { CannaConnectLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -14,11 +14,20 @@ import { NewPostForm } from "./new-post-form";
 
 const menuItems = [
   { href: "/", label: "Noticias", icon: Home },
-  { href: "/analyze", label: "Analizar", icon: Bot },
+  { href: "/calendar", label: "Calendario", icon: Calendar },
   { href: "/library", label: "Biblioteca", icon: BookOpen },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
   { href: "/profile", label: "Perfil", icon: User },
 ];
+
+const desktopMenuItems = [
+  { href: "/", label: "Noticias", icon: Home },
+  { href: "/analyze", label: "Analizar", icon: Bot },
+  { href: "/calendar", label: "Calendario", icon: Calendar },
+  { href: "/library", label: "Biblioteca", icon: BookOpen },
+  { href: "/messages", label: "Mensajes", icon: MessageSquare },
+  { href: "/profile", label: "Perfil", icon: User },
+]
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -44,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2">
-            {menuItems.map((item) => (
+            {desktopMenuItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -92,8 +101,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 
         {/* Mobile Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background flex items-center justify-around z-20">
-          {menuItems.map((item) => (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 z-20">
+          {menuItems.slice(0, 2).map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -102,27 +111,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 pathname === item.href ? "text-primary" : ""
               )}
             >
-               {item.href === '/analyze' ? (
-                 <DialogTrigger asChild>
-                    <div className="flex flex-col items-center gap-1">
-                      <item.icon className="h-6 w-6" />
-                      <span className="text-xs sr-only">{item.label}</span>
-                    </div>
-                  </DialogTrigger>
-               ) : (
-                <>
-                  <item.icon className="h-6 w-6" />
-                  <span className="text-xs sr-only">{item.label}</span>
-                </>
-               )}
+                <item.icon className="h-6 w-6" />
+                <span className="text-xs sr-only">{item.label}</span>
             </Link>
           ))}
            <DialogTrigger asChild>
-             <button className="flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent">
+             <button className="flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-primary-foreground bg-primary/90 hover:bg-primary">
                 <PlusCircle className="h-6 w-6" />
                 <span className="text-xs sr-only">Nueva Publicación</span>
               </button>
            </DialogTrigger>
+           {menuItems.slice(2).map((item) => (
+             <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+                pathname === item.href ? "text-primary" : ""
+              )}
+            >
+                <item.icon className="h-6 w-6" />
+                <span className="text-xs sr-only">{item.label}</span>
+            </Link>
+          ))}
         </nav>
       </div>
       <DialogContent>
