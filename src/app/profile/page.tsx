@@ -1,9 +1,11 @@
+
 import { PageHeader } from '@/components/page-header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Settings } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Settings, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 
 export default function ProfilePage() {
@@ -20,14 +22,17 @@ export default function ProfilePage() {
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
             <AvatarImage src="https://picsum.photos/seed/user-main/128/128" />
-            <AvatarFallback>CC</AvatarFallback>
+            <AvatarFallback>AD</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-3 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
-              <h2 className="font-headline text-2xl font-bold">CannaChampion</h2>
+              <h2 className="font-headline text-2xl font-bold">Admin</h2>
+              <Badge variant="destructive" className="gap-1">
+                <ShieldCheck className="h-3 w-3" />
+                Administrador
+              </Badge>
               <div className="flex items-center gap-2">
-                <Button>Seguir</Button>
-                <Button variant="outline">Mensaje</Button>
+                <Button variant="outline">Editar Perfil</Button>
                 <Button variant="ghost" size="icon">
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -48,7 +53,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <p className="text-sm">
-              Cultivador apasionado desde 2010. Especializado en técnicas de
+              Dueño y operador de CannaConnect. Cultivador apasionado desde 2010. Especializado en técnicas de
               suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver
               sus hermosas plantas! 🌿
             </p>
@@ -57,7 +62,7 @@ export default function ProfilePage() {
 
         <Tabs defaultValue="posts" className="w-full">
           <TabsList>
-            <TabsTrigger value="posts">Mi Cultivo</TabsTrigger>
+            <TabsTrigger value="posts">Mis Publicaciones</TabsTrigger>
             <TabsTrigger value="saved">Guardados</TabsTrigger>
             <TabsTrigger value="tagged">Etiquetados</TabsTrigger>
           </TabsList>

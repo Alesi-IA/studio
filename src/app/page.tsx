@@ -1,3 +1,6 @@
+
+'use client';
+
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import {
@@ -8,10 +11,17 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Send } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send } from 'lucide-react';
 import Link from 'next/link';
-import { PageHeader } from '@/components/page-header';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useState } from 'react';
+import type { ImagePlaceholder } from '@/lib/placeholder-images';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -20,9 +30,18 @@ const stories = Array.from({ length: 10 }).map((_, i) => ({
 }));
 
 export default function FeedPage() {
-  const feedImages = PlaceHolderImages.filter((img) =>
-    img.id.startsWith('feed-')
+  const [feedImages, setFeedImages] = useState<ImagePlaceholder[]>(
+    PlaceHolderImages.filter((img) => img.id.startsWith('feed-'))
   );
+
+  const handleDelete = (postId: string) => {
+    setFeedImages((prev) => prev.filter((post) => post.id !== postId));
+  };
+
+  // En una app real, esto abriría un dialogo de edición
+  const handleEdit = (postId: string) => {
+    alert(`Editar publicación: ${postId}`);
+  };
 
   return (
     <div className="w-full">
@@ -58,7 +77,7 @@ export default function FeedPage() {
                 />
                 <AvatarFallback>{`U${index}`}</AvatarFallback>
               </Avatar>
-              <div className="grid gap-0.5 text-sm">
+              <div className="grid flex-1 gap-0.5 text-sm">
                 <Link
                   href="/profile"
                   className="font-headline font-semibold hover:underline"
@@ -69,6 +88,19 @@ export default function FeedPage() {
                   Cepa: Northern Lights
                 </p>
               </div>
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleEdit(post.id)}>Editar</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDelete(post.id)} className="text-destructive">
+                    Eliminar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
             <CardContent className="p-0">
               <div className="relative aspect-[4/5] w-full">
