@@ -2,67 +2,67 @@
   "placeholderImages": [
     {
       "id": "feed-1",
-      "description": "Week 8 of flower, the buds are getting dense and frosty!",
+      "description": "¡Semana 8 de floración, los cogollos se están poniendo densos y resinosos!",
       "imageUrl": "https://images.unsplash.com/photo-1534347768767-8fe3fea1295e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjYW5uYWJpcyUyMGZsb3dlcnxlbnwwfHx8fDE3NTg5MTg1Njl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "cannabis flower"
     },
     {
       "id": "feed-2",
-      "description": "My first attempt at LST (Low Stress Training). So far so good.",
+      "description": "Mi primer intento de LST (Entrenamiento de Bajo Estrés). Hasta ahora todo bien.",
       "imageUrl": "https://images.unsplash.com/photo-1604660664082-3cac347079b0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxjYW5uYWJpcyUyMHBsYW50fGVufDB8fHx8MTc1ODk0ODA1Nnww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "cannabis plant"
     },
     {
       "id": "feed-3",
-      "description": "Check out the beautiful purple hues on this strain.",
+      "description": "Miren los hermosos tonos morados de esta cepa.",
       "imageUrl": "https://images.unsplash.com/photo-1609443935146-ec21df2ad80b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cHVycGxlJTIwY2FubmFiaXN8ZW58MHx8fHwxNzU4OTQ4MDU2fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "purple cannabis"
     },
     {
       "id": "feed-4",
-      "description": "Trichome closeup. Almost ready for harvest!",
+      "description": "Primer plano de los tricomas. ¡Casi listos para la cosecha!",
       "imageUrl": "https://images.unsplash.com/photo-1714066799015-ce2b791e82e1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjYW5uYWJpcyUyMHRyaWNob21lc3xlbnwwfHx8fDE3NTg5NDgwNTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "cannabis trichomes"
     },
     {
       "id": "feed-5",
-      "description": "Setting up my new grow tent. Any tips for ventilation?",
+      "description": "Instalando mi nueva carpa de cultivo. ¿Algún consejo para la ventilación?",
       "imageUrl": "https://images.unsplash.com/photo-1694578345441-c8ebfb5258fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxncm93JTIwdGVudHxlbnwwfHx8fDE3NTg5NDgwNTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "grow tent"
     },
     {
       "id": "feed-6",
-      "description": "Seedlings just sprouted! The journey begins.",
+      "description": "¡Las plántulas acaban de brotar! Comienza la aventura.",
       "imageUrl": "https://images.unsplash.com/photo-1588096285007-fc080e63a58a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxjYW5uYWJpcyUyMHNlZWRsaW5nfGVufDB8fHx8MTc1ODk0ODA1Nnww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "cannabis seedling"
     },
     {
       "id": "feed-7",
-      "description": "This is what a magnesium deficiency looks like. Corrected with some Cal-Mag.",
+      "description": "Así se ve una deficiencia de magnesio. Corregido con un poco de Cal-Mag.",
       "imageUrl": "https://images.unsplash.com/photo-1712231978193-ea50c50a36d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwbGFudCUyMGRlZmljaWVuY3l8ZW58MHx8fHwxNzU4OTQ4MDU2fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "plant deficiency"
     },
     {
       "id": "feed-8",
-      "description": "Harvest day! So satisfying.",
+      "description": "¡Día de cosecha! Qué satisfacción.",
       "imageUrl": "https://images.unsplash.com/photo-1679568126754-2383df5216e8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjYW5uYWJpcyUyMGhhcnZlc3R8ZW58MHx8fHwxNzU4OTQ4MDU2fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "cannabis harvest"
     },
     {
       "id": "feed-9",
-      "description": "My humble outdoor setup.",
+      "description": "Mi humilde instalación de exterior.",
       "imageUrl": "https://images.unsplash.com/photo-1707192181375-941d707b11b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxvdXRkb29yJTIwcGxhbnR8ZW58MHx8fHwxNzU4OTQ4MDU2fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "outdoor plant"
     },
     {
       "id": "feed-10",
-      "description": "Drying and curing process is just as important as the grow.",
+      "description": "El proceso de secado y curado es tan importante como el cultivo.",
       "imageUrl": "https://images.unsplash.com/photo-1568377010987-f96729f28cb3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkcnlpbmclMjBjYW5uYWJpc3xlbnwwfHx8fDE3NTg5NDgwNTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "drying cannabis"
     },
     {
       "id": "user-avatar-1",
-      "description": "User avatar.",
+      "description": "Avatar de usuario.",
       "imageUrl": "https://images.unsplash.com/photo-1590086782792-42dd2350140d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg5MDE5MzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     }

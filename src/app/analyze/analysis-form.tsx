@@ -35,7 +35,7 @@ export function AnalysisForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!file || !previewUrl) {
-      setError('Please select a file to analyze.');
+      setError('Por favor, selecciona un archivo para analizar.');
       return;
     }
 
@@ -61,7 +61,7 @@ export function AnalysisForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="plant-photo" className="text-sm font-medium">
-                Upload Plant Photo
+                Sube la foto de la planta
               </label>
               <div className="flex items-center gap-4">
                  <Input id="plant-photo" type="file" accept="image/*" onChange={handleFileChange} className="flex-grow" />
@@ -71,14 +71,14 @@ export function AnalysisForm() {
                     ) : (
                       <Bot className="mr-2 h-4 w-4" />
                     )}
-                    Analyze
+                    Analizar
                   </Button>
               </div>
             </div>
 
             {previewUrl && (
               <div className="relative aspect-video w-full max-w-md mx-auto overflow-hidden rounded-lg border">
-                <Image src={previewUrl} alt="Plant preview" layout="fill" objectFit="contain" />
+                <Image src={previewUrl} alt="Vista previa de la planta" layout="fill" objectFit="contain" />
               </div>
             )}
           </form>
@@ -86,28 +86,28 @@ export function AnalysisForm() {
           {loading && (
             <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="font-semibold">AI is analyzing your plant...</p>
-              <p className="text-sm">This may take a moment.</p>
+              <p className="font-semibold">La IA está analizando tu planta...</p>
+              <p className="text-sm">Esto puede tomar un momento.</p>
             </div>
           )}
 
           {error && (
             <Alert variant="destructive" className="mt-6">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Analysis Failed</AlertTitle>
+              <AlertTitle>Falló el análisis</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {result && (
             <div className="mt-6 space-y-6">
-              <h2 className="text-xl font-headline font-bold text-center">Analysis Results</h2>
+              <h2 className="text-xl font-headline font-bold text-center">Resultados del Análisis</h2>
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5 text-destructive" />
-                      Identified Problems
+                      Problemas Identificados
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -121,7 +121,7 @@ export function AnalysisForm() {
                         ))}
                       </Accordion>
                     ) : (
-                      <p className="text-muted-foreground">No specific problems were identified. Your plant looks healthy!</p>
+                      <p className="text-muted-foreground">No se identificaron problemas específicos. ¡Tu planta parece sana!</p>
                     )}
                   </CardContent>
                 </Card>
@@ -129,7 +129,7 @@ export function AnalysisForm() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Lightbulb className="h-5 w-5 text-yellow-400" />
-                      Suggestions
+                      Sugerencias
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -143,7 +143,7 @@ export function AnalysisForm() {
                         ))}
                       </Accordion>
                     ) : (
-                       <p className="text-muted-foreground">Keep up the great work!</p>
+                       <p className="text-muted-foreground">¡Sigue con el buen trabajo!</p>
                     )}
                   </CardContent>
                 </Card>
@@ -154,8 +154,8 @@ export function AnalysisForm() {
           {!loading && !result && !error && !previewUrl && (
              <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
                 <Upload className="h-10 w-10" />
-                <p className="font-semibold">Upload a photo to get started</p>
-                <p className="text-sm">Our AI will analyze it for common issues.</p>
+                <p className="font-semibold">Sube una foto para empezar</p>
+                <p className="text-sm">Nuestra IA la analizará en busca de problemas comunes.</p>
              </div>
           )}
 

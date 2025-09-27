@@ -7,26 +7,26 @@ import { cn } from '@/lib/utils';
 import { Search, Send } from 'lucide-react';
 
 const conversations = [
-  { name: 'Alice', message: 'Hey, how are your seedlings?', unread: 2, avatar: 'user1' },
-  { name: 'Bob', message: 'Just sent you a link to that nutrient guide.', unread: 0, avatar: 'user2' },
-  { name: 'Charlie', message: 'You got it!', unread: 0, avatar: 'user3' },
-  { name: 'David', message: 'Let me know what you think of the new light.', unread: 1, avatar: 'user4' },
-  { name: 'Eve', message: 'Check out this harvest!', unread: 0, avatar: 'user5' },
+  { name: 'Alice', message: 'Oye, ¿cómo van tus plántulas?', unread: 2, avatar: 'user1' },
+  { name: 'Bob', message: 'Te acabo de enviar un enlace a esa guía de nutrientes.', unread: 0, avatar: 'user2' },
+  { name: 'Charlie', message: '¡Entendido!', unread: 0, avatar: 'user3' },
+  { name: 'David', message: 'Avísame qué te parece la nueva luz.', unread: 1, avatar: 'user4' },
+  { name: 'Eve', message: '¡Mira esta cosecha!', unread: 0, avatar: 'user5' },
 ];
 
 const messages = [
-    { sender: 'them', text: 'Hey, how are your seedlings?' },
-    { sender: 'me', text: 'Hey Alice! They just sprouted yesterday, looking good so far.' },
-    { sender: 'them', text: 'Awesome! Keep an eye on the humidity.' },
-    { sender: 'me', text: 'Will do, thanks for the tip!' },
+    { sender: 'them', text: 'Oye, ¿cómo van tus plántulas?' },
+    { sender: 'me', text: '¡Hola Alice! Acaban de brotar ayer, se ven bien hasta ahora.' },
+    { sender: 'them', text: '¡Genial! No pierdas de vista la humedad.' },
+    { sender: 'me', text: '¡Lo haré, gracias por el consejo!' },
 ]
 
 export default function MessagesPage() {
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        title="Messages"
-        description="Your private conversations."
+        title="Mensajes"
+        description="Tus conversaciones privadas."
       />
       <div className="flex-1 overflow-hidden">
         <div className="grid h-full grid-cols-1 md:grid-cols-[300px_1fr]">
@@ -34,7 +34,7 @@ export default function MessagesPage() {
             <div className="p-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search messages..." className="pl-9" />
+                <Input placeholder="Buscar mensajes..." className="pl-9" />
               </div>
             </div>
             <ScrollArea className="flex-1">
@@ -83,7 +83,7 @@ export default function MessagesPage() {
             </ScrollArea>
             <div className="border-t p-4">
                 <div className="relative">
-                    <Input placeholder="Type a message..." className="pr-12" />
+                    <Input placeholder="Escribe un mensaje..." className="pr-12" />
                     <Button size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2">
                         <Send className="h-4 w-4" />
                     </Button>

@@ -28,12 +28,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 
 const menuItems = [
-  { href: "/", label: "Feed", icon: Home },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/analyze", label: "Analyze", icon: Bot },
-  { href: "/library", label: "Library", icon: BookOpen },
-  { href: "/messages", label: "Messages", icon: MessageSquare },
-  { href: "/profile", label: "Profile", icon: User },
+  { href: "/", label: "Noticias", icon: Home },
+  { href: "/calendar", label: "Calendario", icon: Calendar },
+  { href: "/analyze", label: "Analizar", icon: Bot },
+  { href: "/library", label: "Biblioteca", icon: BookOpen },
+  { href: "/messages", label: "Mensajes", icon: MessageSquare },
+  { href: "/profile", label: "Perfil", icon: User },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <Button variant="ghost" size="icon" className="ml-auto shrink-0">
                 <Settings />
-                <span className="sr-only">Settings</span>
+                <span className="sr-only">Ajustes</span>
             </Button>
           </div>
         </SidebarFooter>

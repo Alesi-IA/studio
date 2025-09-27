@@ -13,8 +13,8 @@ export default function ProfilePage() {
   return (
     <div className="w-full">
       <PageHeader
-        title="Profile"
-        description="Your personal CannaConnect space."
+        title="Perfil"
+        description="Tu espacio personal en CannaConnect."
       />
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
@@ -26,8 +26,8 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <h2 className="font-headline text-2xl font-bold">CannaChampion</h2>
               <div className="flex items-center gap-2">
-                <Button>Follow</Button>
-                <Button variant="outline">Message</Button>
+                <Button>Seguir</Button>
+                <Button variant="outline">Mensaje</Button>
                 <Button variant="ghost" size="icon">
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -36,30 +36,30 @@ export default function ProfilePage() {
             <div className="flex justify-center gap-6 md:justify-start">
               <div className="text-center">
                 <p className="font-bold">{userPosts.length}</p>
-                <p className="text-sm text-muted-foreground">Posts</p>
+                <p className="text-sm text-muted-foreground">Publicaciones</p>
               </div>
               <div className="text-center">
                 <p className="font-bold">1.2k</p>
-                <p className="text-sm text-muted-foreground">Followers</p>
+                <p className="text-sm text-muted-foreground">Seguidores</p>
               </div>
               <div className="text-center">
                 <p className="font-bold">142</p>
-                <p className="text-sm text-muted-foreground">Following</p>
+                <p className="text-sm text-muted-foreground">Siguiendo</p>
               </div>
             </div>
             <p className="text-sm">
-              Passionate grower since 2010. Specializing in organic, living
-              soil techniques. Here to share knowledge and see your beautiful
-              plants! 🌿
+              Cultivador apasionado desde 2010. Especializado en técnicas de
+              suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver
+              sus hermosas plantas! 🌿
             </p>
           </div>
         </div>
 
         <Tabs defaultValue="posts" className="w-full">
           <TabsList>
-            <TabsTrigger value="posts">My Grow</TabsTrigger>
-            <TabsTrigger value="saved">Saved</TabsTrigger>
-            <TabsTrigger value="tagged">Tagged</TabsTrigger>
+            <TabsTrigger value="posts">Mi Cultivo</TabsTrigger>
+            <TabsTrigger value="saved">Guardados</TabsTrigger>
+            <TabsTrigger value="tagged">Etiquetados</TabsTrigger>
           </TabsList>
           <TabsContent value="posts" className="mt-6">
             <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:gap-4">
@@ -82,14 +82,14 @@ export default function ProfilePage() {
           </TabsContent>
           <TabsContent value="saved" className="mt-6">
             <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
-                <p className="font-semibold">No Saved Posts</p>
-                <p className="text-sm">Posts you save will appear here.</p>
+                <p className="font-semibold">No hay publicaciones guardadas</p>
+                <p className="text-sm">Las publicaciones que guardes aparecerán aquí.</p>
             </div>
           </TabsContent>
           <TabsContent value="tagged" className="mt-6">
             <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
-                <p className="font-semibold">No Tagged Posts</p>
-                <p className="text-sm">When people tag you in posts, they'll appear here.</p>
+                <p className="font-semibold">No hay publicaciones etiquetadas</p>
+                <p className="text-sm">Cuando la gente te etiquete en publicaciones, aparecerán aquí.</p>
             </div>
           </TabsContent>
         </Tabs>

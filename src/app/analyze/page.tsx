@@ -5,8 +5,8 @@ export default function AnalyzePage() {
   return (
     <div className="w-full">
       <PageHeader
-        title="Plant Analysis"
-        description="Upload a photo of your plant to identify potential issues with our AI."
+        title="Análisis de Planta"
+        description="Sube una foto de tu planta para identificar posibles problemas con nuestra IA."
       />
       <div className="p-4 md:p-8">
         <AnalysisForm />

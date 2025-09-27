@@ -11,39 +11,39 @@ import { Search } from 'lucide-react';
 
 const guides = [
   {
-    title: 'Beginner\'s Guide to Cannabis Cultivation',
-    content: 'From seed to harvest, this guide covers all the basics you need to start your first grow. Learn about lighting, soil, watering, and more.',
+    title: 'Guía para Principiantes de Cultivo de Cannabis',
+    content: 'Desde la semilla hasta la cosecha, esta guía cubre todos los conceptos básicos que necesitas para comenzar tu primer cultivo. Aprende sobre iluminación, suelo, riego y más.',
   },
   {
-    title: 'Advanced Nutrient Management',
-    content: 'Understand the role of macronutrients (N-P-K) and micronutrients. Learn how to diagnose and treat deficiencies and toxicities.',
+    title: 'Manejo Avanzado de Nutrientes',
+    content: 'Comprende el papel de los macronutrientes (N-P-K) y micronutrientes. Aprende a diagnosticar y tratar deficiencias y toxicidades.',
   },
   {
-    title: 'Pest and Disease Control',
-    content: 'A comprehensive guide to identifying and eliminating common pests like spider mites and fungus gnats, and diseases like powdery mildew.',
+    title: 'Control de Plagas y Enfermedades',
+    content: 'Una guía completa para identificar y eliminar plagas comunes como los ácaros araña y los mosquitos de los hongos, y enfermedades como el oídio.',
   },
   {
-    title: 'Harvesting, Drying & Curing',
-    content: 'Timing your harvest is crucial. Learn the best techniques for drying and curing your buds to maximize potency and flavor.',
+    title: 'Cosecha, Secado y Curado',
+    content: 'El momento de la cosecha es crucial. Aprende las mejores técnicas para secar y curar tus cogollos para maximizar la potencia y el sabor.',
   },
 ];
 
 const dictionary = [
     {
-      term: 'Cannabinoids',
-      definition: 'Chemical compounds found in the cannabis plant, such as THC and CBD, that interact with receptors in the human body.',
+      term: 'Cannabinoides',
+      definition: 'Compuestos químicos que se encuentran en la planta de cannabis, como el THC y el CBD, que interactúan con los receptores del cuerpo humano.',
     },
     {
-      term: 'Terpenes',
-      definition: 'Aromatic oils that give cannabis varieties distinctive flavors like citrus, berry, mint, and pine. They also play a role in the effects of the plant.',
+      term: 'Terpenos',
+      definition: 'Aceites aromáticos que dan a las variedades de cannabis sabores distintivos como cítricos, bayas, menta y pino. También juegan un papel en los efectos de la planta.',
     },
     {
-      term: 'Trichomes',
-      definition: 'The crystal-like glands on the surface of cannabis flowers that produce and store cannabinoids and terpenes. They look like tiny hairs or mushrooms.',
+      term: 'Tricomas',
+      definition: 'Las glándulas cristalinas en la superficie de las flores de cannabis que producen y almacenan cannabinoides y terpenos. Parecen pequeños pelos o champiñones.',
     },
     {
-      term: 'Feminized Seeds',
-      definition: 'Cannabis seeds that are specifically bred to eliminate male chromosomes, ensuring that every plant grown from them will be female and produce buds.',
+      term: 'Semillas Feminizadas',
+      definition: 'Semillas de cannabis que se crían específicamente para eliminar los cromosomas masculinos, asegurando que cada planta cultivada a partir de ellas sea hembra y produzca cogollos.',
     },
   ];
 
@@ -51,20 +51,20 @@ export default function LibraryPage() {
   return (
     <div className="w-full">
       <PageHeader
-        title="Grow Library"
-        description="Your comprehensive resource for cannabis cultivation."
+        title="Biblioteca de Cultivo"
+        description="Tu recurso completo para el cultivo de cannabis."
       />
       <div className="p-4 md:p-8">
         <Tabs defaultValue="guides" className="w-full">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <TabsList>
-              <TabsTrigger value="guides">Guides</TabsTrigger>
-              <TabsTrigger value="articles">Articles</TabsTrigger>
-              <TabsTrigger value="dictionary">Dictionary</TabsTrigger>
+              <TabsTrigger value="guides">Guías</TabsTrigger>
+              <TabsTrigger value="articles">Artículos</TabsTrigger>
+              <TabsTrigger value="dictionary">Diccionario</TabsTrigger>
             </TabsList>
             <div className="relative w-full md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search library..." className="pl-9" />
+                <Input placeholder="Buscar en la biblioteca..." className="pl-9" />
             </div>
           </div>
           <TabsContent value="guides" className="mt-6">
@@ -79,8 +79,8 @@ export default function LibraryPage() {
           </TabsContent>
           <TabsContent value="articles" className="mt-6">
              <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
-                <p className="font-semibold">Articles Coming Soon</p>
-                <p className="text-sm">We are curating a collection of articles from expert growers.</p>
+                <p className="font-semibold">Artículos Próximamente</p>
+                <p className="text-sm">Estamos seleccionando una colección de artículos de cultivadores expertos.</p>
             </div>
           </TabsContent>
           <TabsContent value="dictionary" className="mt-6">

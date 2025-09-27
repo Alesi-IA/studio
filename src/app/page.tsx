@@ -20,8 +20,8 @@ export default function FeedPage() {
   return (
     <div className="w-full">
       <PageHeader
-        title="Feed"
-        description="See what's new in the CannaConnect community."
+        title="Noticias"
+        description="Mira las novedades en la comunidad de CannaConnect."
         className="px-4 md:px-8"
       />
       <div className="mx-auto max-w-2xl space-y-8 px-4 py-6 md:px-8">
@@ -43,7 +43,7 @@ export default function FeedPage() {
                   {`grower_handle_${index}`}
                 </Link>
                 <p className="text-xs text-muted-foreground">
-                  Strain: Northern Lights
+                  Cepa: Northern Lights
                 </p>
               </div>
             </CardHeader>
@@ -62,20 +62,20 @@ export default function FeedPage() {
               <div className="flex w-full items-center gap-2">
                 <Button variant="ghost" size="icon">
                   <Heart className="h-5 w-5" />
-                  <span className="sr-only">Like</span>
+                  <span className="sr-only">Me gusta</span>
                 </Button>
                 <Button variant="ghost" size="icon">
                   <MessageCircle className="h-5 w-5" />
-                  <span className="sr-only">Comment</span>
+                  <span className="sr-only">Comentar</span>
                 </Button>
                 <Button variant="ghost" size="icon">
                   <Send className="h-5 w-5" />
-                  <span className="sr-only">Share</span>
+                  <span className="sr-only">Compartir</span>
                 </Button>
               </div>
               <div className="grid gap-1.5 text-sm">
                 <p className="font-semibold">
-                  {Math.floor(Math.random() * 500) + 10} likes
+                  {Math.floor(Math.random() * 500) + 10} me gusta
                 </p>
                 <p>
                   <Link
@@ -87,7 +87,7 @@ export default function FeedPage() {
                   {post.description}
                 </p>
                 <Link href="#" className="text-muted-foreground">
-                  View all {Math.floor(Math.random() * 50) + 2} comments
+                  Ver los {Math.floor(Math.random() * 50) + 2} comentarios
                 </Link>
               </div>
             </CardFooter>

@@ -9,11 +9,11 @@ import { Plus } from 'lucide-react';
 import React from 'react';
 
 const tasks = [
-  { id: 'task1', label: 'Water plants (pH 6.5)', completed: true },
-  { id: 'task2', label: 'Check for pests/disease', completed: false },
-  { id: 'task3', label: 'Mix nutrients (Veg stage)', completed: true },
-  { id: 'task4', label: 'Prune lower fan leaves', completed: false },
-  { id: 'task5', label: 'Rotate pots for even light', completed: false },
+  { id: 'task1', label: 'Regar plantas (pH 6.5)', completed: true },
+  { id: 'task2', label: 'Revisar plagas/enfermedades', completed: false },
+  { id: 'task3', label: 'Mezclar nutrientes (Etapa vegetativa)', completed: true },
+  { id: 'task4', label: 'Podar hojas bajas', completed: false },
+  { id: 'task5', label: 'Rotar macetas para luz uniforme', completed: false },
 ];
 
 export default function CalendarPage() {
@@ -22,12 +22,12 @@ export default function CalendarPage() {
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        title="Grow Calendar"
-        description="Organize your cultivation stages and track your tasks."
+        title="Calendario de Cultivo"
+        description="Organiza tus etapas de cultivo y sigue tus tareas."
         actions={
             <Button>
                 <Plus className="-ml-1 h-4 w-4" />
-                New Task
+                Nueva Tarea
             </Button>
         }
       />
@@ -55,7 +55,7 @@ export default function CalendarPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Today&apos;s Tasks</CardTitle>
+              <CardTitle>Tareas de Hoy</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
