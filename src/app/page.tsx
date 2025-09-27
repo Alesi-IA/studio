@@ -92,7 +92,7 @@ export default function FeedPage() {
         ))
     );
     
-    setPosts(uniquePosts);
+    setPosts(uniquePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     setLoading(false);
   }
 
@@ -318,3 +318,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    
