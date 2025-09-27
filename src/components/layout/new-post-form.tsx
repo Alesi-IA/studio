@@ -9,9 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
-import { db, storage } from '@/lib/firebase/config';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -42,7 +39,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !user) {
+    if (!previewUrl || !user) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -52,36 +49,41 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
     }
     setLoading(true);
     
-    try {
-        // 1. Subir imagen a Firebase Storage
-        const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(imageRef, file);
-        const imageUrl = await getDownloadURL(snapshot.ref);
+    // Simulate a delay for network request
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // 2. Crear documento en Firestore
-        await addDoc(collection(db, 'posts'), {
+    try {
+        const newPost = {
+            id: `mock-post-${Date.now()}`,
             authorId: user.uid,
             authorName: user.displayName,
             authorAvatar: user.photoURL,
             description,
-            imageUrl,
-            createdAt: serverTimestamp(),
-            likes: 0,
-            comments: 0
-        });
+            imageUrl: previewUrl,
+            createdAt: new Date().toISOString(),
+            likes: Math.floor(Math.random() * 100),
+            comments: Math.floor(Math.random() * 20),
+        };
+
+        // In a real app, you'd send this to a server. Here we save to session storage.
+        const existingPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
+        sessionStorage.setItem('mockPosts', JSON.stringify([newPost, ...existingPosts]));
+
+        // Dispatch a custom event to notify the feed to update
+        window.dispatchEvent(new Event('storage'));
 
         toast({
-            title: '¡Éxito!',
+            title: '¡Éxito! (Simulado)',
             description: 'Tu publicación ha sido creada.',
         });
         
         onPostCreated();
 
     } catch (error) {
-        console.error("Error al crear la publicación:", error);
+        console.error("Error al crear la publicación (simulado):", error);
         toast({
             variant: 'destructive',
-            title: 'Error',
+            title: 'Error (Simulado)',
             description: 'No se pudo crear la publicación. Por favor, inténtalo de nuevo.',
         });
     } finally {
@@ -120,7 +122,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
           onChange={(e) => setDescription(e.target.value)}
         />
       </div>
-      <Button type="submit" disabled={!file || loading}>
+      <Button type="submit" disabled={!previewUrl || loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {loading ? 'Publicando...' : 'Publicar'}
       </Button>

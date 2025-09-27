@@ -16,10 +16,23 @@ const firebaseConfig = {
 };
 
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// The app will now work without a real Firebase connection.
+// The following initialization is for compatibility but won't be used
+// by the mock authentication and data system.
+let app, auth, db, storage;
+
+try {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+} catch (e) {
+    console.warn("Firebase initialization skipped for mock mode. App will use temporary local data.");
+    app = null;
+    auth = null;
+    db = null;
+    storage = null;
+}
 
 
 export { app, auth, db, storage };

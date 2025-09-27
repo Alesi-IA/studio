@@ -3,17 +3,28 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  onAuthStateChanged, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut,
-  updateProfile,
-  type User
-} from 'firebase/auth';
-import { auth, db } from '@/lib/firebase/config';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useToast } from './use-toast';
+import type { User } from 'firebase/auth';
+
+// --- MOCK USER DATA ---
+const MOCK_ADMIN_USER = {
+  uid: 'admin-uid',
+  email: 'admin@cannaconnect.com',
+  displayName: 'Admin Canna',
+  role: 'admin',
+  photoURL: 'https://picsum.photos/seed/admin-uid/128/128'
+};
+
+const MOCK_NORMAL_USER = {
+  uid: 'user-uid-123',
+  email: 'test@test.com',
+  displayName: 'Test User',
+  role: 'user',
+  photoURL: 'https://picsum.photos/seed/user-uid-123/128/128'
+}
+
+// --- END MOCK USER DATA ---
+
 
 interface AuthContextType {
   user: User | null;
@@ -42,79 +53,94 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Fetch user role from Firestore
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-            setIsAdmin(true);
-        } else {
-            setIsAdmin(false);
+    // Simulate checking for a logged-in user
+    try {
+        const storedUser = sessionStorage.getItem('mockUser');
+        if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            setIsAdmin(parsedUser.role === 'admin');
         }
-        setUser(user);
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    } catch (e) {
+        console.error("Failed to parse mock user from session storage", e);
+        sessionStorage.removeItem('mockUser');
+    }
+    setLoading(false);
   }, []);
 
   const signUp = async (displayName, email, password) => {
+    setLoading(true);
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        await updateProfile(user, { displayName });
-
-        // Crear documento de usuario en Firestore
-        const userDocRef = doc(db, 'users', user.uid);
-        await setDoc(userDocRef, {
-            uid: user.uid,
-            displayName: displayName,
-            email: user.email,
-            role: 'user' // Por defecto, todos son usuarios normales
+        // Simulate creating a new user
+        const newUser = {
+            uid: `mock-uid-${Date.now()}`,
+            email,
+            displayName,
+            role: 'user', // All new signups are users
+            photoURL: `https://picsum.photos/seed/mock-uid-${Date.now()}/128/128`
+        };
+        sessionStorage.setItem('mockUser', JSON.stringify(newUser));
+        setUser(newUser);
+        setIsAdmin(false);
+        toast({
+            title: "¡Cuenta Creada! (Simulado)",
+            description: "Has sido registrado exitosamente."
         });
-        
-        setUser({ ...user, displayName });
-
     } catch (error) {
-        console.error("Error al registrarse:", error.message);
         toast({
             variant: "destructive",
-            title: "Error de Registro",
-            description: "No se pudo crear la cuenta. Es posible que el email ya esté en uso."
-        })
+            title: "Error de Registro (Simulado)",
+            description: "No se pudo crear la cuenta."
+        });
         throw error;
+    } finally {
+        setLoading(false);
     }
   };
 
   const logIn = async (email, password) => {
+    setLoading(true);
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        // Simulate logging in
+        let userToLogin = MOCK_NORMAL_USER;
+        if (email.toLowerCase().includes('admin')) {
+            userToLogin = MOCK_ADMIN_USER;
+        }
+        
+        sessionStorage.setItem('mockUser', JSON.stringify(userToLogin));
+        setUser(userToLogin);
+        setIsAdmin(userToLogin.role === 'admin');
+        
+        toast({
+            title: "Inicio de Sesión Exitoso (Simulado)"
+        });
+
     } catch (error) {
-        console.error("Error al iniciar sesión:", error.message);
         toast({
             variant: "destructive",
-            title: "Error de Inicio de Sesión",
-            description: "Las credenciales son incorrectas. Por favor, inténtalo de nuevo."
+            title: "Error de Inicio de Sesión (Simulado)",
+            description: "Las credenciales son incorrectas."
         })
         throw error;
+    } finally {
+        setLoading(false);
     }
   };
 
   const logOut = async () => {
+    setLoading(true);
     try {
-        await signOut(auth);
+        sessionStorage.removeItem('mockUser');
+        setUser(null);
+        setIsAdmin(false);
     } catch (error) {
-        console.error("Error al cerrar sesión:", error.message);
-        toast({
+         toast({
             variant: "destructive",
             title: "Error",
             description: "No se pudo cerrar la sesión."
         })
+    } finally {
+        setLoading(false);
     }
   };
   

@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useState, useEffect } from 'react';
 import type { ImagePlaceholder } from '@/lib/placeholder-images';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,9 +36,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { db, storage } from '@/lib/firebase/config';
-import { collection, getDocs, doc, deleteDoc, updateDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { deleteObject, ref } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
@@ -59,6 +58,19 @@ export interface Post {
   comments?: number;
 }
 
+const initialPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed-')).map((p, index) => ({
+  id: p.id,
+  authorId: `user-id-${index}`,
+  authorName: `Cultivador${index + 1}`,
+  authorAvatar: `https://picsum.photos/seed/user-id-${index}/40/40`,
+  description: p.description,
+  imageUrl: p.imageUrl,
+  imageHint: p.imageHint,
+  createdAt: new Date().toISOString(),
+  likes: Math.floor(Math.random() * 200),
+  comments: Math.floor(Math.random() * 50)
+}));
+
 
 export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -68,33 +80,43 @@ export default function FeedPage() {
   const [editingDescription, setEditingDescription] = useState('');
   const { user, isAdmin } = useAuth();
 
+  const loadPosts = () => {
+    setLoading(true);
+    const storedPosts = sessionStorage.getItem('mockPosts');
+    const allPosts = storedPosts ? [...JSON.parse(storedPosts), ...initialPosts] : initialPosts;
+    
+    // Remove duplicates
+    const uniquePosts = allPosts.filter((post, index, self) =>
+        index === self.findIndex((t) => (
+            t.id === post.id
+        ))
+    );
+    
+    setPosts(uniquePosts);
+    setLoading(false);
+  }
 
   useEffect(() => {
-    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const postsData: Post[] = [];
-      querySnapshot.forEach((doc) => {
-        postsData.push({ id: doc.id, ...doc.data() } as Post);
-      });
-      setPosts(postsData);
-      setLoading(false);
-    });
+    loadPosts();
+    // Listen for custom event from NewPostForm
+    window.addEventListener('storage', loadPosts);
 
-    return () => unsubscribe();
+    return () => {
+      window.removeEventListener('storage', loadPosts);
+    };
   }, []);
 
-
-  const handleDelete = async (post: Post) => {
+  const handleDelete = async (postToDelete: Post) => {
     try {
-        // Borrar documento de Firestore
-        await deleteDoc(doc(db, 'posts', post.id));
+        const updatedPosts = posts.filter(p => p.id !== postToDelete.id);
+        const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
+        const updatedStoredPosts = storedPosts.filter((p: Post) => p.id !== postToDelete.id);
 
-        // Borrar imagen de Storage
-        const imageRef = ref(storage, post.imageUrl);
-        await deleteObject(imageRef);
+        sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
+        setPosts(updatedPosts);
 
     } catch (error) {
-        console.error("Error al eliminar la publicación: ", error);
+        console.error("Error al eliminar la publicación (simulado): ", error);
     }
   };
 
@@ -105,16 +127,19 @@ export default function FeedPage() {
 
   const handleSaveEdit = async () => {
     if (!editingPost) return;
+    
+    const updatedPosts = posts.map(p => 
+        p.id === editingPost.id ? { ...p, description: editingDescription } : p
+    );
+    setPosts(updatedPosts);
 
-    const postRef = doc(db, 'posts', editingPost.id);
-    try {
-      await updateDoc(postRef, {
-        description: editingDescription
-      });
-      setEditingPost(null);
-    } catch(error) {
-      console.error("Error al actualizar la publicación: ", error);
-    }
+    const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
+    const updatedStoredPosts = storedPosts.map((p: Post) => 
+        p.id === editingPost.id ? { ...p, description: editingDescription } : p
+    );
+    sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
+
+    setEditingPost(null);
   };
 
   return (
