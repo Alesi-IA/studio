@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -32,6 +31,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -318,5 +318,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    
