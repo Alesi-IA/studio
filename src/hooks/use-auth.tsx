@@ -53,13 +53,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if a user is stored in session storage
-    const storedUser = sessionStorage.getItem('mockUser');
-    if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAdmin(parsedUser.role === 'admin');
-    }
+    // Simulate being logged in as an admin user for preview purposes
+    setUser(MOCK_ADMIN_USER);
+    setIsAdmin(true);
     setLoading(false);
   }, []);
 
@@ -125,9 +121,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logOut = async () => {
     setLoading(true);
     try {
-        sessionStorage.removeItem('mockUser');
-        setUser(null);
-        setIsAdmin(false);
+        // For preview, redirect to login page logic
+        window.location.href = '/login';
     } catch (error) {
          toast({
             variant: "destructive",
