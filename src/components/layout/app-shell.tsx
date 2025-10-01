@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { Skeleton } from "../ui/skeleton";
 
 const mainNavItems = [
   { href: "/", label: "Noticias", icon: Home },
@@ -28,11 +27,17 @@ const mainNavItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
-  const { user, loading, logOut } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
 
+  React.useEffect(() => {
+    if (!loading && !user && !showOnboarding) {
+      router.push('/login');
+    }
+  }, [user, loading, showOnboarding, router]);
+  
   if (loading || (!user && !showOnboarding)) {
     return (
         <div className="flex min-h-screen w-full items-center justify-center">
@@ -113,7 +118,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 
         {/* Mobile Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 z-20">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-6 z-20">
           {mainNavItems.map((item) => (
              <Link
               key={item.href}
