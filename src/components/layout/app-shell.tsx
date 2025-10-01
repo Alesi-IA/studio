@@ -13,56 +13,47 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
+import { Skeleton } from "../ui/skeleton";
 
 const menuItems = [
-  { href: "/", label: "Noticias", icon: Home },
-  { href: "/search", label: "Buscar", icon: Search },
-  { href: "/tools", label: "Herramientas", icon: Wrench },
-  { href: "/messages", label: "Mensajes", icon: MessageSquare },
-];
-
-const desktopMenuItems = [
   { href: "/", label: "Noticias", icon: Home },
   { href: "/search", label: "Buscar", icon: Search },
   { href: "/identify", label: "Identificar", icon: ScanEye },
   { href: "/analyze", label: "Analizar", icon: Bot },
   { href: "/tools", label: "Herramientas", icon: Wrench },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
-]
+];
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
   const { user, loading, logOut } = useAuth();
-  
+  const router = useRouter();
+
   const showOnboarding = pathname === '/login' || pathname === '/register';
 
-  if (loading) {
+  React.useEffect(() => {
+    if (!loading && !user && !showOnboarding) {
+        router.replace('/login');
+    }
+  }, [user, loading, showOnboarding, router]);
+
+
+  if (loading || (!user && !showOnboarding)) {
     return (
         <div className="flex min-h-screen w-full items-center justify-center">
-            <CannaConnectLogo />
+             <div className="flex items-center gap-3">
+              <CannaConnectLogo />
+              <span className="font-headline text-lg font-semibold">
+                CannaConnect
+              </span>
+            </div>
         </div>
     )
   }
   
-  if (!user && !showOnboarding) {
-      // For preview, we simulate a logged-in user if no real user is available.
-      // This will be replaced by a redirect in a real production app.
-      if (typeof window !== 'undefined') {
-          const mockUser = {
-              uid: 'admin-uid',
-              email: 'admin@cannaconnect.com',
-              displayName: 'Admin Canna',
-              role: 'admin',
-              photoURL: `https://picsum.photos/seed/admin-uid/128/128`
-          };
-          // A bit of a hack to make the auth hook pick up the mock user
-          (useAuth as any)._injectUser(mockUser);
-          return null; // The component will re-render with the user
-      }
-  }
-
   if (showOnboarding) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
@@ -81,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {desktopMenuItems.map((item) => (
+            {menuItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -119,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <Button variant="ghost" size="icon">
                       <Avatar className="h-8 w-8">
                         <AvatarImage
-                            src={`https://picsum.photos/seed/${user?.uid}/40/40`}
+                            src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
                             alt={user?.displayName || 'User'}
                         />
                         <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
@@ -153,7 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs sr-only">Nueva Publicación</span>
               </button>
            </DialogTrigger>
-           {menuItems.slice(2).map((item) => (
+           {menuItems.slice(3, 5).map((item) => ( // Show identify and analyze on desktop only for now
              <Link
               key={item.href}
               href={item.href}
@@ -177,3 +168,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </Dialog>
   );
 }
+
+    

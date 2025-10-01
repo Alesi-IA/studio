@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useToast } from './use-toast';
 import type { User } from 'firebase/auth';
@@ -32,6 +33,7 @@ interface AuthContextType {
   logOut: () => Promise<any>;
   isOwner: (ownerId: string) => boolean;
   isAdmin: boolean;
+  _injectUser: (user: any) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -42,6 +44,7 @@ const AuthContext = createContext<AuthContextType>({
   logOut: async () => {},
   isOwner: () => false,
   isAdmin: false,
+  _injectUser: () => {}
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -49,13 +52,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
+
 
   useEffect(() => {
-    // Simulate an automatic login with the admin user for preview purposes
-    setUser(MOCK_ADMIN_USER);
-    setIsAdmin(true);
+    // This effect now simulates checking for a logged-in user in sessionStorage
+    try {
+      const storedUser = sessionStorage.getItem('mockUser');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAdmin(parsedUser.role === 'admin');
+      }
+    } catch (e) {
+      console.error("Failed to parse mock user from session storage", e);
+      sessionStorage.removeItem('mockUser');
+    }
     setLoading(false);
   }, []);
+
+  const _injectUser = (mockUser: any) => {
+      setUser(mockUser);
+      setIsAdmin(mockUser.role === 'admin');
+      sessionStorage.setItem('mockUser', JSON.stringify(mockUser));
+  }
 
   const signUp = async (displayName, email, password) => {
     setLoading(true);
@@ -119,10 +139,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logOut = async () => {
     setLoading(true);
     try {
-        // For preview, just clear the user and session storage
         sessionStorage.removeItem('mockUser');
         setUser(null);
         setIsAdmin(false);
+        router.push('/login');
     } catch (error) {
          toast({
             variant: "destructive",
@@ -146,6 +166,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logOut,
     isOwner,
     isAdmin,
+    _injectUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -158,3 +179,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
