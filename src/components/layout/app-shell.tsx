@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { ChatAssistant } from "../chatbot/chat-assistant";
 
 const mainNavItems = [
   { href: "/", label: "Noticias", icon: Home },
@@ -118,8 +119,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 
         {/* Mobile Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20">
-          {mainNavItems.slice(0, 2).map((item) => (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-7 items-center z-20 place-items-center">
+            {mainNavItems.slice(0, 2).map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -132,12 +133,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs sr-only">{item.label}</span>
             </Link>
           ))}
-           <DialogTrigger asChild>
-             <button className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/80 text-primary-foreground shadow-lg hover:bg-primary transition-all duration-200 transform hover:scale-110">
-                <PlusCircle className="h-7 w-7" />
-                <span className="sr-only">Nueva Publicación</span>
-              </button>
-           </DialogTrigger>
+          <div className="col-start-4">
+             <DialogTrigger asChild>
+                <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
+                    <PlusCircle className="h-7 w-7" />
+                    <span className="sr-only">Nueva Publicación</span>
+                </button>
+            </DialogTrigger>
+          </div>
            {mainNavItems.slice(2).map((item) => (
              <Link
               key={item.href}
@@ -159,6 +162,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </DialogHeader>
         <NewPostForm onPostCreated={() => setIsNewPostOpen(false)} />
       </DialogContent>
+
+      <ChatAssistant />
     </Dialog>
   );
 }
+
+    
