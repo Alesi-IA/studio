@@ -3,8 +3,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye, Shield } from "lucide-react";
-import { CannaConnectLogo } from "@/components/icons/logo";
+import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye, Shield, Leaf } from "lucide-react";
+import { CannaGrowLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
@@ -48,9 +48,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex min-h-screen w-full items-center justify-center">
              <div className="flex items-center gap-3">
-              <CannaConnectLogo />
+              <CannaGrowLogo />
+              <Leaf className="h-6 w-6 text-primary" />
               <span className="font-headline text-lg font-semibold">
-                CannaConnect
+                CannaGrow
               </span>
             </div>
         </div>
@@ -68,10 +69,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <aside className="hidden md:flex flex-col w-64 border-r fixed h-full">
           <div className="p-4">
             <Link href="/" className="flex items-center gap-3">
-              <CannaConnectLogo />
+              <CannaGrowLogo />
               <span className="font-headline text-lg font-semibold">
-                CannaConnect
+                CannaGrow
               </span>
+               <Leaf className="h-5 w-5 text-primary/80" />
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
@@ -117,8 +119,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col flex-1 md:ml-64 pb-16 md:pb-0">
             <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:hidden">
                 <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                  <CannaConnectLogo />
-                  <span>CannaConnect</span>
+                  <CannaGrowLogo />
+                  <span>CannaGrow</span>
                 </Link>
                  <div className="flex items-center gap-2">
                     <Link href="/messages">

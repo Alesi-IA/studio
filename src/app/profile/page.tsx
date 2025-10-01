@@ -30,7 +30,7 @@ export default function ProfilePage() {
     <div className="w-full">
       <PageHeader
         title="Perfil"
-        description="Tu espacio personal en CannaConnect."
+        description="Tu espacio personal en CannaGrow."
         actions={
           <div className="flex items-center gap-2">
             {isAdmin && (
@@ -93,8 +93,8 @@ export default function ProfilePage() {
             </div>
             <p className="text-sm max-w-prose">
               {isAdmin ? 
-                'Dueño y operador de CannaConnect. Cultivador apasionado desde 2010. Especializado en técnicas de suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver sus hermosas plantas! 🌿' : 
-                'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaConnect.'
+                'Dueño y operador de CannaGrow. Cultivador apasionado desde 2010. Especializado en técnicas de suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver sus hermosas plantas! 🌿' : 
+                'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.'
               }
             </p>
           </div>
@@ -142,5 +142,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

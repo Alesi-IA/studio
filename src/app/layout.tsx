@@ -5,8 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
-  title: 'CannaConnect',
-  description: 'Una comunidad para entusiastas del cultivo de cannabis.',
+  title: 'CannaGrow',
+  description: 'Tu compañero de cultivo de cannabis.',
 };
 
 export default function RootLayout({

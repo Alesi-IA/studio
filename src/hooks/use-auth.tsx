@@ -10,7 +10,7 @@ import type { User } from 'firebase/auth';
 // --- MOCK USER DATA ---
 const MOCK_ADMIN_USER = {
   uid: 'admin-uid',
-  email: 'admin@cannaconnect.com',
+  email: 'admin@cannagrow.com',
   displayName: 'Admin Canna',
   role: 'admin',
   photoURL: `https://picsum.photos/seed/admin-uid/128/128`

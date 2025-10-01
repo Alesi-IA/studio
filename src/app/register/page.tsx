@@ -13,9 +13,9 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CannaConnectLogo } from "@/components/icons/logo"
+import { CannaGrowLogo } from "@/components/icons/logo"
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
+import { Leaf, Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
     const { signUp } = useAuth();
@@ -42,8 +42,10 @@ export default function RegisterPage() {
   return (
     <Card className="mx-auto max-w-sm">
       <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-            <CannaConnectLogo />
+        <div className="flex justify-center items-center gap-2 mb-4">
+            <CannaGrowLogo />
+            <Leaf className="h-6 w-6 text-primary" />
+            <span className="text-2xl font-headline font-bold">CannaGrow</span>
         </div>
         <CardTitle className="text-2xl">Crear una cuenta</CardTitle>
         <CardDescription>
