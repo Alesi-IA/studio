@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye } from "lucide-react";
+import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye, Shield } from "lucide-react";
 import { CannaConnectLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -20,7 +20,7 @@ const mainNavItems = [
   { href: "/", label: "Noticias", icon: Home },
   { href: "/search", label: "Buscar", icon: Search },
   { href: "/identify", label: "Asistente IA", icon: ScanEye },
-  { href: "/tools", label: "Herramientas", icon: Calendar },
+  { href: "/tools", label: "Calendario", icon: Calendar },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
 
@@ -28,7 +28,7 @@ const mainNavItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
@@ -84,6 +84,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span>{item.label}</span>
               </Link>
             ))}
+             {isAdmin && (
+              <Link
+                href="/admin"
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent",
+                  pathname.startsWith('/admin') ? "bg-accent text-primary" : ""
+                )}
+              >
+                <Shield className="h-5 w-5" />
+                <span>Admin</span>
+              </Link>
+            )}
           </nav>
           <div className="p-4 mt-auto">
             <DialogTrigger asChild>
@@ -156,7 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
           </DialogTrigger>
 
-           {mainNavItems.slice(2).map((item) => (
+           {mainNavItems.slice(2, 4).map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -169,6 +181,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs sr-only">{item.label}</span>
             </Link>
           ))}
+          <Link
+            href="/messages"
+            className={cn(
+                "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+                pathname.startsWith('/messages') ? "text-primary" : ""
+            )}
+            >
+            <MessageSquare className="h-6 w-6" />
+            <span className="text-xs sr-only">Mensajes</span>
+          </Link>
         </nav>
       </div>
       <DialogContent>
@@ -182,3 +204,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </Dialog>
   );
 }
+
