@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 
@@ -12,7 +11,7 @@ const MOCK_ADMIN_USER = {
   email: 'admin@cannaconnect.com',
   displayName: 'Admin Canna',
   role: 'admin',
-  photoURL: 'https://picsum.photos/seed/admin-uid/128/128'
+  photoURL: `https://picsum.photos/seed/admin-uid/128/128`
 };
 
 const MOCK_NORMAL_USER = {
@@ -20,9 +19,8 @@ const MOCK_NORMAL_USER = {
   email: 'test@test.com',
   displayName: 'Test User',
   role: 'user',
-  photoURL: 'https://picsum.photos/seed/user-uid-123/128/128'
+  photoURL: `https://picsum.photos/seed/user-uid-123/128/128`
 }
-
 // --- END MOCK USER DATA ---
 
 
@@ -53,9 +51,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Simulate being logged in as an admin user for preview purposes
-    setUser(MOCK_ADMIN_USER);
-    setIsAdmin(true);
+    // Simulate checking for a logged in user in session storage
+    const storedUser = sessionStorage.getItem('mockUser');
+    if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAdmin(parsedUser.role === 'admin');
+    }
     setLoading(false);
   }, []);
 
@@ -121,8 +123,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logOut = async () => {
     setLoading(true);
     try {
-        // For preview, redirect to login page logic
-        window.location.href = '/login';
+        // For preview, just clear the user and session storage
+        sessionStorage.removeItem('mockUser');
+        setUser(null);
+        setIsAdmin(false);
     } catch (error) {
          toast({
             variant: "destructive",
