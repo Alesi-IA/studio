@@ -59,11 +59,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // This effect now simulates checking for a logged-in user in sessionStorage
     try {
       const storedUser = sessionStorage.getItem('mockUser');
+      let currentUser = null;
       if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAdmin(parsedUser.role === 'admin');
+        currentUser = JSON.parse(storedUser);
+      } else {
+        // If no user is stored, automatically "log in" the admin for preview
+        currentUser = MOCK_ADMIN_USER;
+        sessionStorage.setItem('mockUser', JSON.stringify(currentUser));
       }
+      setUser(currentUser);
+      setIsAdmin(currentUser.role === 'admin');
+
     } catch (e) {
       console.error("Failed to parse mock user from session storage", e);
       sessionStorage.removeItem('mockUser');
@@ -179,5 +185,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
