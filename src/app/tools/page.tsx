@@ -69,7 +69,7 @@ export default function ToolsPage() {
     return (
         <div className="w-full">
             <PageHeader
-                title="Herramientas de Cultivo"
+                title="Calendario y Tareas"
                 description="Tu centro de mando para un cultivo exitoso."
             />
             <div className="p-4 md:p-8">

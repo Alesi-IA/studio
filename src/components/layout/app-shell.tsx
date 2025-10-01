@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Wrench, MessageSquare, PlusCircle, ScanEye } from "lucide-react";
+import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye } from "lucide-react";
 import { CannaConnectLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -20,7 +20,7 @@ const mainNavItems = [
   { href: "/", label: "Noticias", icon: Home },
   { href: "/search", label: "Buscar", icon: Search },
   { href: "/identify", label: "Asistente IA", icon: ScanEye },
-  { href: "/tools", label: "Herramientas", icon: Wrench },
+  { href: "/tools", label: "Herramientas", icon: Calendar },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
 
@@ -93,6 +93,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Button>
             </DialogTrigger>
           </div>
+           <div className="border-t p-4">
+              <Link href="/profile" className="flex items-center gap-3">
+                <Avatar className="h-9 w-9">
+                    <AvatarImage
+                        src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
+                        alt={user?.displayName || 'User'}
+                    />
+                    <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                    <span className="font-semibold">{user?.displayName || 'Usuario'}</span>
+                    <span className="text-xs text-muted-foreground">Ver perfil</span>
+                </div>
+              </Link>
+          </div>
         </aside>
 
         <div className="flex flex-col flex-1 md:ml-64 pb-16 md:pb-0">
@@ -119,8 +134,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 
         {/* Mobile Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-7 items-center z-20 place-items-center">
-            {mainNavItems.slice(0, 2).map((item) => (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20 place-items-center">
+          {mainNavItems.slice(0, 2).map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -133,14 +148,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs sr-only">{item.label}</span>
             </Link>
           ))}
-          <div className="col-start-4">
-             <DialogTrigger asChild>
-                <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
-                    <PlusCircle className="h-7 w-7" />
-                    <span className="sr-only">Nueva Publicación</span>
-                </button>
-            </DialogTrigger>
-          </div>
+          
+           <DialogTrigger asChild>
+              <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
+                  <PlusCircle className="h-7 w-7" />
+                  <span className="sr-only">Nueva Publicación</span>
+              </button>
+          </DialogTrigger>
+
            {mainNavItems.slice(2).map((item) => (
              <Link
               key={item.href}
@@ -167,5 +182,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </Dialog>
   );
 }
-
-    
