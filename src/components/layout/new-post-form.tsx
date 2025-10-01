@@ -1,11 +1,9 @@
-
 'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
@@ -49,7 +47,6 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
     }
     setLoading(true);
     
-    // Simulate a delay for network request
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
@@ -65,11 +62,9 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
             comments: 0,
         };
 
-        // In a real app, you'd send this to a server. Here we save to session storage.
         const existingPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
         sessionStorage.setItem('mockPosts', JSON.stringify([newPost, ...existingPosts]));
 
-        // Dispatch a custom event to notify the feed to update
         window.dispatchEvent(new Event('storage'));
 
         toast({
@@ -108,7 +103,6 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
         <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="description" className="sr-only">Descripción</Label>
         <Textarea
           id="description"
           placeholder="Añade una descripción a tu publicación..."
