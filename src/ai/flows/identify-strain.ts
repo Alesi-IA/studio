@@ -21,15 +21,15 @@ const IdentifyStrainInputSchema = z.object({
 export type IdentifyStrainInput = z.infer<typeof IdentifyStrainInputSchema>;
 
 const IdentifyStrainOutputSchema = z.object({
-  strainName: z.string().describe('The identified name of the cannabis strain.'),
+  strainName: z.string().describe('El nombre identificado de la cepa de cannabis.'),
   potency: z.object({
-    thc: z.number().min(0).max(100).describe('Estimated THC percentage.'),
-    cbd: z.number().min(0).max(100).describe('Estimated CBD percentage.'),
-    energy: z.number().min(0).max(100).describe('An index from 0 to 100 indicating the energizing effect (0 for calming, 100 for high energy/hype).'),
+    thc: z.number().min(0).max(100).describe('Porcentaje estimado de THC.'),
+    cbd: z.number().min(0).max(100).describe('Porcentaje estimado de CBD.'),
+    energy: z.number().min(0).max(100).describe('Un índice de 0 a 100 que indica el efecto energizante (0 para calmante, 100 para alta energía/hype).'),
   }),
   problems: z
     .array(z.string())
-    .describe('A list of potential problems identified in the plant (e.g., "Mites", "Powdery Mildew", "Nitrogen Deficiency").'),
+    .describe('Una lista de posibles problemas identificados en la planta (ej: "Ácaros", "Oídio", "Deficiencia de Nitrógeno"), en español.'),
 });
 export type IdentifyStrainOutput = z.infer<typeof IdentifyStrainOutputSchema>;
 
@@ -44,15 +44,17 @@ const prompt = ai.definePrompt({
   name: 'identifyStrainPrompt',
   input: {schema: IdentifyStrainInputSchema},
   output: {schema: IdentifyStrainOutputSchema},
-  prompt: `You are an expert in cannabis plant identification and health. Analyze the provided image of a cannabis plant.
+  prompt: `Eres un experto en identificación y salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis.
 
-1.  **Identify the Strain:** Determine the most likely strain of the plant.
-2.  **Estimate Potency:** Provide an estimated percentage for THC and CBD. Also, provide an "energy" index from 0 (very calming) to 100 (very energizing/hype).
-3.  **Detect Problems:** Analyze the plant for any visible signs of pests (like spider mites, gnats), diseases (like powdery mildew, bud rot), or nutrient deficiencies. List any problems you find.
+1.  **Identifica la Cepa:** Determina la cepa más probable de la planta.
+2.  **Estima la Potencia:** Proporciona un porcentaje estimado para THC y CBD. Además, proporciona un índice de "energía" de 0 (muy calmante) a 100 (muy energizante/hype).
+3.  **Detecta Problemas:** Analiza la planta en busca de signos visibles de plagas (como arañas rojas, mosquitos de los hongos), enfermedades (como oídio, moho del cogollo) o deficiencias de nutrientes. Enumera cualquier problema que encuentres.
 
-Plant Photo: {{media url=photoDataUri}}
+TODA tu respuesta debe ser en español.
 
-Respond in JSON format.
+Planta - Foto: {{media url=photoDataUri}}
+
+Responde en formato JSON.
 `,
 });
 

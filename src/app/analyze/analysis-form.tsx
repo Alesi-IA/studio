@@ -112,14 +112,11 @@ export function AnalysisForm() {
                   </CardHeader>
                   <CardContent>
                     {result.problems.length > 0 ? (
-                      <Accordion type="single" collapsible className="w-full">
+                       <ul className="list-disc list-inside space-y-1">
                         {result.problems.map((problem, index) => (
-                           <AccordionItem value={`problem-${index}`} key={index}>
-                             <AccordionTrigger>{problem.split(':')[0]}</AccordionTrigger>
-                             <AccordionContent>{problem.split(':')[1] || problem}</AccordionContent>
-                           </AccordionItem>
+                           <li key={index}>{problem}</li>
                         ))}
-                      </Accordion>
+                      </ul>
                     ) : (
                       <p className="text-muted-foreground">No se identificaron problemas específicos. ¡Tu planta parece sana!</p>
                     )}

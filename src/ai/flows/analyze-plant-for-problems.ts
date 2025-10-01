@@ -22,10 +22,10 @@ export type AnalyzePlantInput = z.infer<typeof AnalyzePlantInputSchema>;
 const AnalyzePlantOutputSchema = z.object({
   problems: z
     .array(z.string())
-    .describe('A list of potential problems identified in the plant.'),
+    .describe('Una lista de posibles problemas identificados en la planta, en español.'),
   suggestions: z
     .array(z.string())
-    .describe('A list of suggestions for addressing the identified problems.'),
+    .describe('Una lista de sugerencias para solucionar los problemas identificados, en español. Cada sugerencia debe ser un string con un título y una descripción separados por dos puntos, por ejemplo: "Título: Descripción detallada".'),
 });
 export type AnalyzePlantOutput = z.infer<typeof AnalyzePlantOutputSchema>;
 
@@ -39,11 +39,13 @@ const prompt = ai.definePrompt({
   name: 'analyzePlantForProblemsPrompt',
   input: {schema: AnalyzePlantInputSchema},
   output: {schema: AnalyzePlantOutputSchema},
-  prompt: `You are an expert in cannabis plant health. Analyze the provided image of a cannabis plant for potential problems, such as nutrient deficiencies, pests, or diseases. Provide a list of identified problems and suggestions for addressing them.
+  prompt: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
 
-Plant Photo: {{media url=photoDataUri}}
+TODA tu respuesta debe ser en español.
 
-Respond in JSON format.
+Planta - Foto: {{media url=photoDataUri}}
+
+Responde en formato JSON.
 `,
 });
 
