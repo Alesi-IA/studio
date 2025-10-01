@@ -9,12 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-
-export const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model']),
-  content: z.string(),
-});
-export type ChatMessage = z.infer<typeof ChatMessageSchema>;
+import type { ChatMessage } from '@/app/chatbot/actions';
 
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
   return assistantChatFlow(history);
@@ -23,7 +18,10 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
 const assistantChatFlow = ai.defineFlow(
   {
     name: 'assistantChatFlow',
-    inputSchema: z.array(ChatMessageSchema),
+    inputSchema: z.array(z.object({
+        role: z.enum(['user', 'model']),
+        content: z.string(),
+    })),
     outputSchema: z.string(),
   },
   async (history) => {
@@ -55,5 +53,4 @@ Tú: "¡Vaya, colega! Hojas amarillas, ¿eh? Eso suena a... uhm... podría ser f
     return output?.content.text || "Uhm, me quedé en blanco. ¿Qué decías?";
   }
 );
-
     

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -7,9 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { handleStrainIdentification } from './actions';
+import { handleStrainIdentification, type IdentifyStrainOutput } from './actions';
 import { AlertTriangle, Bot, BrainCircuit, Droplets, Edit, Leaf, Loader2, ScanEye, Send, Upload } from 'lucide-react';
-import type { IdentifyStrainOutput } from '@/ai/flows/identify-strain';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
