@@ -51,13 +51,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Simulate checking for a logged in user in session storage
-    const storedUser = sessionStorage.getItem('mockUser');
-    if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAdmin(parsedUser.role === 'admin');
-    }
+    // Simulate an automatic login with the admin user for preview purposes
+    setUser(MOCK_ADMIN_USER);
+    setIsAdmin(true);
     setLoading(false);
   }, []);
 
