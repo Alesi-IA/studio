@@ -120,18 +120,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <CannaConnectLogo />
                   <span>CannaConnect</span>
                 </Link>
-                <Link href="/profile">
-                  <Button variant="ghost" size="icon">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage
-                            src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
-                            alt={user?.displayName || 'User'}
-                        />
-                        <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                      </Avatar>
-                      <span className="sr-only">Perfil</span>
-                  </Button>
-                </Link>
+                 <div className="flex items-center gap-2">
+                    <Link href="/messages">
+                        <Button variant="ghost" size="icon">
+                            <MessageSquare className="h-5 w-5" />
+                            <span className="sr-only">Mensajes</span>
+                        </Button>
+                    </Link>
+                    <Link href="/profile">
+                    <Button variant="ghost" size="icon">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage
+                                src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
+                                alt={user?.displayName || 'User'}
+                            />
+                            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <span className="sr-only">Perfil</span>
+                    </Button>
+                    </Link>
+                </div>
             </header>
           <main className="flex-1">{children}</main>
         </div>
@@ -139,54 +147,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Bottom Bar */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20 place-items-center">
-          <Link
-            href="/"
-            className={cn(
-              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-              pathname === "/" ? "text-primary" : ""
-            )}
-          >
-            <Home className="h-6 w-6" />
-            <span className="text-xs sr-only">Noticias</span>
-          </Link>
-          <Link
-            href="/search"
-            className={cn(
-              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-              pathname.startsWith("/search") ? "text-primary" : ""
-            )}
-          >
-            <Search className="h-6 w-6" />
-            <span className="text-xs sr-only">Buscar</span>
-          </Link>
-
-          <DialogTrigger asChild>
-            <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
-              <PlusCircle className="h-7 w-7" />
-              <span className="sr-only">Nueva Publicación</span>
-            </button>
-          </DialogTrigger>
-
-          <Link
-            href="/identify"
-            className={cn(
-              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-              pathname.startsWith("/identify") ? "text-primary" : ""
-            )}
-          >
-            <ScanEye className="h-6 w-6" />
-            <span className="text-xs sr-only">Asistente IA</span>
-          </Link>
-          <Link
-            href="/tools"
-            className={cn(
-              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-              pathname.startsWith("/tools") ? "text-primary" : ""
-            )}
-          >
-            <Calendar className="h-6 w-6" />
-            <span className="text-xs sr-only">Herramientas</span>
-          </Link>
+          {accessibleNavItems.filter(i => i.href !== '/admin' && i.href !== '/messages').map((item, index) => {
+            if (index === 2) {
+              return (
+                <React.Fragment key="new-post-trigger">
+                  <DialogTrigger asChild>
+                    <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
+                      <PlusCircle className="h-7 w-7" />
+                      <span className="sr-only">Nueva Publicación</span>
+                    </button>
+                  </DialogTrigger>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+                      pathname.startsWith(item.href) ? "text-primary" : ""
+                    )}
+                  >
+                    <item.icon className="h-6 w-6" />
+                    <span className="text-xs sr-only">{item.label}</span>
+                  </Link>
+                </React.Fragment>
+              );
+            }
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+                  (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "text-primary" : ""
+                )}
+              >
+                <item.icon className="h-6 w-6" />
+                <span className="text-xs sr-only">{item.label}</span>
+              </Link>
+            )
+          })}
         </nav>
       </div>
       <DialogContent>
@@ -200,5 +197,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </Dialog>
   );
 }
-
-    
