@@ -61,8 +61,8 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
             description,
             imageUrl: previewUrl,
             createdAt: new Date().toISOString(),
-            likes: Math.floor(Math.random() * 100),
-            comments: Math.floor(Math.random() * 20),
+            likes: 0,
+            comments: 0,
         };
 
         // In a real app, you'd send this to a server. Here we save to session storage.
@@ -73,7 +73,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
         window.dispatchEvent(new Event('storage'));
 
         toast({
-            title: '¡Éxito! (Simulado)',
+            title: '¡Éxito!',
             description: 'Tu publicación ha sido creada.',
         });
         
@@ -83,7 +83,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
         console.error("Error al crear la publicación (simulado):", error);
         toast({
             variant: 'destructive',
-            title: 'Error (Simulado)',
+            title: 'Error al crear la publicación',
             description: 'No se pudo crear la publicación. Por favor, inténtalo de nuevo.',
         });
     } finally {
@@ -93,33 +93,28 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
-      <div className="space-y-2">
-        <label htmlFor="picture" className="cursor-pointer">
-            {previewUrl ? (
-              <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                <Image src={previewUrl} alt="Vista previa" fill className="object-cover" />
-              </div>
-            ) : (
-              <div className="flex justify-center items-center flex-col gap-2 h-64 border-2 border-dashed rounded-md">
-                <UploadCloud className="h-10 w-10 text-muted-foreground" />
-                <p className="text-muted-foreground">Arrastra y suelta o haz clic para subir</p>
-              </div>
-            )}
+      <div className="grid gap-4">
+        <label htmlFor="picture" className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-md border-2 border-dashed border-muted-foreground/30 bg-muted/50 hover:bg-muted/80 transition-colors">
+          {previewUrl ? (
+            <Image src={previewUrl} alt="Vista previa" fill className="object-cover" />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+              <UploadCloud className="h-10 w-10" />
+              <p className="font-semibold">Sube una foto</p>
+              <p className="text-sm">Arrastra y suelta o haz clic para subir</p>
+            </div>
+          )}
         </label>
         <Input id="picture" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
-         <Button asChild variant="outline" className="w-full cursor-pointer">
-            <label htmlFor="picture">
-                {file ? "Cambiar imagen" : "Seleccionar imagen"}
-            </label>
-        </Button>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="description">Descripción</Label>
+        <Label htmlFor="description" className="sr-only">Descripción</Label>
         <Textarea
           id="description"
           placeholder="Añade una descripción a tu publicación..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          className="min-h-[100px] resize-none"
         />
       </div>
       <Button type="submit" disabled={!previewUrl || loading}>
