@@ -15,12 +15,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { ChatAssistant } from "../chatbot/chat-assistant";
 
-const mainNavItems = [
-  { href: "/", label: "Noticias", icon: Home },
-  { href: "/search", label: "Buscar", icon: Search },
-  { href: "/identify", label: "Asistente IA", icon: ScanEye },
-  { href: "/tools", label: "Herramientas", icon: Calendar },
-  { href: "/messages", label: "Mensajes", icon: MessageSquare },
+const navItems = [
+  { href: "/", label: "Noticias", icon: Home, requiredRole: "" },
+  { href: "/search", label: "Buscar", icon: Search, requiredRole: "" },
+  { href: "/identify", label: "Asistente IA", icon: ScanEye, requiredRole: "" },
+  { href: "/tools", label: "Herramientas", icon: Calendar, requiredRole: "" },
+  { href: "/messages", label: "Mensajes", icon: MessageSquare, requiredRole: "" },
+  { href: "/admin", label: "Admin", icon: Shield, requiredRole: "admin" },
 ];
 
 
@@ -31,7 +32,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
-
+  
+  const accessibleNavItems = navItems.filter(item => {
+    if (!item.requiredRole) return true;
+    return item.requiredRole === 'admin' && isAdmin;
+  });
+  
   React.useEffect(() => {
     if (!loading && !user && !showOnboarding) {
       router.push('/login');
@@ -69,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {mainNavItems.map((item) => (
+            {accessibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -82,18 +88,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span>{item.label}</span>
               </Link>
             ))}
-             {isAdmin && (
-              <Link
-                href="/admin"
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent",
-                  pathname.startsWith('/admin') ? "bg-accent text-primary" : ""
-                )}
-              >
-                <Shield className="h-5 w-5" />
-                <span>Admin</span>
-              </Link>
-            )}
           </nav>
           <div className="p-4 mt-auto">
             <DialogTrigger asChild>
@@ -184,20 +178,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-xs sr-only">Asistente IA</span>
           </Link>
           <Link
-            href="/profile"
+            href="/tools"
             className={cn(
               "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-              pathname.startsWith("/profile") ? "text-primary" : ""
+              pathname.startsWith("/tools") ? "text-primary" : ""
             )}
           >
-            <Avatar className="h-7 w-7">
-                <AvatarImage
-                    src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
-                    alt={user?.displayName || 'User'}
-                />
-                <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-            </Avatar>
-            <span className="text-xs sr-only">Perfil</span>
+            <Calendar className="h-6 w-6" />
+            <span className="text-xs sr-only">Herramientas</span>
           </Link>
         </nav>
       </div>
@@ -212,3 +200,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </Dialog>
   );
 }
+
+    
