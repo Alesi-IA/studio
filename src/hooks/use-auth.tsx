@@ -65,6 +65,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const currentUser = JSON.parse(storedUser);
         setUser(currentUser);
         setIsAdmin(currentUser.role === 'admin');
+      } else {
+        // If no user is stored, default to admin for easy debugging
+        sessionStorage.setItem('mockUser', JSON.stringify(MOCK_ADMIN_USER));
+        setUser(MOCK_ADMIN_USER);
+        setIsAdmin(true);
       }
     } catch (e) {
       console.error("Failed to parse mock user from session storage", e);
