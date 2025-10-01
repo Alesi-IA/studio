@@ -1,8 +1,9 @@
+
 // @ts-nocheck
 'use client';
 
 import { useRouter } from 'next/navigation';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useToast } from './use-toast';
 import type { User } from 'firebase/auth';
 
@@ -57,19 +58,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // This effect now simulates checking for a logged-in user in sessionStorage
+    setLoading(true);
     try {
       const storedUser = sessionStorage.getItem('mockUser');
-      let currentUser = null;
       if (storedUser) {
-        currentUser = JSON.parse(storedUser);
-      } else {
-        // If no user is stored, automatically "log in" the admin for preview
-        currentUser = MOCK_ADMIN_USER;
-        sessionStorage.setItem('mockUser', JSON.stringify(currentUser));
+        const currentUser = JSON.parse(storedUser);
+        setUser(currentUser);
+        setIsAdmin(currentUser.role === 'admin');
       }
-      setUser(currentUser);
-      setIsAdmin(currentUser.role === 'admin');
-
     } catch (e) {
       console.error("Failed to parse mock user from session storage", e);
       sessionStorage.removeItem('mockUser');
@@ -77,11 +73,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const _injectUser = (mockUser: any) => {
+  const _injectUser = useCallback((mockUser: any) => {
       setUser(mockUser);
       setIsAdmin(mockUser.role === 'admin');
       sessionStorage.setItem('mockUser', JSON.stringify(mockUser));
-  }
+  }, []);
 
   const signUp = async (displayName, email, password) => {
     setLoading(true);

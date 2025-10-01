@@ -20,6 +20,12 @@ const menuItems = [
   { href: "/", label: "Noticias", icon: Home },
   { href: "/search", label: "Buscar", icon: Search },
   { href: "/identify", label: "Identificar", icon: ScanEye },
+];
+
+const mobileNavItems = [
+  { href: "/", label: "Noticias", icon: Home },
+  { href: "/search", label: "Buscar", icon: Search },
+  { href: "/identify", label: "Identificar", icon: ScanEye },
   { href: "/analyze", label: "Analizar", icon: Bot },
   { href: "/tools", label: "Herramientas", icon: Wrench },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
@@ -29,23 +35,10 @@ const menuItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
-  const { user, loading, logOut, _injectUser } = useAuth();
+  const { user, loading, logOut } = useAuth();
   const router = useRouter();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
-
-  React.useEffect(() => {
-    // This is a temporary solution to keep the user logged in for preview purposes.
-    // We'll replace this with a real authentication flow later.
-    _injectUser({
-        uid: 'admin-uid',
-        email: 'admin@cannaconnect.com',
-        displayName: 'Admin Canna',
-        role: 'admin',
-        photoURL: `https://picsum.photos/seed/admin-uid/128/128`
-    });
-  }, [_injectUser]);
-
 
   if (loading || (!user && !showOnboarding)) {
     return (
@@ -81,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {menuItems.map((item) => (
+            {mobileNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -134,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Bottom Bar */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-7 z-20">
-          {menuItems.slice(0, 3).map((item) => (
+          {mobileNavItems.slice(0, 3).map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -153,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs sr-only">Nueva Publicación</span>
               </button>
            </DialogTrigger>
-           {menuItems.slice(3).map((item) => ( 
+           {mobileNavItems.slice(3).map((item) => ( 
              <Link
               key={item.href}
               href={item.href}
