@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useState, useEffect } from 'react';
-import type { ImagePlaceholder } from '@/lib/placeholder-images';
+import type { Post } from '@/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 import {
@@ -44,20 +44,6 @@ const stories = Array.from({ length: 10 }).map((_, i) => ({
   user: `usuario_${i}`,
   avatar: `https://picsum.photos/seed/story${i}/80/80`,
 }));
-
-export interface Post {
-  id: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar?: string;
-  strain?: string;
-  description: string;
-  imageUrl: string;
-  imageHint?: string;
-  createdAt: any;
-  likes?: number;
-  comments?: number;
-}
 
 const initialPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed-')).map((p, index) => ({
   id: p.id,
@@ -332,3 +318,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    
