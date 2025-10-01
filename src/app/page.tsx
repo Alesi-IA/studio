@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, MoreHorizontal, Send } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, Award } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -257,7 +258,7 @@ export default function FeedPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex-col items-start gap-4 p-4">
-                <div className="flex w-full items-center gap-2">
+                <div className="flex w-full items-center">
                   <Button variant="ghost" size="icon">
                     <Heart className="h-5 w-5" />
                     <span className="sr-only">Me gusta</span>
@@ -270,6 +271,19 @@ export default function FeedPage() {
                     <Send className="h-5 w-5" />
                     <span className="sr-only">Compartir</span>
                   </Button>
+                   <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="ml-auto">
+                                <Award className="h-5 w-5" />
+                                <span className="sr-only">Premiar mejor respuesta</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                        <p>Premiar la mejor respuesta</p>
+                        </TooltipContent>
+                    </Tooltip>
+                   </TooltipProvider>
                 </div>
                 <div className="grid gap-1.5 text-sm w-full">
                   <p className="font-semibold">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Star } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -52,7 +51,7 @@ export default function ProfilePage() {
             <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/128/128`} />
             <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 space-y-3 text-center md:text-left">
+          <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <h2 className="font-headline text-2xl font-bold">{user?.displayName || 'Usuario'}</h2>
               {isAdmin && (
@@ -61,18 +60,22 @@ export default function ProfilePage() {
                     Administrador
                 </Badge>
               )}
-              <div className="flex items-center gap-2">
+            </div>
+            <div className="flex justify-center items-center gap-2 md:justify-start">
+              <Star className="h-5 w-5 text-yellow-400" />
+              <span className="font-bold font-headline text-lg">{isAdmin ? 'Maestro Cultivador' : 'Aprendiz de Cultivo'}</span>
+            </div>
+            <div className="flex justify-center gap-2">
                 <Button variant="outline">Editar Perfil</Button>
                  <Link href="/messages">
                     <Button>
-                        <MessageCircle className="mr-2" />
+                        <MessageCircle className="mr-2 h-4 w-4" />
                         Enviar Mensaje
                     </Button>
                 </Link>
                 <Button variant="ghost" size="icon">
                   <Settings className="h-4 w-4" />
                 </Button>
-              </div>
             </div>
             <div className="flex justify-center gap-6 md:justify-start">
               <div className="text-center">
@@ -139,5 +142,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
