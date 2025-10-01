@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Paperclip, Search, Send, File, Users } from 'lucide-react';
+import { Paperclip, Search, Send, Users } from 'lucide-react';
 import React, { useState } from 'react';
 
 const initialConversations = [
