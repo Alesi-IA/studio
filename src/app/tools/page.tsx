@@ -146,9 +146,10 @@ export default function ToolsPage() {
             />
             <div className="p-4 md:p-8">
                 <Tabs defaultValue="calendar" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 md:w-auto">
                         <TabsTrigger value="calendar">Calendario y Tareas</TabsTrigger>
-                        <TabsTrigger value="library">Biblioteca</TabsTrigger>
+                        <TabsTrigger value="guides">Guías</TabsTrigger>
+                        <TabsTrigger value="dictionary">Diccionario</TabsTrigger>
                     </TabsList>
                     <TabsContent value="calendar" className="mt-6">
                         <div className="grid gap-8 lg:grid-cols-3">
@@ -266,46 +267,37 @@ export default function ToolsPage() {
                             </Card>
                         </div>
                     </TabsContent>
-                    <TabsContent value="library" className="mt-6">
-                        <Tabs defaultValue="guides" className="w-full">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                <TabsList>
-                                <TabsTrigger value="guides">Guías</TabsTrigger>
-                                <TabsTrigger value="articles">Artículos</TabsTrigger>
-                                <TabsTrigger value="dictionary">Diccionario</TabsTrigger>
-                                </TabsList>
-                                <div className="relative w-full md:w-64">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input placeholder="Buscar en la biblioteca..." className="pl-9" />
-                                </div>
+                     <TabsContent value="guides" className="mt-6">
+                        <div className="max-w-2xl mx-auto">
+                             <div className="relative w-full mb-6">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="Buscar en guías..." className="pl-9" />
                             </div>
-                            <TabsContent value="guides" className="mt-6">
-                                <Accordion type="single" collapsible className="w-full">
-                                {guides.map((guide, index) => (
+                            <Accordion type="single" collapsible className="w-full">
+                            {guides.map((guide, index) => (
+                                <AccordionItem value={`item-${index}`} key={index}>
+                                <AccordionTrigger>{guide.title}</AccordionTrigger>
+                                <AccordionContent>{guide.content}</AccordionContent>
+                                </AccordionItem>
+                            ))}
+                            </Accordion>
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="dictionary" className="mt-6">
+                        <div className="max-w-2xl mx-auto">
+                             <div className="relative w-full mb-6">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input placeholder="Buscar término..." className="pl-9" />
+                            </div>
+                            <Accordion type="multiple" className="w-full">
+                                {dictionary.map((item, index) => (
                                     <AccordionItem value={`item-${index}`} key={index}>
-                                    <AccordionTrigger>{guide.title}</AccordionTrigger>
-                                    <AccordionContent>{guide.content}</AccordionContent>
+                                    <AccordionTrigger>{item.term}</AccordionTrigger>
+                                    <AccordionContent>{item.definition}</AccordionContent>
                                     </AccordionItem>
                                 ))}
-                                </Accordion>
-                            </TabsContent>
-                            <TabsContent value="articles" className="mt-6">
-                                <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
-                                    <p className="font-semibold">Artículos Próximamente</p>
-                                    <p className="text-sm">Estamos seleccionando una colección de artículos de cultivadores expertos.</p>
-                                </div>
-                            </TabsContent>
-                            <TabsContent value="dictionary" className="mt-6">
-                                <Accordion type="multiple" className="w-full">
-                                    {dictionary.map((item, index) => (
-                                        <AccordionItem value={`item-${index}`} key={index}>
-                                        <AccordionTrigger>{item.term}</AccordionTrigger>
-                                        <AccordionContent>{item.definition}</AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            </TabsContent>
-                        </Tabs>
+                            </Accordion>
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>
@@ -339,5 +331,3 @@ export default function ToolsPage() {
         </div>
     );
 }
-
-    

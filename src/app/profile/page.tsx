@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, Wrench } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 
 export default function ProfilePage() {
@@ -31,7 +32,19 @@ export default function ProfilePage() {
       <PageHeader
         title="Perfil"
         description="Tu espacio personal en CannaConnect."
-        actions={<Button onClick={handleLogout} variant="outline"><LogOut className="mr-2"/>Cerrar Sesión</Button>}
+        actions={
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link href="/admin">
+                <Button variant="outline">
+                  <ShieldCheck className="mr-2" />
+                  Panel Admin
+                </Button>
+              </Link>
+            )}
+            <Button onClick={handleLogout} variant="outline"><LogOut className="mr-2"/>Cerrar Sesión</Button>
+          </div>
+        }
       />
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">

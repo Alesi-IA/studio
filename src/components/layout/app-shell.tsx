@@ -21,7 +21,7 @@ const mainNavItems = [
 ];
 
 const secondaryNavItems = [
-    { href: "/tools", label: "Calendario", icon: Calendar },
+    { href: "/tools", label: "Herramientas", icon: Calendar },
     { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
 
@@ -57,6 +57,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
 
+  const allNavItems = [...mainNavItems, { href: "/identify", label: "Asistente IA", icon: ScanEye }, ...secondaryNavItems];
+
 
   return (
     <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
@@ -72,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {[...mainNavItems, { href: "/identify", label: "Asistente IA", icon: ScanEye }, ...secondaryNavItems].map((item) => (
+            {allNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -148,40 +150,60 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Bottom Bar */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20 place-items-center">
-          {mainNavItems.map((item) => (
-             <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "text-primary" : ""
-              )}
-            >
-                <item.icon className="h-6 w-6" />
-                <span className="text-xs sr-only">{item.label}</span>
-            </Link>
-          ))}
-          
-           <DialogTrigger asChild>
-              <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
-                  <PlusCircle className="h-7 w-7" />
-                  <span className="sr-only">Nueva Publicación</span>
-              </button>
+          <Link
+            href="/"
+            className={cn(
+              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+              pathname === "/" ? "text-primary" : ""
+            )}
+          >
+            <Home className="h-6 w-6" />
+            <span className="text-xs sr-only">Noticias</span>
+          </Link>
+          <Link
+            href="/search"
+            className={cn(
+              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+              pathname.startsWith("/search") ? "text-primary" : ""
+            )}
+          >
+            <Search className="h-6 w-6" />
+            <span className="text-xs sr-only">Buscar</span>
+          </Link>
+
+          <DialogTrigger asChild>
+            <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
+              <PlusCircle className="h-7 w-7" />
+              <span className="sr-only">Nueva Publicación</span>
+            </button>
           </DialogTrigger>
 
-           {secondaryNavItems.map((item) => (
-             <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "text-primary" : ""
-              )}
-            >
-                <item.icon className="h-6 w-6" />
-                <span className="text-xs sr-only">{item.label}</span>
-            </Link>
-          ))}
+          <Link
+            href="/identify"
+            className={cn(
+              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+              pathname.startsWith("/identify") ? "text-primary" : ""
+            )}
+          >
+            <ScanEye className="h-6 w-6" />
+            <span className="text-xs sr-only">Asistente IA</span>
+          </Link>
+          <Link
+            href="/profile"
+            className={cn(
+              "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+              pathname.startsWith("/profile") ? "text-primary" : ""
+            )}
+          >
+            <Avatar className="h-7 w-7">
+                <AvatarImage
+                    src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
+                    alt={user?.displayName || 'User'}
+                />
+                <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
+            <span className="text-xs sr-only">Perfil</span>
+          </Link>
         </nav>
       </div>
       <DialogContent>
@@ -195,5 +217,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </Dialog>
   );
 }
-
-    
