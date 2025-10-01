@@ -10,12 +10,7 @@ import { Bot, Loader2, Send, User } from 'lucide-react';
 import { TowlieIcon } from '../icons/towlie';
 import { handleChat } from '@/app/chatbot/actions';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { CannaConnectLogo } from '../icons/logo';
-
-export type ChatMessage = {
-  role: 'user' | 'model';
-  content: string;
-};
+import type { ChatMessage } from '@/app/chatbot/types';
 
 export function ChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -86,13 +81,20 @@ export function ChatAssistant() {
             </div>
 
             {messages.map((m, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarFallback>{m.role === 'user' ? <User /> : <Bot />}</AvatarFallback>
-                </Avatar>
-                <div className="rounded-lg bg-muted p-3">
+              <div key={i} className={`flex items-start gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'model' && (
+                    <Avatar>
+                      <AvatarFallback><Bot /></AvatarFallback>
+                    </Avatar>
+                )}
+                <div className={`rounded-lg p-3 ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   <p className="text-sm">{m.content}</p>
                 </div>
+                 {m.role === 'user' && (
+                    <Avatar>
+                      <AvatarFallback><User /></AvatarFallback>
+                    </Avatar>
+                )}
               </div>
             ))}
             {loading && (
@@ -123,5 +125,3 @@ export function ChatAssistant() {
     </Sheet>
   );
 }
-
-    

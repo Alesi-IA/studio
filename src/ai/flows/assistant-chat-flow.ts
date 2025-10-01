@@ -4,12 +4,11 @@
  * @fileOverview Un chatbot asistente de cultivo inspirado en Toallín de South Park.
  *
  * - assistantChat - Responde a las preguntas del usuario sobre el cultivo de cannabis.
- * - ChatMessage - Define la estructura de un mensaje en la conversación.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { ChatMessage } from '@/app/chatbot/actions';
+import type { ChatMessage } from '@/app/chatbot/types';
 
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
   return assistantChatFlow(history);
@@ -53,4 +52,3 @@ Tú: "¡Vaya, colega! Hojas amarillas, ¿eh? Eso suena a... uhm... podría ser f
     return output?.content.text || "Uhm, me quedé en blanco. ¿Qué decías?";
   }
 );
-    
