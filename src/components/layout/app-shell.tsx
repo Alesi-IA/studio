@@ -18,11 +18,9 @@ import { ChatAssistant } from "../chatbot/chat-assistant";
 const mainNavItems = [
   { href: "/", label: "Noticias", icon: Home },
   { href: "/search", label: "Buscar", icon: Search },
-];
-
-const secondaryNavItems = [
-    { href: "/tools", label: "Herramientas", icon: Calendar },
-    { href: "/messages", label: "Mensajes", icon: MessageSquare },
+  { href: "/identify", label: "Asistente IA", icon: ScanEye },
+  { href: "/tools", label: "Herramientas", icon: Calendar },
+  { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
 
 
@@ -57,9 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
 
-  const allNavItems = [...mainNavItems, { href: "/identify", label: "Asistente IA", icon: ScanEye }, ...secondaryNavItems];
-
-
   return (
     <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
       <div className="flex min-h-screen w-full">
@@ -74,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {allNavItems.map((item) => (
+            {mainNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
