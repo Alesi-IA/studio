@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -6,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { handleAnalysis } from './actions';
 import { AlertTriangle, Bot, Lightbulb, Loader2, Upload } from 'lucide-react';
 import type { AnalyzePlantOutput } from '@/ai/flows/analyze-plant-for-problems';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { handleAnalysis } from '../analyze/actions';
 
 export function AnalysisForm() {
   const [file, setFile] = useState<File | null>(null);
@@ -60,11 +61,11 @@ export function AnalysisForm() {
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="plant-photo" className="text-sm font-medium">
+              <label htmlFor="plant-photo-analysis" className="text-sm font-medium">
                 Sube la foto de la planta
               </label>
               <div className="flex items-center gap-4">
-                 <Input id="plant-photo" type="file" accept="image/*" onChange={handleFileChange} className="flex-grow" />
+                 <Input id="plant-photo-analysis" type="file" accept="image/*" onChange={handleFileChange} className="flex-grow" />
                  <Button type="submit" disabled={!file || loading} className="shrink-0">
                     {loading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

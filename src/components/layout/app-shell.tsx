@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Bot, Wrench, MessageSquare, PlusCircle, LogOut, ScanEye } from "lucide-react";
+import { Home, Search, Wrench, MessageSquare, PlusCircle, ScanEye } from "lucide-react";
 import { CannaConnectLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -16,17 +16,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "../ui/skeleton";
 
-const menuItems = [
+const mainNavItems = [
   { href: "/", label: "Noticias", icon: Home },
   { href: "/search", label: "Buscar", icon: Search },
-  { href: "/identify", label: "Identificar", icon: ScanEye },
-];
-
-const mobileNavItems = [
-  { href: "/", label: "Noticias", icon: Home },
-  { href: "/search", label: "Buscar", icon: Search },
-  { href: "/identify", label: "Identificar", icon: ScanEye },
-  { href: "/analyze", label: "Analizar", icon: Bot },
+  { href: "/identify", label: "Asistente IA", icon: ScanEye },
   { href: "/tools", label: "Herramientas", icon: Wrench },
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
@@ -58,8 +51,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
 
-
-
   return (
     <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
       <div className="flex min-h-screen w-full">
@@ -74,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {mobileNavItems.map((item) => (
+            {mainNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -88,17 +79,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="p-4 mt-auto space-y-2">
+          <div className="p-4 mt-auto">
             <DialogTrigger asChild>
               <Button className="w-full">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Nueva Publicación
               </Button>
             </DialogTrigger>
-             <Button variant="outline" className="w-full" onClick={logOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Cerrar Sesión
-            </Button>
           </div>
         </aside>
 
@@ -126,8 +113,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 
         {/* Mobile Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-7 z-20">
-          {mobileNavItems.slice(0, 3).map((item) => (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 z-20">
+          {mainNavItems.map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -141,24 +128,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
            <DialogTrigger asChild>
-             <button className="flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-primary-foreground bg-primary/90 hover:bg-primary">
+             <button className="flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent">
                 <PlusCircle className="h-6 w-6" />
                 <span className="text-xs sr-only">Nueva Publicación</span>
               </button>
            </DialogTrigger>
-           {mobileNavItems.slice(3).map((item) => ( 
-             <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "text-primary" : ""
-              )}
-            >
-                <item.icon className="h-6 w-6" />
-                <span className="text-xs sr-only">{item.label}</span>
-            </Link>
-          ))}
         </nav>
       </div>
       <DialogContent>
