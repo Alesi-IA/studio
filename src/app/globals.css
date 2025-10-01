@@ -66,4 +66,18 @@
   body {
     @apply bg-background text-foreground;
   }
+  .germination-modifier { 
+    @apply bg-accent text-accent-foreground rounded-full;
+  }
+  .vegetative-modifier {
+    @apply bg-primary text-primary-foreground rounded-full;
+  }
+  .flowering-modifier {
+    @apply bg-secondary text-secondary-foreground rounded-full;
+  }
+  .has-tasks-modifier {
+    @apply underline;
+  }
 }
+
+    

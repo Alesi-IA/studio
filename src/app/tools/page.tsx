@@ -13,13 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Plus, Search, Trash2, Edit, SquarePen } from 'lucide-react';
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { MoreHorizontal, Plus, Search, Trash2, SquarePen, Calendar as CalendarIcon } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { addDays, format } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 
 const guides = [
@@ -69,11 +72,11 @@ const initialTasks = [
 ];
 
 export default function ToolsPage() {
-    const [date, setDate] = useState<Date | undefined>(new Date());
     const [tasks, setTasks] = useState(initialTasks);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<{id: string, label: string} | null>(null);
     const [newTaskLabel, setNewTaskLabel] = useState('');
+    const [cultivationStartDate, setCultivationStartDate] = useState<Date | undefined>(new Date());
 
 
     const handleToggleTask = (taskId: string) => {
@@ -115,19 +118,30 @@ export default function ToolsPage() {
         setTasks(tasks.filter(task => task.id !== taskId));
     };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    const modifiers = {
-        germination: [new Date(today.getFullYear(), today.getMonth(), 8), new Date(today.getFullYear(), today.getMonth(), 9)],
-        vegetative: { from: new Date(today.getFullYear(), today.getMonth(), 10), to: new Date(today.getFullYear(), today.getMonth() + 1, 15) },
-        flowering: { from: new Date(today.getFullYear(), today.getMonth() + 1, 16), to: new Date() },
-        hasTasks: tasks.length > 0 ? [new Date()] : [],
-    };
+    const modifiers = useMemo(() => {
+        if (!cultivationStartDate) return {};
+
+        const germinationStart = cultivationStartDate;
+        const germinationEnd = addDays(germinationStart, 6);
+
+        const vegetativeStart = addDays(germinationEnd, 1);
+        const vegetativeEnd = addDays(vegetativeStart, 29);
+
+        const floweringStart = addDays(vegetativeEnd, 1);
+        const floweringEnd = addDays(floweringStart, 59);
+
+        return {
+            germination: { from: germinationStart, to: germinationEnd },
+            vegetative: { from: vegetativeStart, to: vegetativeEnd },
+            flowering: { from: floweringStart, to: floweringEnd },
+            hasTasks: tasks.length > 0 ? [new Date()] : [], // Placeholder for task-specific days
+        };
+    }, [cultivationStartDate, tasks]);
 
     return (
         <div className="w-full">
             <PageHeader
-                title="Calendario y Tareas"
+                title="Herramientas de Cultivo"
                 description="Tu centro de mando para un cultivo exitoso."
             />
             <div className="p-4 md:p-8">
@@ -139,21 +153,48 @@ export default function ToolsPage() {
                     <TabsContent value="calendar" className="mt-6">
                         <div className="grid gap-8 lg:grid-cols-3">
                             <Card className="lg:col-span-2">
+                                <CardHeader>
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                        <CardTitle>Calendario de Cultivo</CardTitle>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-[240px] justify-start text-left font-normal",
+                                                    !cultivationStartDate && "text-muted-foreground"
+                                                )}
+                                                >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {cultivationStartDate ? format(cultivationStartDate, "PPP") : <span>Elige una fecha de inicio</span>}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                mode="single"
+                                                selected={cultivationStartDate}
+                                                onSelect={setCultivationStartDate}
+                                                initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </CardHeader>
                                 <CardContent className="p-2 md:p-6 flex flex-col items-center">
                                     <Calendar
                                         mode="single"
-                                        selected={date}
-                                        onSelect={setDate}
+                                        selected={cultivationStartDate}
+                                        onSelect={setCultivationStartDate}
                                         className="flex justify-center"
                                         modifiers={modifiers}
-                                        modifiersStyles={{
-                                            germination: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' },
-                                            vegetative: { color: 'hsl(var(--primary-foreground))', backgroundColor: 'hsl(var(--primary))' },
-                                            flowering: { color: 'hsl(var(--secondary-foreground))', backgroundColor: 'hsl(var(--secondary))' },
-                                            hasTasks: { textDecoration: 'underline' }
+                                        modifiersClassNames={{
+                                            germination: 'germination-modifier',
+                                            vegetative: 'vegetative-modifier',
+                                            flowering: 'flowering-modifier',
+                                            hasTasks: 'has-tasks-modifier',
                                         }}
                                         footer={
-                                            <div className="flex items-center justify-center gap-4 mt-4 text-sm">
+                                            <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm">
                                                 <div className="flex items-center gap-2"><Badge className="bg-accent text-accent-foreground hover:bg-accent/80">Germinación</Badge></div>
                                                 <div className="flex items-center gap-2"><Badge className="bg-primary text-primary-foreground hover:bg-primary/80">Vegetativo</Badge></div>
                                                 <div className="flex items-center gap-2"><Badge className="bg-secondary text-secondary-foreground hover:bg-secondary/80">Floración</Badge></div>
