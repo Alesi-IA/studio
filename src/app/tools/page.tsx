@@ -13,8 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search } from 'lucide-react';
-import React from 'react';
+import { MoreHorizontal, Plus, Search, Trash2, Edit, SquarePen } from 'lucide-react';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 const guides = [
   {
@@ -54,17 +60,69 @@ const dictionary = [
     },
   ];
 
-const tasks = [
+const initialTasks = [
     { id: 'task1', label: 'Regar plantas (pH 6.5)', completed: true },
     { id: 'task2', label: 'Revisar plagas/enfermedades', completed: false },
     { id: 'task3', label: 'Mezclar nutrientes (Etapa vegetativa)', completed: true },
     { id: 'task4', label: 'Podar hojas bajas', completed: false },
-    { id_ts: 'task5', label: 'Rotar macetas para luz uniforme', completed: false },
+    { id: 'task5', label: 'Rotar macetas para luz uniforme', completed: false },
 ];
 
-
 export default function ToolsPage() {
-    const [date, setDate] = React.useState<Date | undefined>(new Date());
+    const [date, setDate] = useState<Date | undefined>(new Date());
+    const [tasks, setTasks] = useState(initialTasks);
+    const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<{id: string, label: string} | null>(null);
+    const [newTaskLabel, setNewTaskLabel] = useState('');
+
+
+    const handleToggleTask = (taskId: string) => {
+        setTasks(tasks.map(task => task.id === taskId ? { ...task, completed: !task.completed } : task));
+    };
+    
+    const handleOpenEditDialog = (task: {id: string, label: string}) => {
+        setEditingTask(task);
+        setNewTaskLabel(task.label);
+        setIsTaskDialogOpen(true);
+    };
+
+    const handleOpenNewDialog = () => {
+        setEditingTask(null);
+        setNewTaskLabel('');
+        setIsTaskDialogOpen(true);
+    }
+    
+    const handleSaveTask = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTaskLabel.trim()) return;
+
+        if (editingTask) {
+            setTasks(tasks.map(task => task.id === editingTask.id ? { ...task, label: newTaskLabel } : task));
+        } else {
+            const newTask = {
+                id: `task-${Date.now()}`,
+                label: newTaskLabel,
+                completed: false
+            };
+            setTasks([...tasks, newTask]);
+        }
+        setIsTaskDialogOpen(false);
+        setNewTaskLabel('');
+        setEditingTask(null);
+    };
+
+    const handleDeleteTask = (taskId: string) => {
+        setTasks(tasks.filter(task => task.id !== taskId));
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+    const modifiers = {
+        germination: [new Date(today.getFullYear(), today.getMonth(), 8), new Date(today.getFullYear(), today.getMonth(), 9)],
+        vegetative: { from: new Date(today.getFullYear(), today.getMonth(), 10), to: new Date(today.getFullYear(), today.getMonth() + 1, 15) },
+        flowering: { from: new Date(today.getFullYear(), today.getMonth() + 1, 16), to: new Date() },
+        hasTasks: tasks.length > 0 ? [new Date()] : [],
+    };
 
     return (
         <div className="w-full">
@@ -75,53 +133,94 @@ export default function ToolsPage() {
             <div className="p-4 md:p-8">
                 <Tabs defaultValue="calendar" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
-                        <TabsTrigger value="calendar">Calendario</TabsTrigger>
+                        <TabsTrigger value="calendar">Calendario y Tareas</TabsTrigger>
                         <TabsTrigger value="library">Biblioteca</TabsTrigger>
                     </TabsList>
                     <TabsContent value="calendar" className="mt-6">
                         <div className="grid gap-8 lg:grid-cols-3">
                             <Card className="lg:col-span-2">
-                                <CardContent className="p-2 md:p-6">
-                                <Calendar
-                                    mode="single"
-                                    selected={date}
-                                    onSelect={setDate}
-                                    className="flex justify-center"
-                                    modifiers={{
-                                        germination: [new Date(2024, 5, 8), new Date(2024, 5, 9)],
-                                        vegetative: { from: new Date(2024, 5, 10), to: new Date(2024, 6, 15) },
-                                        flowering: { from: new Date(2024, 6, 16), to: new Date() },
-                                    }}
-                                    modifiersStyles={{
-                                        germination: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' },
-                                        vegetative: { color: 'hsl(var(--primary-foreground))', backgroundColor: 'hsl(var(--primary))' },
-                                        flowering: { color: 'hsl(var(--secondary-foreground))', backgroundColor: 'hsl(var(--secondary))' },
-                                    }}
-                                />
+                                <CardContent className="p-2 md:p-6 flex flex-col items-center">
+                                    <Calendar
+                                        mode="single"
+                                        selected={date}
+                                        onSelect={setDate}
+                                        className="flex justify-center"
+                                        modifiers={modifiers}
+                                        modifiersStyles={{
+                                            germination: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' },
+                                            vegetative: { color: 'hsl(var(--primary-foreground))', backgroundColor: 'hsl(var(--primary))' },
+                                            flowering: { color: 'hsl(var(--secondary-foreground))', backgroundColor: 'hsl(var(--secondary))' },
+                                            hasTasks: { textDecoration: 'underline' }
+                                        }}
+                                        footer={
+                                            <div className="flex items-center justify-center gap-4 mt-4 text-sm">
+                                                <div className="flex items-center gap-2"><Badge className="bg-accent text-accent-foreground hover:bg-accent/80">Germinación</Badge></div>
+                                                <div className="flex items-center gap-2"><Badge className="bg-primary text-primary-foreground hover:bg-primary/80">Vegetativo</Badge></div>
+                                                <div className="flex items-center gap-2"><Badge className="bg-secondary text-secondary-foreground hover:bg-secondary/80">Floración</Badge></div>
+                                            </div>
+                                        }
+                                    />
                                 </CardContent>
                             </Card>
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between">
                                     <CardTitle>Tareas de Hoy</CardTitle>
-                                    <Button size="sm">
+                                    <Button size="sm" onClick={handleOpenNewDialog}>
                                         <Plus className="-ml-1 h-4 w-4" />
                                         Nueva
                                     </Button>
                                 </CardHeader>
                                 <CardContent>
-                                <div className="space-y-4">
-                                    {tasks.map((task) => (
-                                    <div key={task.id} className="flex items-center space-x-3">
-                                        <Checkbox id={task.id} defaultChecked={task.completed} />
-                                        <label
-                                        htmlFor={task.id}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                        >
-                                        {task.label}
-                                        </label>
+                                    <div className="space-y-4">
+                                        {tasks.length > 0 ? tasks.map((task) => (
+                                            <div key={task.id} className="flex items-center space-x-3 group">
+                                                <Checkbox id={task.id} checked={task.completed} onCheckedChange={() => handleToggleTask(task.id)} />
+                                                <label
+                                                    htmlFor={task.id}
+                                                    className={`flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${task.completed ? 'line-through text-muted-foreground' : ''}`}
+                                                >
+                                                    {task.label}
+                                                </label>
+                                                <AlertDialog>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent>
+                                                            <DropdownMenuItem onClick={() => handleOpenEditDialog(task)}>
+                                                                <SquarePen className="mr-2 h-4 w-4" />
+                                                                Editar
+                                                            </DropdownMenuItem>
+                                                            <AlertDialogTrigger asChild>
+                                                                <DropdownMenuItem className="text-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Eliminar
+                                                                </DropdownMenuItem>
+                                                            </AlertDialogTrigger>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>¿Seguro que quieres eliminar esta tarea?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Esta acción no se puede deshacer.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteTask(task.id)}>Eliminar</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        )) : (
+                                            <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-lg">
+                                                <p className="text-sm">No hay tareas para hoy. ¡Añade una!</p>
+                                            </div>
+                                        )}
                                     </div>
-                                    ))}
-                                </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -169,6 +268,35 @@ export default function ToolsPage() {
                     </TabsContent>
                 </Tabs>
             </div>
+
+            <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingTask ? 'Editar Tarea' : 'Añadir Nueva Tarea'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSaveTask}>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="task-name">Nombre de la tarea</Label>
+                                <Input
+                                    id="task-name"
+                                    value={newTaskLabel}
+                                    onChange={(e) => setNewTaskLabel(e.target.value)}
+                                    placeholder="Ej: Revisar el pH del agua"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                               <Button type="button" variant="ghost">Cancelar</Button>
+                            </DialogClose>
+                            <Button type="submit">{editingTask ? 'Guardar Cambios' : 'Añadir Tarea'}</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+
+    

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -19,9 +18,11 @@ import { ChatAssistant } from "../chatbot/chat-assistant";
 const mainNavItems = [
   { href: "/", label: "Noticias", icon: Home },
   { href: "/search", label: "Buscar", icon: Search },
-  { href: "/identify", label: "Asistente IA", icon: ScanEye },
-  { href: "/tools", label: "Calendario", icon: Calendar },
-  { href: "/messages", label: "Mensajes", icon: MessageSquare },
+];
+
+const secondaryNavItems = [
+    { href: "/tools", label: "Calendario", icon: Calendar },
+    { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
 
 
@@ -71,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {mainNavItems.map((item) => (
+            {[...mainNavItems, { href: "/identify", label: "Asistente IA", icon: ScanEye }, ...secondaryNavItems].map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -147,7 +148,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Bottom Bar */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20 place-items-center">
-          {mainNavItems.slice(0, 2).map((item) => (
+          {mainNavItems.map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -168,7 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
           </DialogTrigger>
 
-           {mainNavItems.slice(2, 4).map((item) => (
+           {secondaryNavItems.map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -181,16 +182,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs sr-only">{item.label}</span>
             </Link>
           ))}
-          <Link
-            href="/messages"
-            className={cn(
-                "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                pathname.startsWith('/messages') ? "text-primary" : ""
-            )}
-            >
-            <MessageSquare className="h-6 w-6" />
-            <span className="text-xs sr-only">Mensajes</span>
-          </Link>
         </nav>
       </div>
       <DialogContent>
@@ -205,3 +196,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+    
