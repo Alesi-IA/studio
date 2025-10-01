@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Bot, Lightbulb, Loader2, Upload } from 'lucide-react';
-import { type AnalyzePlantOutput, handleAnalysis } from '@/app/analyze/actions';
+import { handleAnalysis } from '@/app/analyze/actions';
+import type { AnalyzePlantOutput } from '@/app/analyze/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export function AnalysisForm() {

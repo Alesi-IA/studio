@@ -1,17 +1,20 @@
-
 'use server';
 
-import { identifyStrain, type IdentifyStrainOutput } from '@/ai/flows/identify-strain';
+import { identifyStrain } from '@/ai/flows/identify-strain';
+import type { IdentifyStrainOutput } from './types';
+import { IdentifyStrainInputSchema } from './types';
 
-export { type IdentifyStrainOutput } from '@/ai/flows/identify-strain';
+export { type IdentifyStrainOutput } from './types';
 
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
-  if (!photoDataUri) {
-    return { data: null, error: 'No se proporcionó ninguna foto.' };
+  const validatedInput = IdentifyStrainInputSchema.safeParse({ photoDataUri });
+  
+  if (!validatedInput.success) {
+    return { data: null, error: 'La foto proporcionada no es válida.' };
   }
 
   try {
-    const result = await identifyStrain({ photoDataUri });
+    const result = await identifyStrain(validatedInput.data);
     return { data: result, error: null };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';

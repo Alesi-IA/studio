@@ -1,16 +1,20 @@
 'use server';
 
-import { analyzePlantForProblems, type AnalyzePlantOutput } from '@/ai/flows/analyze-plant-for-problems';
+import { analyzePlantForProblems } from '@/ai/flows/analyze-plant-for-problems';
+import type { AnalyzePlantOutput } from './types';
+import { AnalyzePlantInputSchema } from './types';
 
-export { type AnalyzePlantOutput } from '@/ai/flows/analyze-plant-for-problems';
+export { type AnalyzePlantOutput } from './types';
 
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
-  if (!photoDataUri) {
-    return { data: null, error: 'No se proporcionó ninguna foto.' };
+  const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
+  
+  if (!validatedInput.success) {
+    return { data: null, error: 'La foto proporcionada no es válida.' };
   }
 
   try {
-    const result = await analyzePlantForProblems({ photoDataUri });
+    const result = await analyzePlantForProblems(validatedInput.data);
     return { data: result, error: null };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
