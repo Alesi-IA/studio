@@ -8,9 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { handleStrainIdentification } from './actions';
-import { AlertTriangle, Bot, BrainCircuit, Droplets, Edit, Leaf, Loader2, ScanEye, Upload } from 'lucide-react';
+import { AlertTriangle, Bot, BrainCircuit, Droplets, Edit, Leaf, Loader2, ScanEye, Send, Upload } from 'lucide-react';
 import type { IdentifyStrainOutput } from '@/ai/flows/identify-strain';
 import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
 
 function PotencyBar({ label, value, colorClass, icon: Icon }: { label: string, value: number, colorClass: string, icon: React.ElementType }) {
     return (
@@ -31,10 +34,16 @@ export function StrainIdentificationForm() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [result, setResult] = useState<IdentifyStrainOutput | null>(null);
   const [editedStrainName, setEditedStrainName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -79,7 +88,59 @@ export function StrainIdentificationForm() {
           setResult({ ...result, strainName: editedStrainName });
           setIsEditing(false);
       }
-  }
+  };
+
+  const handleShareToFeed = async () => {
+    if (!result || !previewUrl || !user) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'No hay resultados que compartir o no has iniciado sesión.',
+        });
+        return;
+    }
+
+    setSharing(true);
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    try {
+        const description = `¡Miren esta cepa que identifiqué con la IA! La IA dice que es una ${result.strainName}.`;
+        const newPost = {
+            id: `mock-post-${Date.now()}`,
+            authorId: user.uid,
+            authorName: user.displayName,
+            authorAvatar: user.photoURL,
+            description,
+            strain: result.strainName,
+            imageUrl: previewUrl,
+            createdAt: new Date().toISOString(),
+            likes: 0,
+            comments: 0,
+        };
+
+        const existingPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
+        sessionStorage.setItem('mockPosts', JSON.stringify([newPost, ...existingPosts]));
+        window.dispatchEvent(new Event('storage'));
+
+        toast({
+            title: '¡Compartido!',
+            description: 'Tu identificación ha sido publicada en el feed.',
+        });
+        
+        router.push('/');
+
+    } catch (error) {
+        console.error("Error al compartir la publicación (simulado):", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error al compartir',
+            description: 'No se pudo crear la publicación. Por favor, inténtalo de nuevo.',
+        });
+    } finally {
+        setSharing(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -178,6 +239,17 @@ export function StrainIdentificationForm() {
                   </CardContent>
                 </Card>
               </div>
+
+               <div className="mt-8 flex justify-center">
+                <Button onClick={handleShareToFeed} disabled={sharing}>
+                  {sharing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  {sharing ? 'Compartiendo...' : 'Compartir en el Feed'}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -194,4 +266,3 @@ export function StrainIdentificationForm() {
     </div>
   );
 }
-
