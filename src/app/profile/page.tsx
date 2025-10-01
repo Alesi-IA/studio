@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, Wrench } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -63,6 +63,12 @@ export default function ProfilePage() {
               )}
               <div className="flex items-center gap-2">
                 <Button variant="outline">Editar Perfil</Button>
+                 <Link href="/messages">
+                    <Button>
+                        <MessageCircle className="mr-2" />
+                        Enviar Mensaje
+                    </Button>
+                </Link>
                 <Button variant="ghost" size="icon">
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -133,3 +139,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
