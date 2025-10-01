@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
 
-  const mobileNavItems = menuItems.filter(item => item.href !== '/analyze' && item.href !== '/tools');
+
 
 
   return (
@@ -133,8 +133,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 
         {/* Mobile Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 z-20">
-          {mobileNavItems.slice(0, 2).map((item) => (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-7 z-20">
+          {menuItems.slice(0, 3).map((item) => (
              <Link
               key={item.href}
               href={item.href}
@@ -153,7 +153,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs sr-only">Nueva Publicación</span>
               </button>
            </DialogTrigger>
-           {mobileNavItems.slice(2, 4).map((item) => ( 
+           {menuItems.slice(3).map((item) => ( 
              <Link
               key={item.href}
               href={item.href}
