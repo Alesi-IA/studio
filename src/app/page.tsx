@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, MoreHorizontal, Send, Award } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, Award, Bookmark } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
@@ -38,6 +38,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -55,7 +56,11 @@ const initialPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed
   imageHint: p.imageHint,
   createdAt: new Date().toISOString(),
   likes: Math.floor(Math.random() * 200),
-  comments: Math.floor(Math.random() * 50)
+  comments: Array.from({ length: Math.floor(Math.random() * 5) }).map((_, i) => ({
+    id: `comment-${p.id}-${i}`,
+    authorName: `Comentador${i}`,
+    text: `¡Qué buena cosecha! Se ve increíble.`,
+  })),
 }));
 
 
@@ -66,6 +71,9 @@ export default function FeedPage() {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingDescription, setEditingDescription] = useState('');
   const { user, isAdmin } = useAuth();
+  
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
+  const [commentText, setCommentText] = useState('');
 
   const loadPosts = () => {
     setLoading(true);
@@ -80,6 +88,12 @@ export default function FeedPage() {
     );
     
     setPosts(uniquePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+
+    const storedSaved = sessionStorage.getItem('savedPosts');
+    if (storedSaved) {
+      setSavedPosts(new Set(JSON.parse(storedSaved)));
+    }
+
     setLoading(false);
   }
 
@@ -92,6 +106,33 @@ export default function FeedPage() {
       window.removeEventListener('storage', loadPosts);
     };
   }, []);
+  
+  const handleToggleSave = (postId: string) => {
+    const newSavedPosts = new Set(savedPosts);
+    if (newSavedPosts.has(postId)) {
+      newSavedPosts.delete(postId);
+    } else {
+      newSavedPosts.add(postId);
+    }
+    setSavedPosts(newSavedPosts);
+    sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(newSavedPosts)));
+  };
+
+  const handleAddComment = (postId: string) => {
+    if (!commentText.trim() || !user) return;
+
+    const newComment = {
+      id: `comment-${postId}-${Date.now()}`,
+      authorName: user.displayName || 'Tú',
+      text: commentText,
+    };
+
+    const updatedPosts = posts.map(p =>
+      p.id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p
+    );
+    setPosts(updatedPosts);
+    setCommentText(''); // Clear input after submitting
+  };
 
   const handleDelete = async (postToDelete: Post) => {
     try {
@@ -257,19 +298,10 @@ export default function FeedPage() {
                     <Send className="h-5 w-5" />
                     <span className="sr-only">Compartir</span>
                   </Button>
-                   <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="ml-auto">
-                                <Award className="h-5 w-5" />
-                                <span className="sr-only">Premiar mejor respuesta</span>
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                        <p>Premiar la mejor respuesta</p>
-                        </TooltipContent>
-                    </Tooltip>
-                   </TooltipProvider>
+                   <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
+                      <Bookmark className={`h-5 w-5 ${savedPosts.has(post.id) ? 'fill-current' : ''}`} />
+                      <span className="sr-only">Guardar</span>
+                  </Button>
                 </div>
                 <div className="grid gap-1.5 text-sm w-full">
                   <p className="font-semibold">
@@ -284,9 +316,26 @@ export default function FeedPage() {
                     </Link>{' '}
                     {post.description}
                   </p>
-                  <Link href="#" className="text-muted-foreground">
-                    Ver los {post.comments || 0} comentarios
-                  </Link>
+                  <ScrollArea className="max-h-24 pr-4">
+                    {(post.comments || []).map(comment => (
+                        <div key={comment.id} className="mt-1 flex gap-2">
+                           <p>
+                             <Link href="#" className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
+                             {' '}
+                             {comment.text}
+                           </p>
+                        </div>
+                    ))}
+                  </ScrollArea>
+                   <form onSubmit={(e) => { e.preventDefault(); handleAddComment(post.id); }} className='flex items-center gap-2 mt-2'>
+                        <Input 
+                            placeholder="Añadir un comentario..." 
+                            className='h-8 text-xs'
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                        />
+                        <Button type="submit" variant="ghost" size="sm" disabled={!commentText.trim()}>Publicar</Button>
+                   </form>
                 </div>
               </CardFooter>
             </Card>
@@ -318,5 +367,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    
