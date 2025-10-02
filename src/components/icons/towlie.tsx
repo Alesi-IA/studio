@@ -38,5 +38,3 @@ export function TowlieIcon({ className }: { className?: string }) {
         </svg>
     );
 }
-
-    

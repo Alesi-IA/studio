@@ -35,7 +35,7 @@ const chartData = [
 const mockUsers = [
     { name: 'Cultivador1', email: 'cultivador1@email.com', posts: 15, role: 'user'},
     { name: 'YerbaBuena', email: 'yerba.buena@email.com', posts: 8, role: 'user'},
-    { name: 'Admin Canna', email: 'admin@cannaconnect.com', posts: 42, role: 'admin'},
+    { name: 'Admin Canna', email: 'admin@cannagrow.com', posts: 42, role: 'admin'},
     { name: 'Flor_de_Loto', email: 'flor.loto@email.com', posts: 23, role: 'user'},
     { name: 'Sativus', email: 'sativus@email.com', posts: 5, role: 'user'},
 ]
