@@ -76,6 +76,12 @@
     @apply bg-secondary text-secondary-foreground rounded-full;
   }
   .has-tasks-modifier {
-    @apply underline;
+    @apply !relative;
+  }
+  .has-tasks-modifier::after {
+    content: '';
+    @apply absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-foreground;
   }
 }
+
+    

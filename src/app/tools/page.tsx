@@ -64,11 +64,11 @@ const dictionary = [
   ];
 
 const initialTasks = [
-    { id: 'task1', label: 'Regar plantas (pH 6.5)', completed: true },
-    { id: 'task2', label: 'Revisar plagas/enfermedades', completed: false },
-    { id: 'task3', label: 'Mezclar nutrientes (Etapa vegetativa)', completed: true },
-    { id: 'task4', label: 'Podar hojas bajas', completed: false },
-    { id: 'task5', label: 'Rotar macetas para luz uniforme', completed: false },
+    { id: 'task1', label: 'Regar plantas (pH 6.5)', completed: true, date: new Date() },
+    { id: 'task2', label: 'Revisar plagas/enfermedades', completed: false, date: new Date() },
+    { id: 'task3', label: 'Mezclar nutrientes (Etapa vegetativa)', completed: true, date: addDays(new Date(), 2) },
+    { id: 'task4', label: 'Podar hojas bajas', completed: false, date: addDays(new Date(), 3) },
+    { id: 'task5', label: 'Rotar macetas para luz uniforme', completed: false, date: addDays(new Date(), 3) },
 ];
 
 export default function ToolsPage() {
@@ -105,7 +105,8 @@ export default function ToolsPage() {
             const newTask = {
                 id: `task-${Date.now()}`,
                 label: newTaskLabel,
-                completed: false
+                completed: false,
+                date: new Date() // Por ahora, las nuevas tareas se añaden para hoy.
             };
             setTasks([...tasks, newTask]);
         }
@@ -117,6 +118,8 @@ export default function ToolsPage() {
     const handleDeleteTask = (taskId: string) => {
         setTasks(tasks.filter(task => task.id !== taskId));
     };
+    
+    const tasksToday = tasks.filter(task => format(task.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd'));
 
     const modifiers = useMemo(() => {
         if (!cultivationStartDate) return {};
@@ -129,12 +132,14 @@ export default function ToolsPage() {
 
         const floweringStart = addDays(vegetativeEnd, 1);
         const floweringEnd = addDays(floweringStart, 59);
+        
+        const taskDays = tasks.map(task => task.date);
 
         return {
             germination: { from: germinationStart, to: germinationEnd },
             vegetative: { from: vegetativeStart, to: vegetativeEnd },
             flowering: { from: floweringStart, to: floweringEnd },
-            hasTasks: tasks.length > 0 ? [new Date()] : [], // Placeholder for task-specific days
+            hasTasks: taskDays,
         };
     }, [cultivationStartDate, tasks]);
 
@@ -184,8 +189,7 @@ export default function ToolsPage() {
                                 <CardContent className="p-2 md:p-6 flex flex-col items-center">
                                     <Calendar
                                         mode="single"
-                                        selected={cultivationStartDate}
-                                        onSelect={setCultivationStartDate}
+                                        selected={new Date()}
                                         className="flex justify-center"
                                         modifiers={modifiers}
                                         modifiersClassNames={{
@@ -199,6 +203,7 @@ export default function ToolsPage() {
                                                 <div className="flex items-center gap-2"><Badge className="bg-accent text-accent-foreground hover:bg-accent/80">Germinación</Badge></div>
                                                 <div className="flex items-center gap-2"><Badge className="bg-primary text-primary-foreground hover:bg-primary/80">Vegetativo</Badge></div>
                                                 <div className="flex items-center gap-2"><Badge className="bg-secondary text-secondary-foreground hover:bg-secondary/80">Floración</Badge></div>
+                                                <div className="flex items-center gap-2"><span className="relative flex h-2 w-2 rounded-full bg-foreground"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground/50 opacity-75"></span></span> Día con tareas</div>
                                             </div>
                                         }
                                     />
@@ -214,7 +219,7 @@ export default function ToolsPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
-                                        {tasks.length > 0 ? tasks.map((task) => (
+                                        {tasksToday.length > 0 ? tasksToday.map((task) => (
                                             <div key={task.id} className="flex items-center space-x-3 group">
                                                 <Checkbox id={task.id} checked={task.completed} onCheckedChange={() => handleToggleTask(task.id)} />
                                                 <label
@@ -331,3 +336,5 @@ export default function ToolsPage() {
         </div>
     );
 }
+
+    
