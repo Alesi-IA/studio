@@ -115,8 +115,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <div className="flex flex-col flex-1 md:ml-64 pb-16 md:pb-0">
-            <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:hidden">
+        <div className="flex flex-col flex-1 md:ml-64 h-screen">
+            <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:hidden shrink-0">
                 <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
                   <CannaGrowLogo />
                   <span>CannaGrow</span>
@@ -142,7 +142,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                 </div>
             </header>
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
         </div>
 
 

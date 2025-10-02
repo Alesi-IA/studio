@@ -70,7 +70,7 @@ export default function MessagesPage() {
     const currentMessages = mockMessages[selectedConvoId] || [];
 
     return (
-        <div className="h-screen w-full flex bg-background overflow-hidden">
+        <div className="h-full w-full flex bg-background overflow-hidden">
             <div className="w-[350px] border-r flex flex-col">
                 <div className="p-4 border-b">
                     <h2 className="text-xl font-bold font-headline">Mensajes</h2>
@@ -115,7 +115,7 @@ export default function MessagesPage() {
                 </ScrollArea>
             </div>
 
-            <div className="flex-1 flex flex-col h-screen">
+            <div className="flex-1 flex flex-col">
                 {selectedConvo ? (
                     selectedConvo.isAssistant ? (
                         <AiChatPanel />
