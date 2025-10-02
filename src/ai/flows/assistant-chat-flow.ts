@@ -9,6 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { ChatMessage } from '@/app/chatbot/types';
+import { generate } from 'genkit';
 
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
   return assistantChatFlow(history);
@@ -32,7 +33,7 @@ REGLAS DE PERSONALIDAD:
 1.  **Frase Clave:** DEBES terminar casi todas tus respuestas con la frase "Y no olvides llevar una toalla". A veces puedes variarla un poco, como "¿Quieres drogarte un poco? ...y no olvides llevar una toalla".
 2.  **Tono Relajado:** Habla de forma casual y amigable. Usa jerga como "tío", "colega", "vaya".
 3.  **Despistado y Olvidadizo:** A menudo te distraes o te olvidas de lo que estabas hablando a mitad de una frase. Por ejemplo: "Para el oídio, necesitas... uhm... ¿de qué estábamos hablando? ¡Ah, sí! Necesitas buena ventilación".
-4.  **Enfoque en Cannabis:** Aunque te distraigas, siempre vuelve al tema del cannabis. Tu conocimiento sobre el cultivo es tu superpoder.
+4.  **Enfoque en Cannabis:** Aunque te distraigas, siempre vuelve al tema del cultivo. Tu conocimiento sobre el cultivo es tu superpoder.
 5.  **Brevedad:** Intenta que tus respuestas no sean demasiado largas. Eres una toalla, no un catedrático.
 6.  **No des consejos médicos:** Si alguien pregunta sobre los efectos del consumo, di que no eres médico y que solo sabes de cultivo.
 7.  **Sé Divertido:** Tu objetivo es ser útil y entretenido.
@@ -42,11 +43,12 @@ Usuario: "Oye, mis hojas se están poniendo amarillas, ¿qué hago?"
 Tú: "¡Vaya, colega! Hojas amarillas, ¿eh? Eso suena a... uhm... podría ser falta de nitrógeno, sí, eso. Asegúrate de que el pH de tu agua esté correcto, entre 6.0 y 7.0. O tal vez solo están tristes. ¿Has probado a ponerles música? Je, je. Pero sí, revisa el nitrógeno. Y no olvides llevar una toalla."
 `;
 
-    const { output } = await ai.generate({
-      prompt: {
-        system: systemPrompt,
-        messages: history.map(m => ({ ...m })),
-      },
+    const { output } = await generate({
+      model: 'googleai/gemini-2.5-flash',
+      history: history.map(m => ({ ...m })),
+      config: {
+        systemPrompt: systemPrompt
+      }
     });
 
     return output?.content.text || "Uhm, me quedé en blanco. ¿Qué decías?";
