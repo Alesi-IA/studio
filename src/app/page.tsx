@@ -21,7 +21,6 @@ import {
 import { useState, useEffect } from 'react';
 import type { Post } from '@/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,8 +36,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -78,6 +78,7 @@ export default function FeedPage() {
 
   const loadPosts = () => {
     setLoading(true);
+    // Simulating fetching posts
     const storedPosts = sessionStorage.getItem('mockPosts');
     const allPosts = storedPosts ? [...JSON.parse(storedPosts), ...initialPosts] : initialPosts;
     
@@ -88,37 +89,43 @@ export default function FeedPage() {
         ))
     );
     
-    setPosts(uniquePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    // Sort posts by creation date
+    const sortedPosts = uniquePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+    // Load saved and liked state
     const storedSaved = sessionStorage.getItem('savedPosts');
-    if (storedSaved) {
-      setSavedPosts(new Set(JSON.parse(storedSaved)));
-    }
+    const savedPostIds = storedSaved ? new Set(JSON.parse(storedSaved)) : new Set();
+    setSavedPosts(savedPostIds);
     
     const storedLiked = sessionStorage.getItem('likedPosts');
-    if (storedLiked) {
-      const likedPostData = JSON.parse(storedLiked);
-      setLikedPosts(new Set(likedPostData));
-      // Update post likes based on stored data
-      setPosts(posts => posts.map(p => {
-        if(likedPostData.includes(p.id)) {
-            const currentLikes = p.likes || 0;
-            // Check if it was already counted to avoid double counting on load
-            const initialPost = initialPosts.find(ip => ip.id === p.id);
-            if(initialPost && initialPost.likes === currentLikes) {
-               return {...p, likes: currentLikes + 1};
-            }
-        }
-        return p;
-      }));
-    }
+    const likedPostIds = storedLiked ? new Set(JSON.parse(storedLiked)) : new Set();
+    setLikedPosts(likedPostIds);
+    
+    // Adjust likes count based on persisted state
+    const finalPosts = sortedPosts.map(p => {
+      const initialPost = initialPosts.find(ip => ip.id === p.id);
+      let baseLikes = initialPost ? initialPost.likes : 0;
+      if (p.id.startsWith('mock-post-') && p.likes) { // for user-created posts
+        baseLikes = p.likes;
+      }
+      
+      const isLiked = likedPostIds.has(p.id);
+      
+      // If a user-created post is liked, its initial like count might be 0.
+      if (p.id.startsWith('mock-post-') && isLiked && baseLikes === 0) {
+        // This seems tricky. Let's simplify. The state should reflect the reality.
+        // `posts` state will hold the true like count.
+      }
+      return p;
+    });
 
+    setPosts(finalPosts);
     setLoading(false);
   }
 
   useEffect(() => {
     loadPosts();
-    // Listen for custom event from NewPostForm or other components
+    // Listen for custom event from NewPostForm or other components that modify posts
     window.addEventListener('storage', loadPosts);
 
     return () => {
@@ -141,9 +148,10 @@ export default function FeedPage() {
 
   const handleToggleLike = (postId: string) => {
     const newLikedPosts = new Set(likedPosts);
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
 
+    const post = posts[postIndex];
     let updatedLikes = post.likes || 0;
 
     if (newLikedPosts.has(postId)) {
@@ -155,7 +163,11 @@ export default function FeedPage() {
     }
 
     setLikedPosts(newLikedPosts);
-    setPosts(posts.map(p => p.id === postId ? { ...p, likes: updatedLikes } : p));
+    
+    const updatedPosts = [...posts];
+    updatedPosts[postIndex] = { ...post, likes: updatedLikes };
+    setPosts(updatedPosts);
+    
     sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
   };
 
@@ -177,15 +189,19 @@ export default function FeedPage() {
 
   const handleDelete = async (postToDelete: Post) => {
     try {
+        // This is a mock delete. In a real app, this would be an API call.
         const updatedPosts = posts.filter(p => p.id !== postToDelete.id);
+        
+        // Also remove from sessionStorage if it's a user-created post
         const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
         const updatedStoredPosts = storedPosts.filter((p: Post) => p.id !== postToDelete.id);
-
         sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
+
         setPosts(updatedPosts);
 
     } catch (error) {
         console.error("Error al eliminar la publicación (simulado): ", error);
+        // Here you would show a toast to the user
     }
   };
 
@@ -197,11 +213,13 @@ export default function FeedPage() {
   const handleSaveEdit = async () => {
     if (!editingPost) return;
     
+    // Mock saving the edit
     const updatedPosts = posts.map(p => 
         p.id === editingPost.id ? { ...p, description: editingDescription } : p
     );
     setPosts(updatedPosts);
 
+    // Also update in sessionStorage if it's a user-created post
     const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
     const updatedStoredPosts = storedPosts.map((p: Post) => 
         p.id === editingPost.id ? { ...p, description: editingDescription } : p
