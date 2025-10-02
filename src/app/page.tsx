@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -372,7 +373,7 @@ export default function FeedPage() {
                     </Tooltip>
                   </TooltipProvider>
                    <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
-                      <Bookmark className={cn("h-5 w-5", savedPosts.has(post.id) ? 'fill-current' : '')} />
+                      <Bookmark className={cn("h-5 w-5 transition-colors", savedPosts.has(post.id) ? 'fill-current' : '')} />
                       <span className="sr-only">Guardar</span>
                   </Button>
                 </div>

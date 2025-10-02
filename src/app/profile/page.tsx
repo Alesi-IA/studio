@@ -39,7 +39,7 @@ const initialUserPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('
 
 export default function ProfilePage() {
   const [userPosts, setUserPosts] = useState<Post[]>(initialUserPosts);
-  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+  const [savedPostsState, setSavedPostsState] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
@@ -57,7 +57,7 @@ export default function ProfilePage() {
     );
 
     const userSavedPosts = uniquePosts.filter((p: Post) => savedPostIds.includes(p.id));
-    setSavedPosts(userSavedPosts);
+    setSavedPostsState(userSavedPosts);
   }, []);
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function ProfilePage() {
 
     // Update the main post lists as well
     setUserPosts(userPosts.map(p => p.id === postId ? updatedPost : p));
-    setSavedPosts(savedPosts.map(p => p.id === postId ? updatedPost : p));
+    setSavedPostsState(savedPostsState.map(p => p.id === postId ? updatedPost : p));
     sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
   };
   
@@ -115,7 +115,7 @@ export default function ProfilePage() {
 
     // Update the main post lists as well
     setUserPosts(userPosts.map(p => p.id === postId ? updatedPost : p));
-    setSavedPosts(savedPosts.map(p => p.id === postId ? updatedPost : p));
+    setSavedPostsState(savedPostsState.map(p => p.id === postId ? updatedPost : p));
 
     setCommentText(''); // Clear input
   };
@@ -240,9 +240,9 @@ export default function ProfilePage() {
             </div>
           </TabsContent>
           <TabsContent value="saved" className="mt-6">
-            {savedPosts.length > 0 ? (
+            {savedPostsState.length > 0 ? (
                 <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:gap-4">
-                {savedPosts.map((post) => (
+                {savedPostsState.map((post) => (
                     <div
                     key={post.id}
                     className="group relative aspect-square overflow-hidden rounded-md cursor-pointer"
@@ -287,19 +287,19 @@ export default function ProfilePage() {
                 <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
-                <DialogHeader>
+                <DialogHeader className="p-4 border-b">
                   <DialogTitle className="sr-only">Publicación de {selectedPost.authorName}</DialogTitle>
+                   <div className="flex items-center gap-3">
+                      <Avatar>
+                            <AvatarImage src={selectedPost.authorAvatar} alt={selectedPost.authorName} />
+                            <AvatarFallback>{selectedPost.authorName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="grid flex-1 gap-0.5 text-sm">
+                            <span className="font-headline font-semibold">{selectedPost.authorName}</span>
+                            {selectedPost.strain && <p className="text-xs text-muted-foreground">Cepa: {selectedPost.strain}</p>}
+                        </div>
+                   </div>
                 </DialogHeader>
-                <CardHeader className="flex flex-row items-center gap-3 border-b">
-                   <Avatar>
-                        <AvatarImage src={selectedPost.authorAvatar} alt={selectedPost.authorName} />
-                        <AvatarFallback>{selectedPost.authorName.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 gap-0.5 text-sm">
-                        <span className="font-headline font-semibold">{selectedPost.authorName}</span>
-                         {selectedPost.strain && <p className="text-xs text-muted-foreground">Cepa: {selectedPost.strain}</p>}
-                    </div>
-                </CardHeader>
                 <ScrollArea className="flex-1">
                     <CardContent className="p-4 space-y-4">
                         <div className="flex gap-4">
@@ -336,7 +336,7 @@ export default function ProfilePage() {
                         <Button variant="ghost" size="icon"><MessageIcon className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon"><Send className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(selectedPost.id)}>
-                            <Bookmark className={cn("h-5 w-5", savedPosts.some(p => p.id === selectedPost.id) ? 'fill-current' : '')} />
+                            <Bookmark className={cn("h-5 w-5 transition-colors", savedPostsState.some(p => p.id === selectedPost.id) ? 'fill-current' : '')} />
                         </Button>
                     </div>
                     <p className="text-sm font-semibold">{selectedPost.likes || 0} me gusta</p>
@@ -358,5 +358,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
