@@ -40,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { Leaf } from 'lucide-react';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -327,15 +328,14 @@ export default function FeedPage() {
                 )}
               </CardHeader>
               <CardContent className="p-0">
-                <div className="w-full aspect-[4/5] relative">
                   <Image
                     src={post.imageUrl}
                     alt={post.description}
-                    className="object-cover"
+                    className="w-full h-auto object-cover"
                     data-ai-hint={post.imageHint}
-                    fill
+                    width={post.width}
+                    height={post.height}
                   />
-                </div>
               </CardContent>
               <CardFooter className="flex-col items-start gap-4 p-4">
                 <div className="flex w-full items-center">
@@ -435,3 +435,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    

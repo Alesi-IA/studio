@@ -297,7 +297,7 @@ export default function ProfilePage() {
                 <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
-                 <CardHeader className="flex flex-row items-center gap-3 p-4 border-b">
+                 <DialogHeader className="flex flex-row items-center gap-3 p-4 border-b">
                    <Avatar>
                          <AvatarImage src={selectedPost.authorAvatar} alt={selectedPost.authorName} />
                          <AvatarFallback>{selectedPost.authorName.charAt(0)}</AvatarFallback>
@@ -307,7 +307,7 @@ export default function ProfilePage() {
                          <span className="font-headline font-semibold">{selectedPost.authorName}</span>
                          {selectedPost.strain && <p className="text-xs text-muted-foreground">Cepa: {selectedPost.strain}</p>}
                      </div>
-                </CardHeader>
+                </DialogHeader>
                 <ScrollArea className="flex-1">
                     <CardContent className="p-4 space-y-4">
                         <div className="flex gap-4">
@@ -366,3 +366,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
