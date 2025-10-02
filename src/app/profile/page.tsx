@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Star, Heart, MessageCircle as MessageIcon, Bookmark } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Star, Heart, MessageCircle as MessageIcon, Bookmark, Send, Award } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
