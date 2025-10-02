@@ -43,10 +43,10 @@ Tú: "¡Vaya, colega! Hojas amarillas, ¿eh? Eso suena a... uhm... podría ser f
 `;
 
   const { output } = await ai.generate({
-    history: history.map(m => ({ ...m })),
-    config: {
-      systemPrompt: systemPrompt
-    }
+    prompt: [
+        { role: 'system', content: systemPrompt },
+        ...history.map(m => ({ role: m.role, content: m.content }))
+    ],
   });
 
   return output?.content.text || "Uhm, me quedé en blanco. ¿Qué decías?";
