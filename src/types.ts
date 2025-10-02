@@ -14,6 +14,8 @@ export interface Post {
     description: string;
     imageUrl: string;
     imageHint?: string;
+    width?: number;
+    height?: number;
     createdAt: any;
     likes?: number;
     comments?: PostComment[];

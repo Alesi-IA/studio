@@ -55,6 +55,8 @@ const initialPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed
   description: p.description,
   imageUrl: p.imageUrl,
   imageHint: p.imageHint,
+  width: p.width,
+  height: p.height,
   createdAt: new Date(Date.now() - index * 1000 * 60 * 60 * 3).toISOString(), // Posts staggered over time
   likes: Math.floor(Math.random() * 200),
   comments: Array.from({ length: Math.floor(Math.random() * 5) }).map((_, i) => ({
@@ -325,13 +327,13 @@ export default function FeedPage() {
                 )}
               </CardHeader>
               <CardContent className="p-0">
-                <div className="relative aspect-[4/5] w-full">
+                <div className="w-full aspect-[4/5] relative">
                   <Image
                     src={post.imageUrl}
                     alt={post.description}
-                    fill
                     className="object-cover"
                     data-ai-hint={post.imageHint}
+                    fill
                   />
                 </div>
               </CardContent>

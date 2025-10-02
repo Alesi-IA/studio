@@ -28,6 +28,8 @@ const initialUserPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('
   description: p.description,
   imageUrl: p.imageUrl,
   imageHint: p.imageHint,
+  width: p.width,
+  height: p.height,
   createdAt: new Date().toISOString(),
   likes: Math.floor(Math.random() * 200),
   comments: Array.from({ length: Math.floor(Math.random() * 5) }).map((_, i) => ({
@@ -364,5 +366,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
