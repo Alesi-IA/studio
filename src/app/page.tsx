@@ -37,7 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
@@ -73,6 +73,7 @@ export default function FeedPage() {
   const { user, isAdmin } = useAuth();
   
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [commentText, setCommentText] = useState('');
 
   const loadPosts = () => {
@@ -93,13 +94,31 @@ export default function FeedPage() {
     if (storedSaved) {
       setSavedPosts(new Set(JSON.parse(storedSaved)));
     }
+    
+    const storedLiked = sessionStorage.getItem('likedPosts');
+    if (storedLiked) {
+      const likedPostData = JSON.parse(storedLiked);
+      setLikedPosts(new Set(likedPostData));
+      // Update post likes based on stored data
+      setPosts(posts => posts.map(p => {
+        if(likedPostData.includes(p.id)) {
+            const currentLikes = p.likes || 0;
+            // Check if it was already counted to avoid double counting on load
+            const initialPost = initialPosts.find(ip => ip.id === p.id);
+            if(initialPost && initialPost.likes === currentLikes) {
+               return {...p, likes: currentLikes + 1};
+            }
+        }
+        return p;
+      }));
+    }
 
     setLoading(false);
   }
 
   useEffect(() => {
     loadPosts();
-    // Listen for custom event from NewPostForm
+    // Listen for custom event from NewPostForm or other components
     window.addEventListener('storage', loadPosts);
 
     return () => {
@@ -116,6 +135,28 @@ export default function FeedPage() {
     }
     setSavedPosts(newSavedPosts);
     sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(newSavedPosts)));
+     // Dispatch a storage event so other components (like profile) can react
+    window.dispatchEvent(new Event('storage'));
+  };
+
+  const handleToggleLike = (postId: string) => {
+    const newLikedPosts = new Set(likedPosts);
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    let updatedLikes = post.likes || 0;
+
+    if (newLikedPosts.has(postId)) {
+      newLikedPosts.delete(postId);
+      updatedLikes--;
+    } else {
+      newLikedPosts.add(postId);
+      updatedLikes++;
+    }
+
+    setLikedPosts(newLikedPosts);
+    setPosts(posts.map(p => p.id === postId ? { ...p, likes: updatedLikes } : p));
+    sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
   };
 
   const handleAddComment = (postId: string) => {
@@ -215,6 +256,7 @@ export default function FeedPage() {
 
         {!loading && posts.map((post) => {
           const canManage = user?.uid === post.authorId || isAdmin;
+          const isLiked = likedPosts.has(post.id);
 
           return (
             <Card key={post.id} className="overflow-hidden">
@@ -286,8 +328,8 @@ export default function FeedPage() {
               </CardContent>
               <CardFooter className="flex-col items-start gap-4 p-4">
                 <div className="flex w-full items-center">
-                  <Button variant="ghost" size="icon">
-                    <Heart className="h-5 w-5" />
+                   <Button variant="ghost" size="icon" onClick={() => handleToggleLike(post.id)}>
+                    <Heart className={cn("h-5 w-5 transition-all", isLiked ? 'text-red-500 fill-red-500 animate-in zoom-in-125' : '')} />
                     <span className="sr-only">Me gusta</span>
                   </Button>
                   <Button variant="ghost" size="icon">
@@ -298,8 +340,21 @@ export default function FeedPage() {
                     <Send className="h-5 w-5" />
                     <span className="sr-only">Compartir</span>
                   </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" >
+                            <Award className="h-5 w-5" />
+                            <span className="sr-only">Premiar</span>
+                          </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Premiar la mejor respuesta</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                    <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
-                      <Bookmark className={`h-5 w-5 ${savedPosts.has(post.id) ? 'fill-current' : ''}`} />
+                      <Bookmark className={cn("h-5 w-5", savedPosts.has(post.id) ? 'fill-current' : '')} />
                       <span className="sr-only">Guardar</span>
                   </Button>
                 </div>

@@ -12,11 +12,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Post } from '@/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 const initialUserPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed-')).slice(0, 9).map((p, index) => ({
   id: p.id,
@@ -40,24 +41,64 @@ export default function ProfilePage() {
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
   const { user, isAdmin, logOut } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
+  const loadSavedPosts = useCallback(() => {
     const savedPostIds = JSON.parse(sessionStorage.getItem('savedPosts') || '[]');
-    const allPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]').concat(initialUserPosts);
+    const allPostsRaw = sessionStorage.getItem('mockPosts');
+    const allPosts = allPostsRaw ? [...JSON.parse(allPostsRaw), ...initialUserPosts] : initialUserPosts;
+    
     const uniquePosts = allPosts.filter((post: Post, index: number, self: Post[]) =>
         index === self.findIndex((t) => (t.id === post.id))
     );
+
     const userSavedPosts = uniquePosts.filter((p: Post) => savedPostIds.includes(p.id));
     setSavedPosts(userSavedPosts);
   }, []);
+
+  useEffect(() => {
+    loadSavedPosts();
+    
+    // Listen for storage changes to update saved posts in real-time
+    window.addEventListener('storage', loadSavedPosts);
+    
+    return () => {
+      window.removeEventListener('storage', loadSavedPosts);
+    };
+  }, [loadSavedPosts]);
+
 
   const handleLogout = async () => {
     await logOut();
     router.push('/login');
   }
+
+  const handleToggleLike = (postId: string) => {
+    if (!selectedPost) return;
+    
+    const newLikedPosts = new Set(likedPosts);
+    let updatedLikes = selectedPost.likes || 0;
+
+    if (newLikedPosts.has(postId)) {
+      newLikedPosts.delete(postId);
+      updatedLikes--;
+    } else {
+      newLikedPosts.add(postId);
+      updatedLikes++;
+    }
+
+    setLikedPosts(newLikedPosts);
+    const updatedPost = { ...selectedPost, likes: updatedLikes };
+    setSelectedPost(updatedPost);
+
+    // Update the main post lists as well
+    setUserPosts(userPosts.map(p => p.id === postId ? updatedPost : p));
+    setSavedPosts(savedPosts.map(p => p.id === postId ? updatedPost : p));
+    sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
+  };
   
   const handleAddComment = (postId: string) => {
     if (!commentText.trim() || !user || !selectedPost) return;
@@ -76,6 +117,22 @@ export default function ProfilePage() {
     setSavedPosts(savedPosts.map(p => p.id === postId ? updatedPost : p));
 
     setCommentText(''); // Clear input
+  };
+  
+  const handleToggleSave = (postId: string) => {
+    if (!selectedPost) return;
+
+    const currentSaved = JSON.parse(sessionStorage.getItem('savedPosts') || '[]');
+    const newSaved = new Set(currentSaved);
+    
+    if (newSaved.has(postId)) {
+      newSaved.delete(postId);
+    } else {
+      newSaved.add(postId);
+    }
+
+    sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(newSaved)));
+    window.dispatchEvent(new Event('storage')); // Notify other components
   };
 
   return (
@@ -114,7 +171,7 @@ export default function ProfilePage() {
               )}
             </div>
             <div className="flex justify-center items-center gap-2 md:justify-start">
-              <Star className="h-5 w-5 text-yellow-400" />
+              <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
               <span className="font-bold font-headline text-lg">{isAdmin ? 'Maestro Cultivador' : 'Aprendiz de Cultivo'}</span>
             </div>
             <div className="flex justify-center gap-2">
@@ -269,10 +326,14 @@ export default function ProfilePage() {
                 </ScrollArea>
                  <CardFooter className="flex-col items-start gap-2 p-4 border-t mt-auto">
                     <div className="flex w-full items-center">
-                        <Button variant="ghost" size="icon"><Heart className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleToggleLike(selectedPost.id)}>
+                            <Heart className={cn("h-5 w-5 transition-all", likedPosts.has(selectedPost.id) ? 'text-red-500 fill-red-500 animate-in zoom-in-125' : '')} />
+                        </Button>
                         <Button variant="ghost" size="icon"><MessageIcon className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon"><Send className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" className="ml-auto"><Bookmark className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(selectedPost.id)}>
+                            <Bookmark className={cn("h-5 w-5", savedPosts.some(p => p.id === selectedPost.id) ? 'fill-current' : '')} />
+                        </Button>
                     </div>
                     <p className="text-sm font-semibold">{selectedPost.likes || 0} me gusta</p>
                      <form onSubmit={(e) => { e.preventDefault(); handleAddComment(selectedPost.id); }} className='flex items-center gap-2 w-full'>
