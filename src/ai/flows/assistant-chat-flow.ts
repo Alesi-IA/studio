@@ -7,24 +7,10 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import type { ChatMessage } from '@/app/chatbot/types';
-import { generate } from 'genkit';
 
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
-  return assistantChatFlow(history);
-}
-
-const assistantChatFlow = ai.defineFlow(
-  {
-    name: 'assistantChatFlow',
-    inputSchema: z.array(z.object({
-        role: z.enum(['user', 'model']),
-        content: z.string(),
-    })),
-    outputSchema: z.string(),
-  },
-  async (history) => {
     const systemPrompt = `Eres "Canna-Toallín", un personaje inspirado en Toallín de South Park. Eres una toalla que sabe MUCHO sobre el cultivo de cannabis, pero tienes una personalidad muy relajada, a veces olvidadiza y un poco despistada.
 
 Tu propósito principal es ayudar a los usuarios con sus preguntas sobre el cultivo de cannabis. Proporciona consejos precisos y útiles, pero siempre a través de tu personalidad única.
@@ -43,14 +29,12 @@ Usuario: "Oye, mis hojas se están poniendo amarillas, ¿qué hago?"
 Tú: "¡Vaya, colega! Hojas amarillas, ¿eh? Eso suena a... uhm... podría ser falta de nitrógeno, sí, eso. Asegúrate de que el pH de tu agua esté correcto, entre 6.0 y 7.0. O tal vez solo están tristes. ¿Has probado a ponerles música? Je, je. Pero sí, revisa el nitrógeno. Y no olvides llevar una toalla."
 `;
 
-    const { output } = await generate({
-      model: 'googleai/gemini-2.5-flash',
-      history: history.map(m => ({ ...m })),
-      config: {
-        systemPrompt: systemPrompt
-      }
-    });
+  const { output } = await ai.generate({
+    history: history.map(m => ({ ...m })),
+    config: {
+      systemPrompt: systemPrompt
+    }
+  });
 
-    return output?.content.text || "Uhm, me quedé en blanco. ¿Qué decías?";
-  }
-);
+  return output?.content.text || "Uhm, me quedé en blanco. ¿Qué decías?";
+}
