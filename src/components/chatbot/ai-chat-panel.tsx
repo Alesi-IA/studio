@@ -3,7 +3,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Loader2, Send, User } from 'lucide-react';
@@ -12,8 +11,8 @@ import { handleChat } from '@/app/chatbot/actions';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import type { ChatMessage } from '@/app/chatbot/types';
 
-export function ChatAssistant() {
-  const [isOpen, setIsOpen] = useState(false);
+
+export function AiChatPanel() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +20,7 @@ export function ChatAssistant() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      scrollAreaRef.current.querySelector('[data-viewport]')?.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [messages]);
 
@@ -51,27 +50,21 @@ export function ChatAssistant() {
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 h-16 w-16 rounded-full shadow-lg border-4 border-primary/20"
-        >
-          <TowlieIcon className="h-10 w-10" />
-          <span className="sr-only">Abrir Asistente de Cultivo</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="flex flex-col">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <TowlieIcon className="h-6 w-6" />
-            Canna-Toallín
-          </SheetTitle>
-        </SheetHeader>
-        <ScrollArea className="flex-1 my-4 -mx-6 px-6" ref={scrollAreaRef}>
-          <div className="space-y-4 pr-2">
-             <div className="flex items-start gap-3">
+    <>
+      <div className="flex items-center gap-3 border-b p-4 h-20">
+         <Avatar>
+            <div className="flex h-full w-full items-center justify-center bg-blue-300">
+                <TowlieIcon className='h-7 w-7' />
+            </div>
+        </Avatar>
+        <div className='flex flex-col'>
+            <p className="font-semibold font-headline">Canna-Toallín</p>
+            <p className='text-xs text-muted-foreground'>Asistente de Cultivo IA</p>
+        </div>
+      </div>
+      <ScrollArea className="flex-1" ref={scrollAreaRef}>
+        <div className="space-y-4 p-6">
+            <div className="flex items-start gap-3">
                 <Avatar>
                     <AvatarFallback><Bot /></AvatarFallback>
                 </Avatar>
@@ -107,21 +100,22 @@ export function ChatAssistant() {
                     </div>
                 </div>
             )}
-          </div>
-        </ScrollArea>
+        </div>
+      </ScrollArea>
+      <div className="border-t p-4 bg-background">
         <form onSubmit={handleSubmit} className="relative">
-          <Input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="No sé qué está pasando..."
-            className="pr-12"
-            disabled={loading}
-          />
-          <Button type="submit" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" disabled={loading}>
-            <Send className="h-4 w-4" />
-          </Button>
+            <Input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="No sé qué está pasando..."
+                className="pr-12"
+                disabled={loading}
+            />
+            <Button type="submit" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" disabled={loading || !input.trim()}>
+                <Send className="h-4 w-4" />
+            </Button>
         </form>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </>
   );
 }

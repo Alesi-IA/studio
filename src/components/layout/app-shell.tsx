@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { ChatAssistant } from "../chatbot/chat-assistant";
 
 const navItems = [
   { href: "/", label: "Noticias", icon: Home, requiredRole: "" },
@@ -195,7 +194,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <NewPostForm onPostCreated={() => setIsNewPostOpen(false)} />
       </DialogContent>
 
-      <ChatAssistant />
     </Dialog>
   );
 }

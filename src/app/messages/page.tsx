@@ -8,6 +8,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Paperclip, Search, Send, Users } from 'lucide-react';
 import React, { useState } from 'react';
+import { AiChatPanel } from '@/components/chatbot/ai-chat-panel';
+import { TowlieIcon } from '@/components/icons/towlie';
+
+const assistantConversation = {
+  id: 'canna-toallin',
+  name: 'Canna-Toallín',
+  message: '¡No olvides llevar una toalla!',
+  unread: 1,
+  isAssistant: true,
+};
 
 const initialConversations = [
   { id: 'user1', name: 'Alice', message: 'Oye, ¿cómo van tus plántulas?', unread: 2, avatar: 'user1' },
@@ -53,7 +63,7 @@ const mockMessages: Record<string, { sender: 'me' | 'them'; text: string }[]> = 
 
 
 export default function MessagesPage() {
-    const [conversations, setConversations] = useState(initialConversations);
+    const [conversations, setConversations] = useState([assistantConversation, ...initialConversations]);
     const [selectedConvoId, setSelectedConvoId] = useState(conversations[0].id);
 
     const selectedConvo = conversations.find(c => c.id === selectedConvoId);
@@ -71,7 +81,7 @@ export default function MessagesPage() {
                 </div>
                 <ScrollArea className="flex-1">
                     <div className="p-2 space-y-1">
-                    {conversations.map((convo) => (
+                    {conversations.map((convo: any) => (
                         <button key={convo.id} className={cn(
                             "flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-accent",
                             selectedConvoId === convo.id && "bg-accent"
@@ -79,8 +89,16 @@ export default function MessagesPage() {
                         onClick={() => setSelectedConvoId(convo.id)}
                         >
                          <Avatar>
-                            <AvatarImage src={`https://picsum.photos/seed/${convo.avatar}/40/40`} />
-                            <AvatarFallback>{convo.name.charAt(0)}</AvatarFallback>
+                            {convo.isAssistant ? (
+                                <div className="flex h-full w-full items-center justify-center bg-blue-300">
+                                    <TowlieIcon className='h-7 w-7' />
+                                </div>
+                            ) : (
+                                <>
+                                 <AvatarImage src={`https://picsum.photos/seed/${convo.avatar}/40/40`} />
+                                 <AvatarFallback>{convo.name.charAt(0)}</AvatarFallback>
+                                </>
+                            )}
                         </Avatar>
                         <div className="flex-1 overflow-hidden">
                             <p className="font-semibold truncate font-headline">{convo.name}</p>
@@ -99,47 +117,51 @@ export default function MessagesPage() {
 
             <div className="flex-1 flex flex-col h-screen">
                 {selectedConvo ? (
+                    selectedConvo.isAssistant ? (
+                        <AiChatPanel />
+                    ) : (
                     <>
-                    <div className="flex items-center gap-3 border-b p-4 h-20">
-                        <Avatar>
-                            <AvatarImage src={`https://picsum.photos/seed/${selectedConvo.avatar}/40/40`} />
-                            <AvatarFallback>{selectedConvo.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <p className="font-semibold font-headline">{selectedConvo.name}</p>
-                    </div>
-                    <ScrollArea className="flex-1 p-6">
-                        <div className="space-y-6">
-                        {currentMessages.map((msg, index) => (
-                            <div key={index} className={cn("flex items-end gap-3", msg.sender === 'me' ? 'justify-end' : 'justify-start')}>
-                                {msg.sender === 'them' && (
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={`https://picsum.photos/seed/${selectedConvo.avatar}/40/40`} />
-                                        <AvatarFallback>{selectedConvo.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                )}
-                                <div className={cn("max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2", msg.sender === 'me' ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none')}>
-                                    <p className="text-base">{msg.text}</p>
+                        <div className="flex items-center gap-3 border-b p-4 h-20">
+                            <Avatar>
+                                <AvatarImage src={`https://picsum.photos/seed/${selectedConvo.avatar}/40/40`} />
+                                <AvatarFallback>{selectedConvo.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <p className="font-semibold font-headline">{selectedConvo.name}</p>
+                        </div>
+                        <ScrollArea className="flex-1 p-6">
+                            <div className="space-y-6">
+                            {currentMessages.map((msg, index) => (
+                                <div key={index} className={cn("flex items-end gap-3", msg.sender === 'me' ? 'justify-end' : 'justify-start')}>
+                                    {msg.sender === 'them' && (
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={`https://picsum.photos/seed/${selectedConvo.avatar}/40/40`} />
+                                            <AvatarFallback>{selectedConvo.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                    )}
+                                    <div className={cn("max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2", msg.sender === 'me' ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-card border rounded-bl-none')}>
+                                        <p className="text-base">{msg.text}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            </div>
+                        </ScrollArea>
+                        <div className="border-t p-4 bg-background">
+                            <div className="relative">
+                                <Input placeholder="Escribe un mensaje..." className="pr-20" />
+                                <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
+                                    <Button size="icon" variant="ghost">
+                                        <Paperclip className="h-5 w-5" />
+                                        <span className="sr-only">Adjuntar archivo</span>
+                                    </Button>
+                                    <Button size="icon" className="h-8 w-8">
+                                        <Send className="h-4 w-4" />
+                                        <span className="sr-only">Enviar mensaje</span>
+                                    </Button>
                                 </div>
                             </div>
-                        ))}
                         </div>
-                    </ScrollArea>
-                    <div className="border-t p-4 bg-background">
-                        <div className="relative">
-                            <Input placeholder="Escribe un mensaje..." className="pr-20" />
-                            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
-                                <Button size="icon" variant="ghost">
-                                    <Paperclip className="h-5 w-5" />
-                                    <span className="sr-only">Adjuntar archivo</span>
-                                </Button>
-                                <Button size="icon" className="h-8 w-8">
-                                    <Send className="h-4 w-4" />
-                                    <span className="sr-only">Enviar mensaje</span>
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
                     </>
+                    )
                 ) : (
                     <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground bg-card">
                         <Users className="h-16 w-16 mb-4"/>
