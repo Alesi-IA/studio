@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Post } from '@/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import {
@@ -55,7 +55,7 @@ const initialPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed
   description: p.description,
   imageUrl: p.imageUrl,
   imageHint: p.imageHint,
-  createdAt: new Date().toISOString(),
+  createdAt: new Date(Date.now() - index * 1000 * 60 * 60 * 3).toISOString(), // Posts staggered over time
   likes: Math.floor(Math.random() * 200),
   comments: Array.from({ length: Math.floor(Math.random() * 5) }).map((_, i) => ({
     id: `comment-${p.id}-${i}`,
@@ -73,66 +73,53 @@ export default function FeedPage() {
   const [editingDescription, setEditingDescription] = useState('');
   const { user, isAdmin } = useAuth();
   
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
-  const [commentText, setCommentText] = useState('');
+  const [commentStates, setCommentStates] = useState<Record<string, string>>({});
 
-  const loadPosts = () => {
+  const handleCommentChange = (postId: string, text: string) => {
+    setCommentStates(prev => ({ ...prev, [postId]: text }));
+  };
+
+  const loadPosts = useCallback(() => {
     setLoading(true);
     // Simulating fetching posts
-    const storedPosts = sessionStorage.getItem('mockPosts');
-    const allPosts = storedPosts ? [...JSON.parse(storedPosts), ...initialPosts] : initialPosts;
+    const storedPostsJSON = sessionStorage.getItem('mockPosts');
+    const storedPosts = storedPostsJSON ? JSON.parse(storedPostsJSON) : [];
     
-    // Remove duplicates
+    const allPosts = [...storedPosts, ...initialPosts];
+    
+    // Remove duplicates by ID, giving priority to stored (user-created/edited) posts
     const uniquePosts = allPosts.filter((post, index, self) =>
-        index === self.findIndex((t) => (
-            t.id === post.id
-        ))
+        index === self.findIndex((t) => t.id === post.id)
     );
     
-    // Sort posts by creation date
     const sortedPosts = uniquePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    // Load saved and liked state
-    const storedSaved = sessionStorage.getItem('savedPosts');
-    const savedPostIds = storedSaved ? new Set(JSON.parse(storedSaved)) : new Set();
-    setSavedPosts(savedPostIds);
-    
-    const storedLiked = sessionStorage.getItem('likedPosts');
-    const likedPostIds = storedLiked ? new Set(JSON.parse(storedLiked)) : new Set();
-    setLikedPosts(likedPostIds);
-    
-    // Adjust likes count based on persisted state
-    const finalPosts = sortedPosts.map(p => {
-      const initialPost = initialPosts.find(ip => ip.id === p.id);
-      let baseLikes = initialPost ? initialPost.likes : 0;
-      if (p.id.startsWith('mock-post-') && p.likes) { // for user-created posts
-        baseLikes = p.likes;
-      }
-      
-      const isLiked = likedPostIds.has(p.id);
-      
-      // If a user-created post is liked, its initial like count might be 0.
-      if (p.id.startsWith('mock-post-') && isLiked && baseLikes === 0) {
-        // This seems tricky. Let's simplify. The state should reflect the reality.
-        // `posts` state will hold the true like count.
-      }
-      return p;
-    });
-
-    setPosts(finalPosts);
+    setPosts(sortedPosts);
     setLoading(false);
-  }
+  }, []);
+
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    const storedLiked = sessionStorage.getItem('likedPosts');
+    if (storedLiked) setLikedPosts(new Set(JSON.parse(storedLiked)));
+    
+    const storedSaved = sessionStorage.getItem('savedPosts');
+    if (storedSaved) setSavedPosts(new Set(JSON.parse(storedSaved)));
+
     loadPosts();
-    // Listen for custom event from NewPostForm or other components that modify posts
     window.addEventListener('storage', loadPosts);
 
     return () => {
       window.removeEventListener('storage', loadPosts);
     };
-  }, []);
+  }, [loadPosts]);
+
+  const persistInteractions = (key: 'likedPosts' | 'savedPosts', newSet: Set<string>) => {
+    sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
+    window.dispatchEvent(new Event('storage'));
+  };
   
   const handleToggleSave = (postId: string) => {
     const newSavedPosts = new Set(savedPosts);
@@ -142,9 +129,7 @@ export default function FeedPage() {
       newSavedPosts.add(postId);
     }
     setSavedPosts(newSavedPosts);
-    sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(newSavedPosts)));
-     // Dispatch a storage event so other components (like profile) can react
-    window.dispatchEvent(new Event('storage'));
+    persistInteractions('savedPosts', newSavedPosts);
   };
 
   const handleToggleLike = (postId: string) => {
@@ -153,27 +138,26 @@ export default function FeedPage() {
     if (postIndex === -1) return;
 
     const post = posts[postIndex];
-    let updatedLikes = post.likes || 0;
+    let currentLikes = post.likes || 0;
 
     if (newLikedPosts.has(postId)) {
       newLikedPosts.delete(postId);
-      updatedLikes--;
+      currentLikes--;
     } else {
       newLikedPosts.add(postId);
-      updatedLikes++;
+      currentLikes++;
     }
-
     setLikedPosts(newLikedPosts);
-    
+
     const updatedPosts = [...posts];
-    updatedPosts[postIndex] = { ...post, likes: updatedLikes };
+    updatedPosts[postIndex] = { ...post, likes: Math.max(0, currentLikes) };
     setPosts(updatedPosts);
-    
-    sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
+    persistInteractions('likedPosts', newLikedPosts);
   };
 
   const handleAddComment = (postId: string) => {
-    if (!commentText.trim() || !user) return;
+    const commentText = commentStates[postId];
+    if (!commentText?.trim() || !user) return;
 
     const newComment = {
       id: `comment-${postId}-${Date.now()}`,
@@ -185,24 +169,24 @@ export default function FeedPage() {
       p.id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p
     );
     setPosts(updatedPosts);
-    setCommentText(''); // Clear input after submitting
+    handleCommentChange(postId, ''); // Clear input after submitting
   };
 
   const handleDelete = async (postToDelete: Post) => {
     try {
-        // This is a mock delete. In a real app, this would be an API call.
         const updatedPosts = posts.filter(p => p.id !== postToDelete.id);
-        
-        // Also remove from sessionStorage if it's a user-created post
-        const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
-        const updatedStoredPosts = storedPosts.filter((p: Post) => p.id !== postToDelete.id);
-        sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
-
         setPosts(updatedPosts);
+        
+        const storedPostsJSON = sessionStorage.getItem('mockPosts');
+        if (storedPostsJSON) {
+          const storedPosts = JSON.parse(storedPostsJSON);
+          const updatedStoredPosts = storedPosts.filter((p: Post) => p.id !== postToDelete.id);
+          sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
+        }
+        window.dispatchEvent(new Event('storage'));
 
     } catch (error) {
         console.error("Error al eliminar la publicación (simulado): ", error);
-        // Here you would show a toast to the user
     }
   };
 
@@ -214,19 +198,24 @@ export default function FeedPage() {
   const handleSaveEdit = async () => {
     if (!editingPost) return;
     
-    // Mock saving the edit
     const updatedPosts = posts.map(p => 
         p.id === editingPost.id ? { ...p, description: editingDescription } : p
     );
     setPosts(updatedPosts);
 
-    // Also update in sessionStorage if it's a user-created post
-    const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
-    const updatedStoredPosts = storedPosts.map((p: Post) => 
-        p.id === editingPost.id ? { ...p, description: editingDescription } : p
-    );
-    sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
-
+    const storedPostsJSON = sessionStorage.getItem('mockPosts');
+    if (storedPostsJSON) {
+        const storedPosts = JSON.parse(storedPostsJSON);
+        const postExistsInStorage = storedPosts.some((p: Post) => p.id === editingPost.id);
+        if (postExistsInStorage) {
+            const updatedStoredPosts = storedPosts.map((p: Post) => 
+                p.id === editingPost.id ? { ...p, description: editingDescription } : p
+            );
+            sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
+        }
+    }
+    
+    window.dispatchEvent(new Event('storage'));
     setEditingPost(null);
   };
 
@@ -276,6 +265,7 @@ export default function FeedPage() {
         {!loading && posts.map((post) => {
           const canManage = user?.uid === post.authorId || isAdmin;
           const isLiked = likedPosts.has(post.id);
+          const isSaved = savedPosts.has(post.id);
 
           return (
             <Card key={post.id} className="overflow-hidden">
@@ -368,12 +358,12 @@ export default function FeedPage() {
                           </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Premiar la mejor respuesta</p>
+                        <p>Premiar la mejor respuesta (Próximamente)</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                    <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
-                      <Bookmark className={cn("h-5 w-5 transition-colors", savedPosts.has(post.id) ? 'fill-current' : '')} />
+                      <Bookmark className={cn("h-5 w-5 transition-colors", isSaved ? 'fill-foreground' : '')} />
                       <span className="sr-only">Guardar</span>
                   </Button>
                 </div>
@@ -390,25 +380,27 @@ export default function FeedPage() {
                     </Link>{' '}
                     {post.description}
                   </p>
-                  <ScrollArea className="max-h-24 pr-4">
-                    {(post.comments || []).map(comment => (
-                        <div key={comment.id} className="mt-1 flex gap-2">
-                           <p>
-                             <Link href="#" className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
-                             {' '}
-                             {comment.text}
-                           </p>
-                        </div>
-                    ))}
-                  </ScrollArea>
+                  {(post.comments || []).length > 0 && (
+                    <ScrollArea className="max-h-24 pr-4">
+                      {(post.comments || []).map(comment => (
+                          <div key={comment.id} className="mt-1 flex gap-2">
+                            <p>
+                              <Link href="#" className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
+                              {' '}
+                              {comment.text}
+                            </p>
+                          </div>
+                      ))}
+                    </ScrollArea>
+                  )}
                    <form onSubmit={(e) => { e.preventDefault(); handleAddComment(post.id); }} className='flex items-center gap-2 mt-2'>
                         <Input 
                             placeholder="Añadir un comentario..." 
                             className='h-8 text-xs'
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
+                            value={commentStates[post.id] || ''}
+                            onChange={(e) => handleCommentChange(post.id, e.target.value)}
                         />
-                        <Button type="submit" variant="ghost" size="sm" disabled={!commentText.trim()}>Publicar</Button>
+                        <Button type="submit" variant="ghost" size="sm" disabled={!commentStates[post.id]?.trim()}>Publicar</Button>
                    </form>
                 </div>
               </CardFooter>
