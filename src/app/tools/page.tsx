@@ -77,6 +77,8 @@ export default function ToolsPage() {
     const [editingTask, setEditingTask] = useState<{id: string, label: string} | null>(null);
     const [newTaskLabel, setNewTaskLabel] = useState('');
     const [cultivationStartDate, setCultivationStartDate] = useState<Date | undefined>(new Date());
+    const [guideSearch, setGuideSearch] = useState('');
+    const [dictSearch, setDictSearch] = useState('');
 
 
     const handleToggleTask = (taskId: string) => {
@@ -122,7 +124,8 @@ export default function ToolsPage() {
     const tasksToday = tasks.filter(task => format(task.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd'));
 
     const modifiers = useMemo(() => {
-        if (!cultivationStartDate) return {};
+        const taskDays = tasks.map(task => task.date);
+        if (!cultivationStartDate) return { hasTasks: taskDays };
 
         const germinationStart = cultivationStartDate;
         const germinationEnd = addDays(germinationStart, 6);
@@ -132,8 +135,6 @@ export default function ToolsPage() {
 
         const floweringStart = addDays(vegetativeEnd, 1);
         const floweringEnd = addDays(floweringStart, 59);
-        
-        const taskDays = tasks.map(task => task.date);
 
         return {
             germination: { from: germinationStart, to: germinationEnd },
@@ -142,6 +143,14 @@ export default function ToolsPage() {
             hasTasks: taskDays,
         };
     }, [cultivationStartDate, tasks]);
+
+    const filteredGuides = useMemo(() => 
+        guides.filter(g => g.title.toLowerCase().includes(guideSearch.toLowerCase()) || g.content.toLowerCase().includes(guideSearch.toLowerCase()))
+    , [guideSearch]);
+    
+    const filteredDictionary = useMemo(() =>
+        dictionary.filter(d => d.term.toLowerCase().includes(dictSearch.toLowerCase()) || d.definition.toLowerCase().includes(dictSearch.toLowerCase()))
+    , [dictSearch]);
 
     return (
         <div className="w-full">
@@ -276,32 +285,52 @@ export default function ToolsPage() {
                         <div className="max-w-2xl mx-auto">
                              <div className="relative w-full mb-6">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Buscar en guías..." className="pl-9" />
+                                <Input 
+                                    placeholder="Buscar en guías..." 
+                                    className="pl-9" 
+                                    value={guideSearch}
+                                    onChange={(e) => setGuideSearch(e.target.value)}
+                                />
                             </div>
                             <Accordion type="single" collapsible className="w-full">
-                            {guides.map((guide, index) => (
+                            {filteredGuides.map((guide, index) => (
                                 <AccordionItem value={`item-${index}`} key={index}>
                                 <AccordionTrigger>{guide.title}</AccordionTrigger>
                                 <AccordionContent>{guide.content}</AccordionContent>
                                 </AccordionItem>
                             ))}
                             </Accordion>
+                             {filteredGuides.length === 0 && (
+                                <div className="text-center text-muted-foreground p-8">
+                                    <p>No se encontraron guías.</p>
+                                </div>
+                            )}
                         </div>
                     </TabsContent>
                     <TabsContent value="dictionary" className="mt-6">
                         <div className="max-w-2xl mx-auto">
                              <div className="relative w-full mb-6">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Buscar término..." className="pl-9" />
+                                <Input 
+                                    placeholder="Buscar término..." 
+                                    className="pl-9"
+                                    value={dictSearch}
+                                    onChange={(e) => setDictSearch(e.target.value)}
+                                />
                             </div>
                             <Accordion type="multiple" className="w-full">
-                                {dictionary.map((item, index) => (
+                                {filteredDictionary.map((item, index) => (
                                     <AccordionItem value={`item-${index}`} key={index}>
                                     <AccordionTrigger>{item.term}</AccordionTrigger>
                                     <AccordionContent>{item.definition}</AccordionContent>
                                     </AccordionItem>
                                 ))}
                             </Accordion>
+                            {filteredDictionary.length === 0 && (
+                                <div className="text-center text-muted-foreground p-8">
+                                    <p>No se encontraron términos.</p>
+                                </div>
+                            )}
                         </div>
                     </TabsContent>
                 </Tabs>
