@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 
@@ -56,8 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
 
-  useEffect(() => {
-    // This effect now simulates checking for a logged-in user in sessionStorage
+  const checkUser = useCallback(() => {
     setLoading(true);
     try {
       const storedUser = sessionStorage.getItem('mockUser');
@@ -66,10 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(currentUser);
         setIsAdmin(currentUser.role === 'admin');
       } else {
-        // If no user is stored, default to admin for easy debugging
-        sessionStorage.setItem('mockUser', JSON.stringify(MOCK_ADMIN_USER));
-        setUser(MOCK_ADMIN_USER);
-        setIsAdmin(true);
+        // Set default user but don't navigate
       }
     } catch (e) {
       console.error("Failed to parse mock user from session storage", e);
@@ -78,10 +73,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    checkUser();
+    // Use a custom event to re-check user status when it might have changed elsewhere
+    window.addEventListener('user-change', checkUser);
+
+    return () => {
+      window.removeEventListener('user-change', checkUser);
+    }
+  }, [checkUser]);
+
   const _injectUser = useCallback((mockUser: any) => {
       setUser(mockUser);
       setIsAdmin(mockUser.role === 'admin');
       sessionStorage.setItem('mockUser', JSON.stringify(mockUser));
+      window.dispatchEvent(new Event('user-change'));
   }, []);
 
   const signUp = async (displayName, email, password) => {
@@ -98,6 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         sessionStorage.setItem('mockUser', JSON.stringify(newUser));
         setUser(newUser);
         setIsAdmin(false);
+        window.dispatchEvent(new Event('user-change'));
         toast({
             title: "¡Cuenta Creada! (Simulado)",
             description: "Has sido registrado exitosamente."
@@ -126,6 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         sessionStorage.setItem('mockUser', JSON.stringify(userToLogin));
         setUser(userToLogin);
         setIsAdmin(userToLogin.role === 'admin');
+        window.dispatchEvent(new Event('user-change'));
         
         toast({
             title: "Inicio de Sesión Exitoso (Simulado)"
@@ -149,6 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         sessionStorage.removeItem('mockUser');
         setUser(null);
         setIsAdmin(false);
+        window.dispatchEvent(new Event('user-change'));
         router.push('/login');
     } catch (error) {
          toast({
@@ -186,3 +195,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

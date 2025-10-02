@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Star, Heart, MessageCircle as MessageIcon, Bookmark, Send, Award } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Star, Heart, MessageCircle as MessageIcon, Bookmark, Send } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -47,29 +47,38 @@ export default function ProfilePage() {
   const { user, isAdmin, logOut } = useAuth();
   const router = useRouter();
 
-  const loadSavedPosts = useCallback(() => {
-    const savedPostIds = JSON.parse(sessionStorage.getItem('savedPosts') || '[]');
-    const allPostsRaw = sessionStorage.getItem('mockPosts');
-    const allPosts = allPostsRaw ? [...JSON.parse(allPostsRaw), ...initialUserPosts] : initialUserPosts;
+  const loadPostsAndState = useCallback(() => {
+    // Load all posts (user-created + initial)
+    const storedPosts = sessionStorage.getItem('mockPosts');
+    const allPosts = storedPosts ? [...JSON.parse(storedPosts), ...initialUserPosts] : initialUserPosts;
     
     const uniquePosts = allPosts.filter((post: Post, index: number, self: Post[]) =>
-        index === self.findIndex((t) => (t.id === post.id))
+        index === self.findIndex((t) => t.id === post.id)
     );
 
-    const userSavedPosts = uniquePosts.filter((p: Post) => savedPostIds.includes(p.id));
+    // Load saved post IDs
+    const savedPostIds = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
+    const userSavedPosts = uniquePosts.filter((p: Post) => savedPostIds.has(p.id));
     setSavedPostsState(userSavedPosts);
-  }, []);
+
+    // Load liked post IDs
+    const likedPostIds = new Set(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
+    setLikedPosts(likedPostIds);
+
+    // Load user's own posts
+    const myPosts = uniquePosts.filter((p: Post) => p.authorId === user?.uid);
+    // If user is admin or no specific user posts, show some initial ones for demo
+    setUserPosts(myPosts.length > 0 ? myPosts : initialUserPosts.slice(0, 9));
+
+  }, [user?.uid]);
 
   useEffect(() => {
-    loadSavedPosts();
-    
-    // Listen for storage changes to update saved posts in real-time
-    window.addEventListener('storage', loadSavedPosts);
-    
+    loadPostsAndState();
+    window.addEventListener('storage', loadPostsAndState);
     return () => {
-      window.removeEventListener('storage', loadSavedPosts);
+      window.removeEventListener('storage', loadPostsAndState);
     };
-  }, [loadSavedPosts]);
+  }, [loadPostsAndState]);
 
 
   const handleLogout = async () => {
@@ -95,10 +104,11 @@ export default function ProfilePage() {
     const updatedPost = { ...selectedPost, likes: updatedLikes };
     setSelectedPost(updatedPost);
 
-    // Update the main post lists as well
-    setUserPosts(userPosts.map(p => p.id === postId ? updatedPost : p));
-    setSavedPostsState(savedPostsState.map(p => p.id === postId ? updatedPost : p));
+    const updatePostInState = (p: Post) => p.id === postId ? updatedPost : p;
+    setUserPosts(userPosts.map(updatePostInState));
+    setSavedPostsState(savedPostsState.map(updatePostInState));
     sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
+    window.dispatchEvent(new Event('storage'));
   };
   
   const handleAddComment = (postId: string) => {
@@ -113,26 +123,24 @@ export default function ProfilePage() {
     const updatedPost = { ...selectedPost, comments: [...(selectedPost.comments || []), newComment] };
     setSelectedPost(updatedPost);
 
-    // Update the main post lists as well
-    setUserPosts(userPosts.map(p => p.id === postId ? updatedPost : p));
-    setSavedPostsState(savedPostsState.map(p => p.id === postId ? updatedPost : p));
+    const updatePostInState = (p: Post) => p.id === postId ? updatedPost : p;
+    setUserPosts(userPosts.map(updatePostInState));
+    setSavedPostsState(savedPostsState.map(updatePostInState));
 
     setCommentText(''); // Clear input
+    window.dispatchEvent(new Event('storage'));
   };
   
   const handleToggleSave = (postId: string) => {
-    if (!selectedPost) return;
-
-    const currentSaved = JSON.parse(sessionStorage.getItem('savedPosts') || '[]');
-    const newSaved = new Set(currentSaved);
+    const currentSaved = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
     
-    if (newSaved.has(postId)) {
-      newSaved.delete(postId);
+    if (currentSaved.has(postId)) {
+      currentSaved.delete(postId);
     } else {
-      newSaved.add(postId);
+      currentSaved.add(postId);
     }
 
-    sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(newSaved)));
+    sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(currentSaved)));
     window.dispatchEvent(new Event('storage')); // Notify other components
   };
 
@@ -158,7 +166,7 @@ export default function ProfilePage() {
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
-            <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/128/128`} />
+            <AvatarImage src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`} />
             <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-4 text-center md:text-left">
@@ -282,24 +290,22 @@ export default function ProfilePage() {
        <Dialog open={!!selectedPost} onOpenChange={(isOpen) => !isOpen && setSelectedPost(null)}>
         <DialogContent className="max-w-4xl p-0">
           {selectedPost && (
-            <div className="flex flex-col md:flex-row h-[90vh]">
-              <div className="relative w-full md:w-1/2 h-1/2 md:h-full">
+            <div className="flex flex-col md:flex-row md:max-h-[90vh]">
+              <div className="relative w-full md:w-1/2 aspect-square md:aspect-auto">
                 <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
-                <DialogHeader className="p-4 border-b">
-                  <DialogTitle className="sr-only">Publicación de {selectedPost.authorName}</DialogTitle>
-                   <div className="flex items-center gap-3">
-                      <Avatar>
-                            <AvatarImage src={selectedPost.authorAvatar} alt={selectedPost.authorName} />
-                            <AvatarFallback>{selectedPost.authorName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="grid flex-1 gap-0.5 text-sm">
-                            <span className="font-headline font-semibold">{selectedPost.authorName}</span>
-                            {selectedPost.strain && <p className="text-xs text-muted-foreground">Cepa: {selectedPost.strain}</p>}
-                        </div>
-                   </div>
-                </DialogHeader>
+                 <CardHeader className="flex flex-row items-center gap-3 p-4 border-b">
+                   <Avatar>
+                         <AvatarImage src={selectedPost.authorAvatar} alt={selectedPost.authorName} />
+                         <AvatarFallback>{selectedPost.authorName.charAt(0)}</AvatarFallback>
+                     </Avatar>
+                     <div className="grid flex-1 gap-0.5 text-sm">
+                         <DialogTitle className="sr-only">Publicación de {selectedPost.authorName}</DialogTitle>
+                         <span className="font-headline font-semibold">{selectedPost.authorName}</span>
+                         {selectedPost.strain && <p className="text-xs text-muted-foreground">Cepa: {selectedPost.strain}</p>}
+                     </div>
+                </CardHeader>
                 <ScrollArea className="flex-1">
                     <CardContent className="p-4 space-y-4">
                         <div className="flex gap-4">
@@ -328,7 +334,7 @@ export default function ProfilePage() {
                         ))}
                     </CardContent>
                 </ScrollArea>
-                 <CardFooter className="flex-col items-start gap-2 p-4 border-t mt-auto">
+                 <CardFooter className="flex-col items-start gap-2 p-4 border-t bg-background mt-auto">
                     <div className="flex w-full items-center">
                         <Button variant="ghost" size="icon" onClick={() => handleToggleLike(selectedPost.id)}>
                             <Heart className={cn("h-5 w-5 transition-all", likedPosts.has(selectedPost.id) ? 'text-red-500 fill-red-500 animate-in zoom-in-125' : '')} />
@@ -343,7 +349,7 @@ export default function ProfilePage() {
                      <form onSubmit={(e) => { e.preventDefault(); handleAddComment(selectedPost.id); }} className='flex items-center gap-2 w-full'>
                         <Input 
                             placeholder="Añadir un comentario..." 
-                            className='h-8 text-sm'
+                            className='h-8 text-xs'
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                         />
@@ -358,3 +364,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
