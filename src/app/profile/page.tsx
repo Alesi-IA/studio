@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -13,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Post } from '@/types';
 import { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -286,6 +287,9 @@ export default function ProfilePage() {
                 <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="sr-only">Publicación de {selectedPost.authorName}</DialogTitle>
+                </DialogHeader>
                 <CardHeader className="flex flex-row items-center gap-3 border-b">
                    <Avatar>
                         <AvatarImage src={selectedPost.authorAvatar} alt={selectedPost.authorName} />
@@ -354,3 +358,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
