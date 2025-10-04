@@ -65,6 +65,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsAdmin(currentUser.role === 'admin');
       } else {
         // Set default user but don't navigate
+        const defaultUser = MOCK_NORMAL_USER;
+        setUser(defaultUser);
+        setIsAdmin(defaultUser.role === 'admin');
+        sessionStorage.setItem('mockUser', JSON.stringify(defaultUser));
       }
     } catch (e) {
       console.error("Failed to parse mock user from session storage", e);
