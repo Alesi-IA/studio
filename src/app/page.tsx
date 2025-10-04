@@ -89,7 +89,7 @@ export default function FeedPage() {
     
     const allPosts = [...storedPosts, ...initialPosts];
     
-    // Remove duplicates by ID, giving priority to stored (user-created/edited) posts
+    // Remove duplicates by ID, giving priority to user-created/edited) posts
     const uniquePosts = allPosts.filter((post, index, self) =>
         index === self.findIndex((t) => t.id === post.id)
     );
