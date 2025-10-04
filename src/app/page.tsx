@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useState, useEffect, useCallback } from 'react';
 import type { Post } from '@/types';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +39,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { Leaf } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const stories = Array.from({ length: 10 }).map((_, i) => ({
   id: `story-${i}`,
@@ -121,7 +120,8 @@ export default function FeedPage() {
 
   const persistInteractions = (key: 'likedPosts' | 'savedPosts', newSet: Set<string>) => {
     sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
-    window.dispatchEvent(new Event('storage'));
+    // We don't dispatch a storage event here because this function is called by the component that is making the change.
+    // The event listener is for other tabs/windows to sync up.
   };
   
   const handleToggleSave = (postId: string) => {
@@ -133,6 +133,8 @@ export default function FeedPage() {
     }
     setSavedPosts(newSavedPosts);
     persistInteractions('savedPosts', newSavedPosts);
+    // Manually trigger a re-render or event if needed in other components immediately
+     window.dispatchEvent(new Event('storage'));
   };
 
   const handleToggleLike = (postId: string) => {
@@ -210,12 +212,26 @@ export default function FeedPage() {
     if (storedPostsJSON) {
         const storedPosts = JSON.parse(storedPostsJSON);
         const postExistsInStorage = storedPosts.some((p: Post) => p.id === editingPost.id);
-        if (postExistsInStorage) {
-            const updatedStoredPosts = storedPosts.map((p: Post) => 
+        
+        let updatedStoredPosts;
+        if(postExistsInStorage) {
+            updatedStoredPosts = storedPosts.map((p: Post) => 
                 p.id === editingPost.id ? { ...p, description: editingDescription } : p
             );
-            sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
+        } else {
+            // If the post being edited is an initialPost, it needs to be added to sessionStorage
+            const postToStore = updatedPosts.find(p => p.id === editingPost.id);
+            if (postToStore) {
+                 updatedStoredPosts = [postToStore, ...storedPosts];
+            } else {
+                updatedStoredPosts = storedPosts;
+            }
         }
+        sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
+    } else {
+        // If no posts were in session storage, create the item
+        const postToStore = updatedPosts.find(p => p.id === editingPost.id);
+        if(postToStore) sessionStorage.setItem('mockPosts', JSON.stringify([postToStore]));
     }
     
     window.dispatchEvent(new Event('storage'));
@@ -360,7 +376,7 @@ export default function FeedPage() {
                           </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Premiar la mejor respuesta (Próximamente)</p>
+                        <p>Premiar la mejor respuesta</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -435,5 +451,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    
