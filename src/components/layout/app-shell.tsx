@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <div className="flex flex-col flex-1 md:ml-64 h-screen">
+        <div className="flex flex-col flex-1 md:ml-64">
             <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:hidden shrink-0">
                 <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
                   <CannaGrowLogo />
