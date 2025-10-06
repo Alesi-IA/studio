@@ -1,9 +1,8 @@
-
 'use client';
 
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AreaChart, BarChart, File, ListFilter, Users } from 'lucide-react';
+import { AreaChart, BarChart, File, ListFilter, LogIn, Users } from 'lucide-react';
 import {
   Bar,
   BarChart as BarChartComponent,
@@ -22,6 +21,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 const chartData = [
   { name: 'Ene', total: Math.floor(Math.random() * 20) + 10 },
@@ -33,14 +35,35 @@ const chartData = [
 ];
 
 const mockUsers = [
-    { name: 'Cultivador1', email: 'cultivador1@email.com', posts: 15, role: 'user'},
-    { name: 'YerbaBuena', email: 'yerba.buena@email.com', posts: 8, role: 'user'},
-    { name: 'Admin Canna', email: 'admin@cannagrow.com', posts: 42, role: 'admin'},
-    { name: 'Flor_de_Loto', email: 'flor.loto@email.com', posts: 23, role: 'user'},
-    { name: 'Sativus', email: 'sativus@email.com', posts: 5, role: 'user'},
+    { uid: 'user-uid-1', name: 'Cultivador1', email: 'cultivador1@email.com', posts: 15, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-1/128/128' },
+    { uid: 'user-uid-2', name: 'YerbaBuena', email: 'yerba.buena@email.com', posts: 8, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-2/128/128' },
+    { uid: 'admin-uid', name: 'Admin Canna', email: 'admin@cannagrow.com', posts: 42, role: 'admin', photoURL: 'https://picsum.photos/seed/admin-uid/128/128' },
+    { uid: 'user-uid-3', name: 'Flor_de_Loto', email: 'flor.loto@email.com', posts: 23, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-3/128/128' },
+    { uid: 'user-uid-4', name: 'Sativus', email: 'sativus@email.com', posts: 5, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-4/128/128' },
 ]
 
 export default function AdminPage() {
+  const { _injectUser, user: currentUser } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleImpersonate = (targetUser: (typeof mockUsers)[0]) => {
+    // Simulating the user object expected by the auth context
+    const userToImpersonate = {
+        uid: targetUser.uid,
+        email: targetUser.email,
+        displayName: targetUser.name,
+        role: targetUser.role,
+        photoURL: targetUser.photoURL
+    };
+    _injectUser(userToImpersonate);
+    toast({
+        title: 'Suplantación Exitosa',
+        description: `Ahora estás navegando como ${targetUser.name}.`,
+    });
+    router.push('/');
+  }
+
   return (
     <div className="w-full">
       <PageHeader
@@ -159,6 +182,7 @@ export default function AdminPage() {
                         <TableHead>Usuario</TableHead>
                         <TableHead className="hidden sm:table-cell">Rol</TableHead>
                         <TableHead className="hidden md:table-cell">Publicaciones</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -176,6 +200,14 @@ export default function AdminPage() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">{user.posts}</TableCell>
+                                 <TableCell className="text-right">
+                                    {currentUser?.uid !== user.uid && (
+                                        <Button variant="outline" size="sm" onClick={() => handleImpersonate(user)}>
+                                            <LogIn className="mr-2 h-3 w-3" />
+                                            Iniciar sesión como
+                                        </Button>
+                                    )}
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -187,3 +219,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
