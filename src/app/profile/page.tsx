@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Star, Heart, MessageCircle as MessageIcon, Bookmark, Send } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Leaf } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const initialUserPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed-')).slice(0, 9).map((p, index) => ({
   id: p.id,
@@ -39,6 +40,9 @@ const initialUserPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('
   })),
 }));
 
+// Mock para simular un ID de usuario diferente al logueado
+const OTHER_USER_ID = 'other-user-id';
+
 export default function ProfilePage() {
   const [userPosts, setUserPosts] = useState<Post[]>(initialUserPosts);
   const [savedPostsState, setSavedPostsState] = useState<Post[]>([]);
@@ -49,8 +53,20 @@ export default function ProfilePage() {
   const { user, isAdmin, logOut } = useAuth();
   const router = useRouter();
 
+  // Simulación para ver otro perfil. En una app real, esto vendría de la URL (e.g. /profile/[userId])
+  const isOwnProfile = true; 
+  const profileData = {
+      displayName: user?.displayName || 'Usuario',
+      photoURL: user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`,
+      isCurrentUserAdmin: isAdmin,
+      uid: user?.uid,
+      bio: isAdmin ? 
+            'Dueño y operador de CannaGrow. Cultivador apasionado desde 2010. Especializado en técnicas de suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver sus hermosas plantas! 🌿' : 
+            'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+      rank: isAdmin ? 'Maestro Cultivador' : 'Aprendiz de Cultivo'
+  }
+
   const loadPostsAndState = useCallback(() => {
-    // Load all posts (user-created + initial)
     const storedPosts = sessionStorage.getItem('mockPosts');
     const allPosts = storedPosts ? [...JSON.parse(storedPosts), ...initialUserPosts] : initialUserPosts;
     
@@ -58,18 +74,14 @@ export default function ProfilePage() {
         index === self.findIndex((t) => t.id === post.id)
     );
 
-    // Load saved post IDs
     const savedPostIds = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
     const userSavedPosts = uniquePosts.filter((p: Post) => savedPostIds.has(p.id));
     setSavedPostsState(userSavedPosts);
 
-    // Load liked post IDs
     const likedPostIds = new Set(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
     setLikedPosts(likedPostIds);
 
-    // Load user's own posts
     const myPosts = uniquePosts.filter((p: Post) => p.authorId === user?.uid);
-    // If user is admin or no specific user posts, show some initial ones for demo
     setUserPosts(myPosts.length > 0 ? myPosts : initialUserPosts.slice(0, 9));
 
   }, [user?.uid]);
@@ -143,7 +155,7 @@ export default function ProfilePage() {
     }
 
     sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(currentSaved)));
-    window.dispatchEvent(new Event('storage')); // Notify other components
+    window.dispatchEvent(new Event('storage'));
   };
 
   return (
@@ -152,29 +164,26 @@ export default function ProfilePage() {
         title="Perfil"
         description="Tu espacio personal en CannaGrow."
         actions={
-          <div className="flex items-center gap-2">
-            {isAdmin && (
+          isAdmin && isOwnProfile && (
               <Link href="/admin">
                 <Button variant="outline">
                   <ShieldCheck className="mr-2" />
                   Panel Admin
                 </Button>
               </Link>
-            )}
-            <Button onClick={handleLogout} variant="outline"><LogOut className="mr-2"/>Cerrar Sesión</Button>
-          </div>
+          )
         }
       />
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
-            <AvatarImage src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`} />
-            <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+            <AvatarImage src={profileData.photoURL} />
+            <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
-              <h2 className="font-headline text-2xl font-bold">{user?.displayName || 'Usuario'}</h2>
-              {isAdmin && (
+              <h2 className="font-headline text-2xl font-bold">{profileData.displayName}</h2>
+              {profileData.isCurrentUserAdmin && (
                 <Badge variant="destructive" className="gap-1">
                     <ShieldCheck className="h-3 w-3" />
                     Administrador
@@ -182,21 +191,42 @@ export default function ProfilePage() {
               )}
             </div>
             <div className="flex justify-center items-center gap-2 md:justify-start">
-              <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
-              <span className="font-bold font-headline text-lg">{isAdmin ? 'Maestro Cultivador' : 'Aprendiz de Cultivo'}</span>
+              <Leaf className="h-5 w-5 text-green-400" />
+              <span className="font-bold font-headline text-lg">{profileData.rank}</span>
             </div>
+            
             <div className="flex justify-center gap-2">
-                <Button variant="outline">Editar Perfil</Button>
-                 <Link href="/messages">
-                    <Button>
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        Enviar Mensaje
-                    </Button>
-                </Link>
-                <Button variant="ghost" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
+                {isOwnProfile ? (
+                    <>
+                        <Button variant="outline">Editar Perfil</Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                 <DropdownMenuItem>Editar Perfil</DropdownMenuItem>
+                                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                                     <LogOut className="mr-2 h-4 w-4"/>
+                                     Cerrar Sesión
+                                 </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </>
+                ) : (
+                    <>
+                        <Button>Seguir</Button>
+                        <Link href="/messages">
+                            <Button variant="outline">
+                                <MessageCircle className="mr-2 h-4 w-4" />
+                                Mensaje
+                            </Button>
+                        </Link>
+                    </>
+                )}
             </div>
+
             <div className="flex justify-center gap-6 md:justify-start">
               <div className="text-center">
                 <p className="font-bold">{userPosts.length}</p>
@@ -211,12 +241,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">Siguiendo</p>
               </div>
             </div>
-            <p className="text-sm max-w-prose">
-              {isAdmin ? 
-                'Dueño y operador de CannaGrow. Cultivador apasionado desde 2010. Especializado en técnicas de suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver sus hermosas plantas! 🌿' : 
-                'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.'
-              }
-            </p>
+            <p className="text-sm max-w-prose">{profileData.bio}</p>
           </div>
         </div>
 
@@ -294,7 +319,7 @@ export default function ProfilePage() {
           {selectedPost && (
             <div className="flex flex-col md:flex-row md:max-h-[90vh]">
               <div className="relative w-full md:w-1/2 aspect-square md:aspect-auto">
-                <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
+                <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" width={selectedPost.width} height={selectedPost.height} />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
                  <DialogHeader className="flex flex-row items-center gap-3 p-4 border-b">
@@ -366,5 +391,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
