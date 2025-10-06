@@ -1,9 +1,10 @@
 
 import { PageHeader } from '@/components/page-header';
-import { StrainIdentificationForm } from './strain-identification-form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnalysisForm } from './analysis-form';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bot, ScanEye } from 'lucide-react';
+import { handleStrainIdentification } from './actions';
+import { handleAnalysis } from '../analyze/actions';
 
 export default function IdentifyPage() {
   return (
@@ -25,10 +26,24 @@ export default function IdentifyPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="identify" className="mt-6">
-            <StrainIdentificationForm />
+             <AnalysisForm
+              analysisType="identify"
+              formTitle="Identificar Cepa"
+              formDescription="Sube una foto y nuestra IA identificará la cepa, potencia y posibles problemas de tu planta."
+              buttonText="Identificar"
+              loadingText="La IA está identificando tu cepa..."
+              handleAction={handleStrainIdentification}
+            />
           </TabsContent>
           <TabsContent value="analyze" className="mt-6">
-            <AnalysisForm />
+            <AnalysisForm
+              analysisType="analyze"
+              formTitle="Analizar Problemas de la Planta"
+              formDescription="Sube una foto y nuestra IA la analizará en busca de problemas comunes como plagas o deficiencias."
+              buttonText="Analizar"
+              loadingText="La IA está analizando tu planta..."
+              handleAction={handleAnalysis}
+            />
           </TabsContent>
         </Tabs>
       </div>
