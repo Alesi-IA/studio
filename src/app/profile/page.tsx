@@ -319,7 +319,7 @@ export default function ProfilePage() {
           {selectedPost && (
             <div className="flex flex-col md:flex-row md:max-h-[90vh]">
               <div className="relative w-full md:w-1/2 aspect-square md:aspect-auto">
-                <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" width={selectedPost.width} height={selectedPost.height} />
+                <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
                  <DialogHeader className="flex flex-row items-center gap-3 p-4 border-b">
@@ -341,7 +341,7 @@ export default function ProfilePage() {
                                 <AvatarFallback>{selectedPost.authorName.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <p className='text-sm'>
-                                <Link href="#" className="font-headline font-semibold hover:underline">{selectedPost.authorName}</Link>
+                                <Link href="#" className="font-headline font-semibold hover-underline">{selectedPost.authorName}</Link>
                                 {' '}
                                 {selectedPost.description}
                             </p>
