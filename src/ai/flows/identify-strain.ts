@@ -25,7 +25,7 @@ const identifyStrainFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
+      model: 'googleai/gemini-pro-vision',
       prompt: [
         { text: `Eres un experto en identificación y salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis.
 
