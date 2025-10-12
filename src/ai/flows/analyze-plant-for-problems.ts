@@ -6,9 +6,14 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { AnalyzePlantInputSchema, AnalyzePlantOutputSchema } from '@/app/ai/schemas';
-import type { AnalyzePlantInput, AnalyzePlantOutput } from '@/app/analyze/types';
-
+import {
+  AnalyzePlantInputSchema,
+  AnalyzePlantOutputSchema,
+} from '@/app/ai/schemas';
+import type {
+  AnalyzePlantInput,
+  AnalyzePlantOutput,
+} from '@/app/analyze/types';
 
 export async function analyzePlantForProblems(
   input: AnalyzePlantInput
@@ -16,29 +21,27 @@ export async function analyzePlantForProblems(
   return analyzePlantForProblemsFlow(input);
 }
 
+const prompt = ai.definePrompt({
+  name: 'analyzePlantPrompt',
+  input: {schema: AnalyzePlantInputSchema},
+  output: {schema: AnalyzePlantOutputSchema},
+  prompt: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
+
+TODA tu respuesta debe ser en español.
+
+Responde en formato JSON.
+
+{{media url=photoDataUri}}`,
+});
+
 const analyzePlantForProblemsFlow = ai.defineFlow(
   {
     name: 'analyzePlantForProblemsFlow',
     inputSchema: AnalyzePlantInputSchema,
     outputSchema: AnalyzePlantOutputSchema,
   },
-  async (input) => {
-    const { output } = await ai.generate({
-      model: 'googleai/gemini-pro-vision',
-      prompt: [
-        { text: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
-
-TODA tu respuesta debe ser en español.
-
-Responde en formato JSON.` },
-        { media: { url: input.photoDataUri } },
-      ],
-      output: {
-        format: 'json',
-        schema: AnalyzePlantOutputSchema,
-      },
-    });
-
+  async input => {
+    const {output} = await prompt(input);
     return output!;
   }
 );
