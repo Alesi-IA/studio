@@ -6,8 +6,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-import { IdentifyStrainInputSchema, IdentifyStrainOutputSchema } from '@/app/identify/types';
+import { IdentifyStrainInputSchema, IdentifyStrainOutputSchema } from '@/app/ai/schemas';
 import type { IdentifyStrainInput, IdentifyStrainOutput } from '@/app/identify/types';
 
 

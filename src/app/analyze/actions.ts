@@ -2,7 +2,7 @@
 
 import { analyzePlantForProblems } from '@/ai/flows/analyze-plant-for-problems';
 import type { AnalyzePlantOutput } from './types';
-import { AnalyzePlantInputSchema } from './types';
+import { AnalyzePlantInputSchema } from '@/app/ai/schemas';
 
 export { type AnalyzePlantOutput } from './types';
 
@@ -10,6 +10,7 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
   const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
   
   if (!validatedInput.success) {
+    console.error('Validation failed:', validatedInput.error);
     return { data: null, error: 'La foto proporcionada no es válida.' };
   }
 

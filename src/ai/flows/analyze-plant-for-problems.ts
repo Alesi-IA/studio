@@ -6,8 +6,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-import { AnalyzePlantInputSchema, AnalyzePlantOutputSchema } from '@/app/analyze/types';
+import { AnalyzePlantInputSchema, AnalyzePlantOutputSchema } from '@/app/ai/schemas';
 import type { AnalyzePlantInput, AnalyzePlantOutput } from '@/app/analyze/types';
 
 

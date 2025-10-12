@@ -2,7 +2,7 @@
 
 import { identifyStrain } from '@/ai/flows/identify-strain';
 import type { IdentifyStrainOutput } from './types';
-import { IdentifyStrainInputSchema } from './types';
+import { IdentifyStrainInputSchema } from '@/app/ai/schemas';
 
 export { type IdentifyStrainOutput } from './types';
 
@@ -10,6 +10,7 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
   const validatedInput = IdentifyStrainInputSchema.safeParse({ photoDataUri });
   
   if (!validatedInput.success) {
+    console.error('Validation failed:', validatedInput.error);
     return { data: null, error: 'La foto proporcionada no es válida.' };
   }
 
