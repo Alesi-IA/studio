@@ -42,17 +42,7 @@ const identifyStrainFlow = ai.defineFlow(
     outputSchema: IdentifyStrainOutputSchema,
   },
   async input => {
-    const {output} = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      prompt: {
-        input,
-        prompt: prompt.prompt,
-        output: {
-          format: 'json',
-          schema: IdentifyStrainOutputSchema,
-        },
-      },
-    });
+    const {output} = await prompt(input);
     return output!;
   }
 );
