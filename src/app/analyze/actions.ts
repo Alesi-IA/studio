@@ -7,6 +7,7 @@ import { AnalyzePlantInputSchema } from '@/app/ai/schemas';
 export { type AnalyzePlantOutput } from './types';
 
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
+  // We only validate that we receive a string. The AI model will handle if the data URI is valid.
   const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
   
   if (!validatedInput.success) {

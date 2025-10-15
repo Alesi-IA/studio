@@ -7,6 +7,7 @@ import { IdentifyStrainInputSchema } from '@/app/ai/schemas';
 export { type IdentifyStrainOutput } from './types';
 
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
+  // We only validate that we receive a string. The AI model will handle if the data URI is valid.
   const validatedInput = IdentifyStrainInputSchema.safeParse({ photoDataUri });
   
   if (!validatedInput.success) {

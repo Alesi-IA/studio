@@ -1,13 +1,12 @@
-
 'use client';
 
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Bot, BrainCircuit, Droplets, Edit, Leaf, Lightbulb, Loader2, ScanEye, Send, Upload } from 'lucide-react';
+import { AlertTriangle, Bot, BrainCircuit, Droplets, Edit, Leaf, Lightbulb, Loader2, ScanEye, Send, Upload, Save } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -52,6 +51,7 @@ function IdentificationResult({ result }: { result: any }) {
     if (result) {
       result.strainName = editedStrainName;
       setIsEditing(false);
+      toast({ title: '¡Guardado!', description: 'El nombre de la cepa ha sido actualizado.' });
     }
   };
 
@@ -106,59 +106,73 @@ function IdentificationResult({ result }: { result: any }) {
   };
 
   return (
-    <div className="mt-6 space-y-8">
-      <div className="text-center">
-        {isEditing ? (
-          <div className="flex items-center justify-center gap-2">
-            <Input value={editedStrainName} onChange={(e) => setEditedStrainName(e.target.value)} className="text-2xl font-bold font-headline text-center max-w-sm h-auto p-1" />
-            <Button onClick={handleSaveStrainName}>Guardar</Button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center gap-2">
-            <h2 className="text-2xl font-headline font-bold">{result.strainName}</h2>
-            <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-
+    <div className="mt-6 space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardContent className="space-y-4 pt-6">
-            <PotencyBar label="THC" value={result.potency.thc} colorClass="from-green-400 to-green-600" icon={Leaf} />
-            <PotencyBar label="CBD" value={result.potency.cbd} colorClass="from-blue-400 to-blue-600" icon={Droplets} />
-            <PotencyBar label="Energía (Hype)" value={result.potency.energy} colorClass="from-yellow-400 to-orange-500" icon={Bot} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="flex items-center gap-2 font-semibold mb-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Posibles Problemas
-            </h3>
-            {result.problems.length > 0 ? (
-              <ul className="list-disc list-inside space-y-1">
-                {result.problems.map((problem: string, index: number) => (
-                  <li key={index}>{problem}</li>
-                ))}
-              </ul>
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-xl font-headline">Cepa Identificada</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-grow flex flex-col items-center justify-center text-center gap-4">
+            {isEditing ? (
+              <div className="flex w-full max-w-sm items-center space-x-2">
+                <Input value={editedStrainName} onChange={(e) => setEditedStrainName(e.target.value)} className="text-xl font-bold font-headline text-center h-auto p-2" />
+                <Button onClick={handleSaveStrainName} size="icon"><Save className="h-4 w-4"/></Button>
+              </div>
             ) : (
-              <p className="text-muted-foreground">¡No se han detectado problemas! Tu planta parece estar en buen estado.</p>
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="text-2xl font-headline font-bold">{editedStrainName}</h2>
+                <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
+                  <Edit className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
             )}
           </CardContent>
+          <div className="p-6 border-t">
+              <Button onClick={handleShareToFeed} disabled={sharing} className="w-full">
+                {sharing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                {sharing ? 'Compartiendo...' : 'Compartir en el Feed'}
+              </Button>
+            </div>
         </Card>
-      </div>
-
-      <div className="mt-8 flex justify-center">
-        <Button onClick={handleShareToFeed} disabled={sharing}>
-          {sharing ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="mr-2 h-4 w-4" />
-          )}
-          {sharing ? 'Compartiendo...' : 'Compartir en el Feed'}
-        </Button>
+        
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+                <CardTitle className="text-xl font-headline flex items-center gap-2">
+                    <BrainCircuit className="h-5 w-5 text-primary" />
+                    Potencia Estimada
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <PotencyBar label="THC" value={result.potency.thc} colorClass="from-green-400 to-green-600" icon={Leaf} />
+              <PotencyBar label="CBD" value={result.potency.cbd} colorClass="from-blue-400 to-blue-600" icon={Droplets} />
+              <PotencyBar label="Energía (Hype)" value={result.potency.energy} colorClass="from-yellow-400 to-orange-500" icon={Bot} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+                <CardTitle className="text-xl font-headline flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                    Posibles Problemas
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {result.problems.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  {result.problems.map((problem: string, index: number) => (
+                    <li key={index}>{problem}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">¡No se han detectado problemas! Tu planta parece estar en buen estado.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
@@ -167,14 +181,16 @@ function IdentificationResult({ result }: { result: any }) {
 function AnalysisResultDisplay({ result }: { result: any }) {
   return (
     <div className="mt-6 space-y-6">
-      <h2 className="text-xl font-headline font-bold text-center">Resultados del Análisis</h2>
+      <h2 className="text-2xl font-headline font-bold text-center">Resultados del Análisis</h2>
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardContent className="pt-6">
-            <h3 className="flex items-center gap-2 font-semibold mb-2">
+          <CardHeader>
+             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
               Problemas Identificados
-            </h3>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             {result.problems.length > 0 ? (
               <ul className="list-disc list-inside space-y-1">
                 {result.problems.map((problem: string, index: number) => (
@@ -187,22 +203,29 @@ function AnalysisResultDisplay({ result }: { result: any }) {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <h3 className="flex items-center gap-2 font-semibold mb-2">
-              <Lightbulb className="h-5 w-5 text-yellow-400" />
-              Sugerencias
-            </h3>
+           <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-yellow-400" />
+                    Sugerencias de Tratamiento
+                </CardTitle>
+            </CardHeader>
+          <CardContent>
             {result.suggestions.length > 0 ? (
               <Accordion type="single" collapsible className="w-full">
-                {result.suggestions.map((suggestion: string, index: number) => (
-                  <AccordionItem value={`suggestion-${index}`} key={index}>
-                    <AccordionTrigger>{suggestion.split(':')[0]}</AccordionTrigger>
-                    <AccordionContent>{suggestion.split(':')[1] || suggestion}</AccordionContent>
-                  </AccordionItem>
-                ))}
+                {result.suggestions.map((suggestion: string, index: number) => {
+                  const parts = suggestion.split(/:(.*)/s);
+                  const title = parts[0];
+                  const content = parts[1] ? parts[1].trim() : 'No hay más detalles.';
+                  return (
+                    <AccordionItem value={`suggestion-${index}`} key={index}>
+                      <AccordionTrigger>{title}</AccordionTrigger>
+                      <AccordionContent>{content}</AccordionContent>
+                    </AccordionItem>
+                  )
+                })}
               </Accordion>
             ) : (
-              <p className="text-muted-foreground">¡Sigue con el buen trabajo!</p>
+              <p className="text-muted-foreground">¡Sigue con el buen trabajo! No se necesitan acciones.</p>
             )}
           </CardContent>
         </Card>
@@ -249,7 +272,7 @@ export function AnalysisForm({ analysisType, formTitle, formDescription, buttonT
     if (response.error) {
       setError(response.error);
     } else {
-        if (analysisType === 'identify') {
+        if (analysisType === 'identify' && response.data) {
             setResult({ ...response.data, imageUrl: previewUrl });
         } else {
             setResult(response.data);
@@ -262,64 +285,74 @@ export function AnalysisForm({ analysisType, formTitle, formDescription, buttonT
   const Icon = analysisType === 'identify' ? ScanEye : Bot;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-5xl">
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor={`plant-photo-${analysisType}`} className="text-sm font-medium">
-                Sube la foto de la planta
-              </label>
-              <div className="flex items-center gap-4">
-                <Input id={`plant-photo-${analysisType}`} type="file" accept="image/*" onChange={handleFileChange} className="flex-grow" />
-                <Button type="submit" disabled={!file || loading} className="shrink-0">
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Icon className="mr-2 h-4 w-4" />
-                  )}
-                  {buttonText}
-                </Button>
-              </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor={`plant-photo-${analysisType}`} className="text-sm font-medium leading-none">
+                      Sube una foto de la planta
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <Input id={`plant-photo-${analysisType}`} type="file" accept="image/*" onChange={handleFileChange} className="flex-grow" />
+                      <Button type="submit" disabled={!file || loading} className="shrink-0">
+                        {loading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Icon className="mr-2 h-4 w-4" />
+                        )}
+                        {buttonText}
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+                {previewUrl ? (
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
+                        <Image src={previewUrl} alt="Vista previa de la planta" fill objectFit="contain" />
+                    </div>
+                ) : (
+                    <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-muted-foreground border-2 border-dashed rounded-lg p-12 aspect-video">
+                        <Upload className="h-10 w-10" />
+                        <p className="font-semibold">Sube una foto para empezar</p>
+                        <p className="text-sm">{formDescription}</p>
+                    </div>
+                )}
             </div>
 
-            {previewUrl && (
-              <div className="relative aspect-video w-full max-w-md mx-auto overflow-hidden rounded-lg border">
-                <Image src={previewUrl} alt="Vista previa de la planta" fill objectFit="contain" />
-              </div>
-            )}
-          </form>
+            <div className="min-h-[300px]">
+              {loading && (
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="font-semibold">{loadingText}</p>
+                  <p className="text-sm">Esto puede tomar un momento.</p>
+                </div>
+              )}
 
-          {loading && (
-            <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="font-semibold">{loadingText}</p>
-              <p className="text-sm">Esto puede tomar un momento.</p>
+              {error && (
+                <Alert variant="destructive" className="mt-6">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Falló el análisis</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {result && !loading && (
+                analysisType === 'identify'
+                  ? <IdentificationResult result={result} />
+                  : <AnalysisResultDisplay result={result} />
+              )}
+
+              {!loading && !result && !error && (
+                <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground bg-muted/50 rounded-lg p-8">
+                  <BrainCircuit className="h-12 w-12 mb-4" />
+                  <p className="font-semibold">Esperando análisis</p>
+                  <p className="text-sm">Los resultados de la IA aparecerán aquí.</p>
+                </div>
+              )}
             </div>
-          )}
-
-          {error && (
-            <Alert variant="destructive" className="mt-6">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Falló el análisis</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {result && (
-            analysisType === 'identify'
-              ? <IdentificationResult result={result} />
-              : <AnalysisResultDisplay result={result} />
-          )}
-
-          {!loading && !result && !error && !previewUrl && (
-            <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
-              <Upload className="h-10 w-10" />
-              <p className="font-semibold">Sube una foto para empezar</p>
-              <p className="text-sm">{formDescription}</p>
-            </div>
-          )}
-
+          </div>
         </CardContent>
       </Card>
     </div>

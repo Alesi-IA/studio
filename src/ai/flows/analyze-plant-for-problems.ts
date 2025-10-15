@@ -15,14 +15,16 @@ import type {
   AnalyzePlantOutput,
 } from '@/app/analyze/types';
 
+// Export the primary function for the server action
 export async function analyzePlantForProblems(
   input: AnalyzePlantInput
 ): Promise<AnalyzePlantOutput> {
   return analyzePlantForProblemsFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'analyzePlantPrompt',
+// Define the structured prompt for Genkit
+const analyzePlantPrompt = ai.definePrompt({
+  name: 'analyzePlantForProblemsPrompt',
   input: {schema: AnalyzePlantInputSchema},
   output: {schema: AnalyzePlantOutputSchema},
   prompt: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
@@ -34,6 +36,7 @@ Responde en formato JSON.
 {{media url=photoDataUri}}`,
 });
 
+// Define the Genkit flow that uses the prompt
 const analyzePlantForProblemsFlow = ai.defineFlow(
   {
     name: 'analyzePlantForProblemsFlow',
@@ -41,7 +44,7 @@ const analyzePlantForProblemsFlow = ai.defineFlow(
     outputSchema: AnalyzePlantOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await analyzePlantPrompt(input);
     return output!;
   }
 );

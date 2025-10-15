@@ -15,13 +15,15 @@ import type {
   IdentifyStrainOutput,
 } from '@/app/identify/types';
 
+// Export the primary function for the server action
 export async function identifyStrain(
   input: IdentifyStrainInput
 ): Promise<IdentifyStrainOutput> {
   return identifyStrainFlow(input);
 }
 
-const prompt = ai.definePrompt({
+// Define the structured prompt for Genkit
+const identifyStrainPrompt = ai.definePrompt({
   name: 'identifyStrainPrompt',
   input: {schema: IdentifyStrainInputSchema},
   output: {schema: IdentifyStrainOutputSchema},
@@ -38,6 +40,7 @@ Responde en formato JSON.
 {{media url=photoDataUri}}`,
 });
 
+// Define the Genkit flow that uses the prompt
 const identifyStrainFlow = ai.defineFlow(
   {
     name: 'identifyStrainFlow',
@@ -45,7 +48,7 @@ const identifyStrainFlow = ai.defineFlow(
     outputSchema: IdentifyStrainOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await identifyStrainPrompt(input);
     return output!;
   }
 );
