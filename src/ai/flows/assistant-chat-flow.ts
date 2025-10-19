@@ -29,7 +29,7 @@ Mantén tus respuestas relativamente concisas.`;
       model: 'googleai/gemini-1.5-flash',
       prompt: [
         { role: 'system', content: systemPrompt },
-        ...validatedHistory.map(m => ({ role: m.role, content: m.content })),
+        ...validatedHistory,
       ],
     });
 
