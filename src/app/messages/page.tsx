@@ -2,6 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AiChatConsole } from '@/components/chatbot/ai-chat-console';
 import { TowlieIcon } from '@/components/icons/towlie';
@@ -41,6 +42,7 @@ export default function MessagesPage() {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="bottom" className="h-full w-full p-0 border-none bg-transparent">
+                        <DialogTitle className="sr-only">Consola de Chat de IA Canna-Toallín</DialogTitle>
                         <AiChatConsole onClose={() => setIsChatOpen(false)} />
                     </SheetContent>
                 </Sheet>
