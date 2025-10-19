@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Loader2, Send, User } from 'lucide-react';
+import { Loader2, Send, User } from 'lucide-react';
 import { TowlieIcon } from '../icons/towlie';
 import { handleChat } from '@/app/chatbot/actions';
 import { Avatar, AvatarFallback } from '../ui/avatar';
@@ -38,12 +38,15 @@ export function AiChatPanel() {
     if (!input.trim()) return;
 
     const userMessage: ChatMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages: ChatMessage[] = [...messages, userMessage];
+
+    setMessages(newMessages);
     setInput('');
     setLoading(true);
 
     try {
-      const response = await handleChat([...messages, userMessage]);
+      const response = await handleChat(newMessages);
+      
       if (response.error || !response.data) {
         const errorMessage: ChatMessage = { role: 'model', content: response.error || 'Lo siento, estoy un poco perdido. ¿Qué decías?' };
         setMessages(prev => [...prev, errorMessage]);
@@ -51,7 +54,7 @@ export function AiChatPanel() {
         setMessages(prev => [...prev, response.data]);
       }
     } catch (error) {
-      const errorMessage: ChatMessage = { role: 'model', content: 'Vaya, se me cruzaron los cables. Inténtalo de nuevo.' };
+      const errorMessage: ChatMessage = { role: 'model', content: 'Vaya, parece que se me cruzaron los cables. Inténtalo de nuevo.' };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);

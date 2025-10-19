@@ -33,7 +33,7 @@ Mantén tus respuestas relativamente concisas.`;
       ],
     });
 
-    return output?.content.text || 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
+    return output?.text ?? 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
   } catch (error) {
     console.error('[AssistantChatError]', error);
     return 'Vaya, parece que se me cruzaron los cables. No pude procesar esa pregunta.';
