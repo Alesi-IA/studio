@@ -20,3 +20,21 @@ export interface Post {
     likes?: number;
     comments?: PostComment[];
 }
+
+export interface UserGuideComment {
+    id: string;
+    authorName: string;
+    text: string;
+}
+
+export interface UserGuide {
+    id: string;
+    authorId: string;
+    authorName: string;
+    authorAvatar?: string;
+    title: string;
+    content: string;
+    createdAt: string;
+    likes: number;
+    comments: UserGuideComment[];
+}

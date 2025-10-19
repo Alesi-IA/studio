@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MoreHorizontal, Plus, Search, Trash2, SquarePen, Calendar as CalendarIcon } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { addDays, format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import type { UserGuide } from '@/types';
+import { Textarea } from '@/components/ui/textarea';
+import { UserGuideCard } from '@/components/user-guide-card';
 
 
 const guides = [
@@ -71,7 +75,36 @@ const initialTasks = [
     { id: 'task5', label: 'Rotar macetas para luz uniforme', completed: false, date: addDays(new Date(), 3) },
 ];
 
+const initialUserGuides: UserGuide[] = [
+    {
+        id: 'user-guide-1',
+        authorId: 'user-uid-2',
+        authorName: 'YerbaBuena',
+        authorAvatar: 'https://picsum.photos/seed/user-uid-2/128/128',
+        title: 'Mi método infalible para el secado lento',
+        content: 'El secreto para un buen curado empieza con un secado lento. Cuelgo las ramas enteras en un cuarto oscuro con un pequeño ventilador que NO apunte directamente a las plantas. Intento mantener la humedad alrededor del 60% y la temperatura sobre los 18°C. Tarda entre 10 y 14 días, pero la diferencia en el sabor es abismal. ¡Paciencia, cultivadores!',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+        likes: 28,
+        comments: [
+            { id: 'ugc-1-1', authorName: 'Sativus', text: '¡Totalmente de acuerdo! El secado lento es la clave.' },
+            { id: 'ugc-1-2', authorName: 'Cultivador1', text: 'Gracias por el consejo, voy a probarlo en mi próxima cosecha.' },
+        ]
+    },
+    {
+        id: 'user-guide-2',
+        authorId: 'admin-uid',
+        authorName: 'Admin Canna',
+        authorAvatar: 'https://picsum.photos/seed/admin-uid/128/128',
+        title: 'Guía Rápida: Cómo hacer un Té de Compost',
+        content: 'Un té de compost es un fertilizante líquido y orgánico increíble para tus plantas. Necesitarás: un cubo de 20L, una bomba de aire de acuario, una bolsa de malla, compost de buena calidad y melaza no sulfurada. 1. Llena el cubo con agua sin cloro. 2. Pon 2 tazas de compost en la bolsa de malla y ciérrala. 3. Mete la bolsa en el agua y añade la bomba de aire para oxigenar. 4. Añade 2 cucharadas de melaza al agua. 5. Déjalo burbujear durante 24-36 horas. ¡Listo! Dilúyelo 1:10 con agua y riega tus plantas.',
+        createdAt: new Date().toISOString(),
+        likes: 55,
+        comments: []
+    }
+]
+
 export default function ToolsPage() {
+    const { user } = useAuth();
     const [tasks, setTasks] = useState(initialTasks);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<{id: string, label: string} | null>(null);
@@ -79,7 +112,55 @@ export default function ToolsPage() {
     const [cultivationStartDate, setCultivationStartDate] = useState<Date | undefined>(new Date());
     const [guideSearch, setGuideSearch] = useState('');
     const [dictSearch, setDictSearch] = useState('');
+    
+    // State for user guides
+    const [userGuides, setUserGuides] = useState<UserGuide[]>([]);
+    const [isGuideDialogOpen, setIsGuideDialogOpen] = useState(false);
+    const [newGuideTitle, setNewGuideTitle] = useState('');
+    const [newGuideContent, setNewGuideContent] = useState('');
 
+    const loadUserGuides = useCallback(() => {
+        const storedGuidesJSON = sessionStorage.getItem('userGuides');
+        const storedGuides = storedGuidesJSON ? JSON.parse(storedGuidesJSON) : [];
+        const allGuides = [...storedGuides, ...initialUserGuides];
+        const uniqueGuides = allGuides.filter((guide, index, self) =>
+            index === self.findIndex((g) => g.id === guide.id)
+        );
+        const sortedGuides = uniqueGuides.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setUserGuides(sortedGuides);
+    }, []);
+
+    useEffect(() => {
+        loadUserGuides();
+        window.addEventListener('storage:userGuides', loadUserGuides);
+        return () => window.removeEventListener('storage:userGuides', loadUserGuides);
+    }, [loadUserGuides]);
+
+
+    const handleSaveGuide = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newGuideTitle.trim() || !newGuideContent.trim() || !user) return;
+
+        const newGuide: UserGuide = {
+            id: `user-guide-${Date.now()}`,
+            authorId: user.uid,
+            authorName: user.displayName || 'Anónimo',
+            authorAvatar: user.photoURL,
+            title: newGuideTitle,
+            content: newGuideContent,
+            createdAt: new Date().toISOString(),
+            likes: 0,
+            comments: []
+        };
+        
+        const updatedGuides = [newGuide, ...userGuides];
+        sessionStorage.setItem('userGuides', JSON.stringify(updatedGuides));
+        setUserGuides(updatedGuides);
+        
+        setIsGuideDialogOpen(false);
+        setNewGuideTitle('');
+        setNewGuideContent('');
+    };
 
     const handleToggleTask = (taskId: string) => {
         setTasks(tasks.map(task => task.id === taskId ? { ...task, completed: !task.completed } : task));
@@ -160,9 +241,10 @@ export default function ToolsPage() {
             />
             <div className="p-4 md:p-8">
                 <Tabs defaultValue="calendar" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 md:w-auto">
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 md:w-auto">
                         <TabsTrigger value="calendar">Calendario y Tareas</TabsTrigger>
-                        <TabsTrigger value="guides">Guías</TabsTrigger>
+                        <TabsTrigger value="guides">Guías Oficiales</TabsTrigger>
+                        <TabsTrigger value="user-guides">Guías de Usuarios</TabsTrigger>
                         <TabsTrigger value="dictionary">Diccionario</TabsTrigger>
                     </TabsList>
                     <TabsContent value="calendar" className="mt-6">
@@ -307,6 +389,32 @@ export default function ToolsPage() {
                             )}
                         </div>
                     </TabsContent>
+                    <TabsContent value="user-guides" className="mt-6">
+                        <div className="max-w-4xl mx-auto">
+                            <div className="flex justify-end mb-6">
+                                <Button onClick={() => setIsGuideDialogOpen(true)}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Crear Nueva Guía
+                                </Button>
+                            </div>
+                             <div className="space-y-6">
+                                {userGuides.length > 0 ? (
+                                    userGuides.map(guide => (
+                                        <UserGuideCard 
+                                            key={guide.id}
+                                            guide={guide}
+                                            currentUser={user}
+                                        />
+                                    ))
+                                ) : (
+                                    <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
+                                        <p className="font-semibold">¡Sé el primero en compartir tu sabiduría!</p>
+                                        <p className="text-sm">Todavía no hay guías de usuarios. Crea una para ayudar a la comunidad.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </TabsContent>
                     <TabsContent value="dictionary" className="mt-6">
                         <div className="max-w-2xl mx-auto">
                              <div className="relative w-full mb-6">
@@ -362,8 +470,46 @@ export default function ToolsPage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            <Dialog open={isGuideDialogOpen} onOpenChange={setIsGuideDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Crear Nueva Guía</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSaveGuide}>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="guide-title">Título de la guía</Label>
+                                <Input
+                                    id="guide-title"
+                                    value={newGuideTitle}
+                                    onChange={(e) => setNewGuideTitle(e.target.value)}
+                                    placeholder="Ej: Mi truco para combatir el oídio"
+                                    required
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="guide-content">Contenido</Label>
+                                <Textarea
+                                    id="guide-content"
+                                    value={newGuideContent}
+                                    onChange={(e) => setNewGuideContent(e.target.value)}
+                                    placeholder="Comparte tu conocimiento con la comunidad..."
+                                    className="min-h-[150px]"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                               <Button type="button" variant="ghost">Cancelar</Button>
+                            </DialogClose>
+                            <Button type="submit">Publicar Guía</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
 
-    
