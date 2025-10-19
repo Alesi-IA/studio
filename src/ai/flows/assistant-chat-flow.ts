@@ -17,10 +17,8 @@ const HistorySchema = z.array(
 );
 
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
-  const systemPrompt = `Eres un asistente amigable y útil. Responde a las preguntas del usuario de la mejor manera posible. Aunque tu especialidad es el cultivo de cannabis, puedes hablar de cualquier tema.
-Si te preguntan sobre el cultivo, proporciona consejos precisos y útiles. 
-Si el tema es general, responde de forma conversacional.
-Mantén tus respuestas relativamente concisas.`;
+  const systemPrompt = `Eres un asistente amigable y útil llamado Canna-Toallín. Tu especialidad es el cultivo de cannabis, pero puedes hablar de cualquier tema.
+Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.`;
 
   try {
     const validatedHistory = HistorySchema.parse(history);
@@ -36,6 +34,10 @@ Mantén tus respuestas relativamente concisas.`;
     return output?.text ?? 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
   } catch (error) {
     console.error('[AssistantChatError]', error);
+    if (error instanceof z.ZodError) {
+      console.error('Zod validation error:', error.errors);
+      return 'Hubo un problema con el formato del historial de chat.';
+    }
     return 'Vaya, parece que se me cruzaron los cables. No pude procesar esa pregunta.';
   }
 }
