@@ -11,6 +11,13 @@ import { handleChat } from '@/app/chatbot/actions';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import type { ChatMessage } from '@/app/chatbot/types';
 
+const AssistantAvatar = () => (
+    <Avatar>
+      <AvatarFallback className="bg-blue-300">
+        <TowlieIcon className="h-6 w-6" />
+      </AvatarFallback>
+    </Avatar>
+);
 
 export function AiChatPanel() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -19,8 +26,10 @@ export function AiChatPanel() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.querySelector('[data-viewport]')?.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+    // Auto-scroll to bottom
+    const viewport = scrollAreaRef.current?.querySelector('[data-viewport]');
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
     }
   }, [messages]);
 
@@ -52,35 +61,27 @@ export function AiChatPanel() {
   return (
     <>
       <div className="flex items-center gap-3 border-b p-4 h-20">
-         <Avatar>
-            <div className="flex h-full w-full items-center justify-center bg-blue-300">
-                <TowlieIcon className='h-7 w-7' />
-            </div>
-        </Avatar>
+         <AssistantAvatar />
         <div className='flex flex-col'>
             <p className="font-semibold font-headline">Canna-Toallín</p>
             <p className='text-xs text-muted-foreground'>Asistente de Cultivo IA</p>
         </div>
       </div>
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
-        <div className="space-y-4 p-6">
+        <div className="space-y-6 p-6">
             <div className="flex items-start gap-3">
-                <Avatar>
-                    <AvatarFallback><Bot /></AvatarFallback>
-                </Avatar>
-                <div className="rounded-lg bg-muted p-3">
-                    <p className="text-sm">¡Hola! Soy Canna-Toallín. ¿Tienes alguna pregunta sobre cultivo? Y... no olvides llevar una toalla.</p>
+                <AssistantAvatar />
+                <div className="rounded-lg bg-muted p-3 max-w-[85%]">
+                    <p className="text-sm">¡Hola! Soy Canna-Toallín. Puedes preguntarme sobre cultivo o cualquier otra cosa. ¿En qué te puedo ayudar hoy?</p>
                 </div>
             </div>
 
             {messages.map((m, i) => (
               <div key={i} className={`flex items-start gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role === 'model' && (
-                    <Avatar>
-                      <AvatarFallback><Bot /></AvatarFallback>
-                    </Avatar>
+                    <AssistantAvatar />
                 )}
-                <div className={`rounded-lg p-3 ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div className={`rounded-lg p-3 max-w-[85%] ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   <p className="text-sm">{m.content}</p>
                 </div>
                  {m.role === 'user' && (
@@ -92,11 +93,12 @@ export function AiChatPanel() {
             ))}
             {loading && (
                  <div className="flex items-start gap-3">
-                    <Avatar>
-                        <AvatarFallback><Loader2 className="animate-spin" /></AvatarFallback>
-                    </Avatar>
+                    <AssistantAvatar />
                     <div className="rounded-lg bg-muted p-3">
-                        <p className="text-sm">Uhm... ¿de qué estábamos hablando?... Ah, sí, ¡estoy pensando!</p>
+                        <p className="text-sm flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Pensando...
+                        </p>
                     </div>
                 </div>
             )}
@@ -107,7 +109,7 @@ export function AiChatPanel() {
             <Input
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                placeholder="No sé qué está pasando..."
+                placeholder="Escribe tu pregunta aquí..."
                 className="pr-12"
                 disabled={loading}
             />

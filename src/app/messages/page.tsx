@@ -14,7 +14,7 @@ import { TowlieIcon } from '@/components/icons/towlie';
 const assistantConversation = {
   id: 'canna-toallin',
   name: 'Canna-Toallín',
-  message: '¡No olvides llevar una toalla!',
+  message: '¡Pregúntame lo que sea!',
   unread: 1,
   isAssistant: true,
 };
@@ -72,7 +72,7 @@ export default function MessagesPage() {
     return (
         <div className="h-full w-full flex flex-col bg-background">
             <div className="flex-1 flex overflow-hidden">
-                <div className="w-[300px] border-r flex flex-col">
+                <div className="w-80 border-r flex flex-col">
                     <div className="p-4 border-b">
                         <h2 className="text-xl font-bold font-headline">Mensajes</h2>
                         <div className="relative mt-4">
@@ -91,7 +91,7 @@ export default function MessagesPage() {
                             >
                             <Avatar>
                                 {convo.isAssistant ? (
-                                    <div className="flex h-full w-full items-center justify-center bg-blue-300">
+                                    <div className="flex h-full w-full items-center justify-center bg-blue-300 rounded-full">
                                         <TowlieIcon className='h-7 w-7' />
                                     </div>
                                 ) : (
