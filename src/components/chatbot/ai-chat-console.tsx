@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, User, X } from 'lucide-react';
+import { Loader2, Send, User } from 'lucide-react';
 import { TowlieIcon } from '../icons/towlie';
 import { handleChat } from '@/app/chatbot/actions';
 import { Avatar, AvatarFallback } from '../ui/avatar';
@@ -52,13 +52,15 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
     if (!input.trim() || loading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages: ChatMessage[] = [...messages, userMessage];
+    
+    setMessages(newMessages);
     setInput('');
     setLoading(true);
 
     try {
-      const chatHistory = [...messages, userMessage];
-      const response = await handleChat(chatHistory);
+      // Pass only the current conversation history to the action
+      const response = await handleChat(newMessages);
       
       if (response.error || !response.data) {
         const errorMessage: ChatMessage = { role: 'model', content: response.error || 'Lo siento, estoy un poco perdido. ¿Qué decías?' };
@@ -76,7 +78,7 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
 
   return (
     <div className="h-full w-full max-w-4xl mx-auto flex flex-col bg-background/95 backdrop-blur-sm rounded-t-2xl border-t border-l border-r border-border/50 shadow-2xl shadow-primary/10">
-        <header className="flex items-center justify-between p-4 border-b border-border/50">
+        <header className="flex items-center justify-between p-4 border-b border-border/50 shrink-0">
              <div className="flex items-center gap-3">
                 <AssistantAvatar />
                 <div className='flex flex-col'>
@@ -84,9 +86,6 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
                     <p className='text-xs text-muted-foreground'>Asistente de Cultivo IA</p>
                 </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-                <X className="h-5 w-5" />
-            </Button>
         </header>
 
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
@@ -146,7 +145,7 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
             )}
         </div>
       </ScrollArea>
-      <footer className="p-4 bg-transparent mt-auto">
+      <footer className="p-4 bg-transparent mt-auto shrink-0">
         <form onSubmit={handleSubmit} className="relative">
             <Input
                 value={input}
