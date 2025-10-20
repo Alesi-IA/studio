@@ -34,6 +34,10 @@ Responde en formato JSON.
       },
     });
 
+    if (!output) {
+      return { data: null, error: 'El modelo de IA no devolvió ninguna salida. Por favor, inténtalo de nuevo.' };
+    }
+
     return { data: output, error: null };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
