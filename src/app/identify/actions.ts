@@ -1,13 +1,13 @@
 'use server';
 
-import { identifyStrain } from '@/ai/flows/identify-strain';
+import { ai } from '@/ai/genkit';
+import { IdentifyStrainInputSchema, IdentifyStrainOutputSchema } from '@/app/ai/schemas';
 import type { IdentifyStrainOutput } from './types';
-import { IdentifyStrainInputSchema } from '@/app/ai/schemas';
 
 export { type IdentifyStrainOutput } from './types';
 
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
-  // We only validate that we receive a string. The AI model will handle if the data URI is valid.
+  // We only validate that we receive a string.
   const validatedInput = IdentifyStrainInputSchema.safeParse({ photoDataUri });
   
   if (!validatedInput.success) {
@@ -16,8 +16,25 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
   }
 
   try {
-    const result = await identifyStrain(validatedInput.data);
-    return { data: result, error: null };
+    const { output } = await ai.generate({
+      prompt: `Eres un experto en identificación y salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis.
+
+1.  **Identifica la Cepa:** Determina la cepa más probable de la planta.
+2.  **Estima la Potencia:** Proporciona un porcentaje estimado para THC y CBD. Además, proporciona un índice de "energía" de 0 (muy calmante) a 100 (muy energizante/hype).
+3.  **Detecta Problemas:** Analiza la planta en busca de signos visibles de plagas (como arañas rojas, mosquitos de los hongos), enfermedades (como oídio, moho del cogollo) o deficiencias de nutrientes. Enumera cualquier problema que encuentres.
+
+TODA tu respuesta debe ser en español.
+
+Responde en formato JSON.
+
+{{media url=${photoDataUri}}}`,
+      model: 'googleai/gemini-1.5-flash',
+      output: {
+        schema: IdentifyStrainOutputSchema,
+      },
+    });
+
+    return { data: output, error: null };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
     console.error('Identification failed:', errorMessage);

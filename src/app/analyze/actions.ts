@@ -1,13 +1,13 @@
 'use server';
 
-import { analyzePlantForProblems } from '@/ai/flows/analyze-plant-for-problems';
+import { ai } from '@/ai/genkit';
+import { AnalyzePlantInputSchema, AnalyzePlantOutputSchema } from '@/app/ai/schemas';
 import type { AnalyzePlantOutput } from './types';
-import { AnalyzePlantInputSchema } from '@/app/ai/schemas';
 
 export { type AnalyzePlantOutput } from './types';
 
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
-  // We only validate that we receive a string. The AI model will handle if the data URI is valid.
+  // We only validate that we receive a string.
   const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
   
   if (!validatedInput.success) {
@@ -16,8 +16,21 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
   }
 
   try {
-    const result = await analyzePlantForProblems(validatedInput.data);
-    return { data: result, error: null };
+    const { output } = await ai.generate({
+      prompt: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
+
+TODA tu respuesta debe ser en español.
+
+Responde en formato JSON.
+
+{{media url=${photoDataUri}}}`,
+      model: 'googleai/gemini-1.5-flash',
+      output: {
+        schema: AnalyzePlantOutputSchema,
+      },
+    });
+
+    return { data: output, error: null };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
     console.error('Analysis failed:', errorMessage);
