@@ -23,7 +23,7 @@ TODA tu respuesta debe ser en español.
 
 Responde en formato JSON.
 
-{{media url=${photoDataUri}}}`,
+{{media url=photoDataUri}}`,
       model: 'googleai/gemini-1.5-flash',
       output: {
         schema: AnalyzePlantOutputSchema,
