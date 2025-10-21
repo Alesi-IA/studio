@@ -3,4 +3,7 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/assistant-chat-flow.ts';
+// Import flows here.
+import '@/app/analyze/actions';
+import '@/app/identify/actions';
+import '@/ai/flows/assistant-chat-flow';
