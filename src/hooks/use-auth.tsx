@@ -57,15 +57,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const fetchUserRole = async (user: User) => {
       if (!firestore) return;
       const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setCannaUser({ ...user, ...userData } as CannaGrowUser);
-      } else {
-         setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
+      try {
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setCannaUser({ ...user, ...userData } as CannaGrowUser);
+        } else {
+           setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        // Fallback to basic user if role fetching fails
+        setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
+      } finally {
+        setLoading(false);
       }
-       setLoading(false);
     };
 
     if (isUserLoading) {
@@ -113,24 +119,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             createdAt: new Date().toISOString(),
         };
 
-        setDoc(userDocRef, newUserProfile)
-          .then(() => {
-            toast({
-                title: "¡Cuenta Creada!",
-                description: "Has sido registrado exitosamente."
-            });
-          })
-          .catch((error) => {
-             const contextualError = new FirestorePermissionError({
-                operation: 'create',
-                path: userDocRef.path,
-                requestResourceData: newUserProfile
-            });
-            errorEmitter.emit('permission-error', contextualError);
-          });
+        await setDoc(userDocRef, newUserProfile);
+
+        toast({
+            title: "¡Cuenta Creada!",
+            description: "Has sido registrado exitosamente."
+        });
+
     } catch (error: any) {
         console.error('Sign up error', error);
-        toast({ variant: "destructive", title: "Error de Registro", description: error.message || "No se pudo crear la cuenta." });
+        if (error.code === 'permission-denied') {
+             const contextualError = new FirestorePermissionError({
+                operation: 'create',
+                path: `users/${auth.currentUser?.uid || 'unknown'}`,
+                requestResourceData: {
+                  /* reconstructed data */
+                },
+            });
+            errorEmitter.emit('permission-error', contextualError);
+            toast({ variant: "destructive", title: "Error de Permisos", description: "No tienes permiso para crear un usuario." });
+        } else {
+          toast({ variant: "destructive", title: "Error de Registro", description: error.message || "No se pudo crear la cuenta." });
+        }
     } finally {
         setLoading(false);
     }
@@ -138,15 +148,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logIn = async (email, password) => {
     if (!auth) {
-        toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
-        return;
+        throw new Error("Servicios de autenticación no disponibles.");
     }
     setLoading(true);
     try {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Inicio de Sesión Exitoso" });
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
+        throw new Error("Las credenciales son incorrectas.");
     } finally {
         setLoading(false);
     }

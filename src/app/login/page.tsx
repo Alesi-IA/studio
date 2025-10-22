@@ -23,15 +23,17 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
         try {
             await logIn(email, password);
             router.push('/');
-        } catch (error) {
-             console.error('Failed to sign in', error)
+        } catch (err: any) {
+             setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -74,6 +76,7 @@ export default function LoginPage() {
                 </div>
                 <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
             </div>
+             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
                  {loading ? <Loader2 className="animate-spin" /> : 'Iniciar sesión'}
             </Button>
