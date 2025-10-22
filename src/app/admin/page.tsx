@@ -24,25 +24,18 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const chartData = [
-  { name: 'Ene', total: Math.floor(Math.random() * 20) + 10 },
-  { name: 'Feb', total: Math.floor(Math.random() * 20) + 15 },
-  { name: 'Mar', total: Math.floor(Math.random() * 30) + 20 },
-  { name: 'Abr', total: Math.floor(Math.random() * 40) + 25 },
-  { name: 'May', total: Math.floor(Math.random() * 50) + 30 },
-  { name: 'Jun', total: Math.floor(Math.random() * 60) + 35 },
+  { name: 'Ene', total: 0 },
+  { name: 'Feb', total: 0 },
+  { name: 'Mar', total: 0 },
+  { name: 'Abr', total: 0 },
+  { name: 'May', total: 0 },
+  { name: 'Jun', total: 0 },
 ];
 
-const mockUsers = [
-    { uid: 'owner-uid', name: 'AlexisGrow', email: 'alexisgrow@cannagrow.com', posts: 42, role: 'owner', photoURL: 'https://picsum.photos/seed/AlexisGrow/128/128' },
-    { uid: 'co-owner-uid', name: 'CannaCoOwner', email: 'coowner@cannagrow.com', posts: 31, role: 'co-owner', photoURL: 'https://picsum.photos/seed/co-owner-uid/128/128' },
-    { uid: 'moderator-uid', name: 'CannaMod', email: 'mod@cannagrow.com', posts: 23, role: 'moderator', photoURL: 'https://picsum.photos/seed/moderator-uid/128/128' },
-    { uid: 'user-uid-1', name: 'Cultivador1', email: 'cultivador1@email.com', posts: 15, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-1/128/128' },
-    { uid: 'user-uid-2', name: 'YerbaBuena', email: 'yerba.buena@email.com', posts: 8, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-2/128/128' },
-    { uid: 'user-uid-4', name: 'Sativus', email: 'sativus@email.com', posts: 5, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-4/128/128' },
-]
+const mockUsers: any[] = [];
 
 export default function AdminPage() {
   const { _injectUser, user: currentUser, isOwner } = useAuth();
@@ -56,7 +49,7 @@ export default function AdminPage() {
   }, [isOwner, router]);
 
 
-  const handleImpersonate = (targetUser: (typeof mockUsers)[0]) => {
+  const handleImpersonate = (targetUser: any) => {
     const userToImpersonate = {
         uid: targetUser.uid,
         email: targetUser.email,
@@ -90,8 +83,8 @@ export default function AdminPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">1,254</div>
-                <p className="text-xs text-muted-foreground">+20.1% desde el mes pasado</p>
+                <div className="text-2xl font-bold">0</div>
+                <p className="text-xs text-muted-foreground">--</p>
                 </CardContent>
             </Card>
             <Card>
@@ -100,8 +93,8 @@ export default function AdminPage() {
                 <File className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">4,890</div>
-                <p className="text-xs text-muted-foreground">+180 desde la semana pasada</p>
+                <div className="text-2xl font-bold">0</div>
+                <p className="text-xs text-muted-foreground">--</p>
                 </CardContent>
             </Card>
              <Card>
@@ -110,8 +103,8 @@ export default function AdminPage() {
                 <AreaChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">312</div>
-                <p className="text-xs text-muted-foreground">+32 desde ayer</p>
+                <div className="text-2xl font-bold">0</div>
+                <p className="text-xs text-muted-foreground">--</p>
                 </CardContent>
             </Card>
              <Card>
@@ -120,8 +113,8 @@ export default function AdminPage() {
                 <BarChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">+98</div>
-                <p className="text-xs text-muted-foreground">Un 15% más que el mes anterior</p>
+                <div className="text-2xl font-bold">0</div>
+                <p className="text-xs text-muted-foreground">--</p>
                 </CardContent>
             </Card>
         </div>
@@ -198,7 +191,7 @@ export default function AdminPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {mockUsers.map(user => (
+                        {mockUsers.length > 0 ? mockUsers.map(user => (
                             <TableRow key={user.email}>
                                 <TableCell>
                                     <div className="font-medium">{user.name}</div>
@@ -225,7 +218,13 @@ export default function AdminPage() {
                                     )}
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    No hay usuarios para mostrar.
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                     </Table>
                 </CardContent>
