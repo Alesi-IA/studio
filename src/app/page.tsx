@@ -10,9 +10,8 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, MoreHorizontal, Send, Award, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Send, Award, Bookmark, BookHeart } from 'lucide-react';
 import Link from 'next/link';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,33 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-const stories = Array.from({ length: 10 }).map((_, i) => ({
-  id: `story-${i}`,
-  user: `usuario_${i}`,
-  avatar: `https://picsum.photos/seed/story${i}/80/80`,
-}));
-
-const initialPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed-')).map((p, index) => ({
-  id: p.id,
-  authorId: `user-id-${index}`,
-  authorName: `Cultivador${index + 1}`,
-  authorAvatar: `https://picsum.photos/seed/user-id-${index}/40/40`,
-  description: p.description,
-  imageUrl: p.imageUrl,
-  imageHint: p.imageHint,
-  width: p.width,
-  height: p.height,
-  createdAt: new Date(Date.now() - index * 1000 * 60 * 60 * 3).toISOString(), // Posts staggered over time
-  likes: Math.floor(Math.random() * 200),
-  comments: Array.from({ length: Math.floor(Math.random() * 5) }).map((_, i) => ({
-    id: `comment-${p.id}-${i}`,
-    authorName: `Comentador${i}`,
-    text: `¡Qué buena cosecha! Se ve increíble.`,
-  })),
-}));
-
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -83,19 +56,9 @@ export default function FeedPage() {
 
   const loadPosts = useCallback(() => {
     setLoading(true);
-    // Simulating fetching posts
     const storedPostsJSON = sessionStorage.getItem('mockPosts');
     const storedPosts = storedPostsJSON ? JSON.parse(storedPostsJSON) : [];
-    
-    const allPosts = [...storedPosts, ...initialPosts];
-    
-    // Remove duplicates by ID, giving priority to user-created/edited) posts
-    const uniquePosts = allPosts.filter((post, index, self) =>
-        index === self.findIndex((t) => t.id === post.id)
-    );
-    
-    const sortedPosts = uniquePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
+    const sortedPosts = storedPosts.sort((a:Post, b:Post) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setPosts(sortedPosts);
     setLoading(false);
   }, []);
@@ -120,8 +83,7 @@ export default function FeedPage() {
 
   const persistInteractions = (key: 'likedPosts' | 'savedPosts', newSet: Set<string>) => {
     sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
-    // We don't dispatch a storage event here because this function is called by the component that is making the change.
-    // The event listener is for other tabs/windows to sync up.
+    window.dispatchEvent(new Event('storage'));
   };
   
   const handleToggleSave = (postId: string) => {
@@ -133,8 +95,6 @@ export default function FeedPage() {
     }
     setSavedPosts(newSavedPosts);
     persistInteractions('savedPosts', newSavedPosts);
-    // Manually trigger a re-render or event if needed in other components immediately
-     window.dispatchEvent(new Event('storage'));
   };
 
   const handleToggleLike = (postId: string) => {
@@ -174,6 +134,7 @@ export default function FeedPage() {
       p.id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p
     );
     setPosts(updatedPosts);
+    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     handleCommentChange(postId, ''); // Clear input after submitting
   };
 
@@ -181,15 +142,8 @@ export default function FeedPage() {
     try {
         const updatedPosts = posts.filter(p => p.id !== postToDelete.id);
         setPosts(updatedPosts);
-        
-        const storedPostsJSON = sessionStorage.getItem('mockPosts');
-        if (storedPostsJSON) {
-          const storedPosts = JSON.parse(storedPostsJSON);
-          const updatedStoredPosts = storedPosts.filter((p: Post) => p.id !== postToDelete.id);
-          sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
-        }
+        sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
         window.dispatchEvent(new Event('storage'));
-
     } catch (error) {
         console.error("Error al eliminar la publicación (simulado): ", error);
     }
@@ -207,32 +161,7 @@ export default function FeedPage() {
         p.id === editingPost.id ? { ...p, description: editingDescription } : p
     );
     setPosts(updatedPosts);
-
-    const storedPostsJSON = sessionStorage.getItem('mockPosts');
-    if (storedPostsJSON) {
-        const storedPosts = JSON.parse(storedPostsJSON);
-        const postExistsInStorage = storedPosts.some((p: Post) => p.id === editingPost.id);
-        
-        let updatedStoredPosts;
-        if(postExistsInStorage) {
-            updatedStoredPosts = storedPosts.map((p: Post) => 
-                p.id === editingPost.id ? { ...p, description: editingDescription } : p
-            );
-        } else {
-            // If the post being edited is an initialPost, it needs to be added to sessionStorage
-            const postToStore = updatedPosts.find(p => p.id === editingPost.id);
-            if (postToStore) {
-                 updatedStoredPosts = [postToStore, ...storedPosts];
-            } else {
-                updatedStoredPosts = storedPosts;
-            }
-        }
-        sessionStorage.setItem('mockPosts', JSON.stringify(updatedStoredPosts));
-    } else {
-        // If no posts were in session storage, create the item
-        const postToStore = updatedPosts.find(p => p.id === editingPost.id);
-        if(postToStore) sessionStorage.setItem('mockPosts', JSON.stringify([postToStore]));
-    }
+    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     
     window.dispatchEvent(new Event('storage'));
     setEditingPost(null);
@@ -240,27 +169,6 @@ export default function FeedPage() {
 
   return (
     <div className="w-full">
-      <div className="p-4 md:px-8">
-        <ScrollArea className="w-full whitespace-nowrap rounded-md">
-          <div className="flex w-max space-x-4 pb-4">
-            {stories.map((story) => (
-              <figure key={story.id} className="shrink-0">
-                <div className="w-20 h-20 rounded-full p-1 ring-2 ring-primary ring-offset-2 ring-offset-background">
-                    <Avatar className="w-full h-full">
-                        <AvatarImage src={story.avatar} alt={story.user} />
-                        <AvatarFallback>{story.user.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                </div>
-                <figcaption className="pt-2 text-xs text-muted-foreground text-center truncate w-20">
-                  {story.user}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-      </div>
-
       <div className="mx-auto max-w-2xl space-y-8 px-4 py-6 md:px-8">
         {loading && Array.from({length: 3}).map((_, i) => (
           <Card key={i}>
@@ -280,6 +188,14 @@ export default function FeedPage() {
             </CardFooter>
           </Card>
         ))}
+
+        {!loading && posts.length === 0 && (
+          <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg flex flex-col items-center gap-4">
+            <BookHeart className="h-16 w-16" />
+            <h3 className="font-headline text-2xl font-semibold">Tu feed está vacío</h3>
+            <p className="max-w-md">¡Parece que todavía no hay publicaciones! Sé el primero en compartir algo con la comunidad.</p>
+          </div>
+        )}
 
         {!loading && posts.map((post) => {
           const canManage = user?.uid === post.authorId || isAdmin;
@@ -376,7 +292,7 @@ export default function FeedPage() {
                           </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Premiar la mejor respuesta</p>
+                        <p>Premiar la mejor respuesta (próximamente)</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>

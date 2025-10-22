@@ -1,73 +1,84 @@
 // @ts-nocheck
 'use client';
 
-import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useToast } from './use-toast';
 import type { User } from 'firebase/auth';
 
-// --- MOCK USER DATA ---
-const MOCK_ADMIN_USER = {
-  uid: 'admin-uid',
-  email: 'admin@cannagrow.com',
-  displayName: 'Admin Canna',
-  role: 'admin',
-  photoURL: `https://picsum.photos/seed/admin-uid/128/128`
-};
+type UserRole = 'owner' | 'moderator' | 'user';
 
-const MOCK_NORMAL_USER = {
-  uid: 'user-uid-123',
-  email: 'test@test.com',
-  displayName: 'Test User',
-  role: 'user',
-  photoURL: `https://picsum.photos/seed/user-uid-123/128/128`
+interface CannaGrowUser extends User {
+  role: UserRole;
 }
-// --- END MOCK USER DATA ---
+
+const MOCK_USERS = {
+  owner: {
+    uid: 'owner-uid',
+    email: 'owner@cannagrow.com',
+    displayName: 'CannaOwner',
+    role: 'owner',
+    photoURL: 'https://picsum.photos/seed/owner-uid/128/128'
+  },
+  moderator: {
+    uid: 'moderator-uid',
+    email: 'mod@cannagrow.com',
+    displayName: 'CannaMod',
+    role: 'moderator',
+    photoURL: 'https://picsum.photos/seed/moderator-uid/128/128'
+  },
+  user: {
+    uid: 'user-uid-123',
+    email: 'test@test.com',
+    displayName: 'Test User',
+    role: 'user',
+    photoURL: 'https://picsum.photos/seed/user-uid-123/128/128'
+  }
+};
 
 
 interface AuthContextType {
-  user: User | null;
+  user: CannaGrowUser | null;
   loading: boolean;
-  signUp: (displayName: string, email: string, pass: string) => Promise<any>;
-  logIn: (email: string, pass: string) => Promise<any>;
-  logOut: () => Promise<any>;
-  isOwner: (ownerId: string) => boolean;
-  isAdmin: boolean;
-  _injectUser: (user: any) => void;
+  role: UserRole | null;
+  isOwner: boolean;
+  isModerator: boolean;
+  signUp: (displayName: string, email: string, pass: string) => Promise<void>;
+  logIn: (email: string, pass: string) => Promise<void>;
+  logOut: () => Promise<void>;
+  _injectUser: (user: CannaGrowUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  role: null,
+  isOwner: false,
+  isModerator: false,
   signUp: async () => {},
   logIn: async () => {},
   logOut: async () => {},
-  isOwner: () => false,
-  isAdmin: false,
   _injectUser: () => {}
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<CannaGrowUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
+  const role = user?.role || null;
+  const isOwner = role === 'owner';
+  const isModerator = role === 'moderator' || role === 'owner';
 
   const checkUser = useCallback(() => {
     setLoading(true);
     try {
       const storedUser = sessionStorage.getItem('mockUser');
       if (storedUser) {
-        const currentUser = JSON.parse(storedUser);
-        setUser(currentUser);
-        setIsAdmin(currentUser.role === 'admin');
+        setUser(JSON.parse(storedUser));
       } else {
-        // Set default user but don't navigate
-        const defaultUser = MOCK_NORMAL_USER;
+        // Set default user (owner) for initial setup
+        const defaultUser = MOCK_USERS.owner;
         setUser(defaultUser);
-        setIsAdmin(defaultUser.role === 'admin');
         sessionStorage.setItem('mockUser', JSON.stringify(defaultUser));
       }
     } catch (e) {
@@ -79,17 +90,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     checkUser();
-    // Use a custom event to re-check user status when it might have changed elsewhere
     window.addEventListener('user-change', checkUser);
-
-    return () => {
-      window.removeEventListener('user-change', checkUser);
-    }
+    return () => window.removeEventListener('user-change', checkUser);
   }, [checkUser]);
 
-  const _injectUser = useCallback((mockUser: any) => {
+  const _injectUser = useCallback((mockUser: CannaGrowUser) => {
       setUser(mockUser);
-      setIsAdmin(mockUser.role === 'admin');
       sessionStorage.setItem('mockUser', JSON.stringify(mockUser));
       window.dispatchEvent(new Event('user-change'));
   }, []);
@@ -97,8 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (displayName, email, password) => {
     setLoading(true);
     try {
-        // Simulate creating a new user
-        const newUser = {
+        const newUser: CannaGrowUser = {
             uid: `mock-uid-${Date.now()}`,
             email,
             displayName,
@@ -107,18 +112,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
         sessionStorage.setItem('mockUser', JSON.stringify(newUser));
         setUser(newUser);
-        setIsAdmin(false);
         window.dispatchEvent(new Event('user-change'));
         toast({
-            title: "¡Cuenta Creada! (Simulado)",
+            title: "¡Cuenta Creada!",
             description: "Has sido registrado exitosamente."
         });
     } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Error de Registro (Simulado)",
-            description: "No se pudo crear la cuenta."
-        });
+        toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta." });
         throw error;
     } finally {
         setLoading(false);
@@ -128,27 +128,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logIn = async (email, password) => {
     setLoading(true);
     try {
-        // Simulate logging in
-        let userToLogin = MOCK_NORMAL_USER;
-        if (email.toLowerCase().includes('admin')) {
-            userToLogin = MOCK_ADMIN_USER;
+        let userToLogin: CannaGrowUser;
+        if (email.toLowerCase() === MOCK_USERS.owner.email) {
+            userToLogin = MOCK_USERS.owner;
+        } else if (email.toLowerCase() === MOCK_USERS.moderator.email) {
+            userToLogin = MOCK_USERS.moderator;
+        } else {
+            userToLogin = MOCK_USERS.user;
         }
         
         sessionStorage.setItem('mockUser', JSON.stringify(userToLogin));
         setUser(userToLogin);
-        setIsAdmin(userToLogin.role === 'admin');
         window.dispatchEvent(new Event('user-change'));
         
-        toast({
-            title: "Inicio de Sesión Exitoso (Simulado)"
-        });
-
+        toast({ title: "Inicio de Sesión Exitoso" });
     } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Error de Inicio de Sesión (Simulado)",
-            description: "Las credenciales son incorrectas."
-        })
+        toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
         throw error;
     } finally {
         setLoading(false);
@@ -160,32 +155,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
         sessionStorage.removeItem('mockUser');
         setUser(null);
-        setIsAdmin(false);
         window.dispatchEvent(new Event('user-change'));
-        router.push('/login');
     } catch (error) {
-         toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No se pudo cerrar la sesión."
-        })
+         toast({ variant: "destructive", title: "Error", description: "No se pudo cerrar la sesión." });
     } finally {
         setLoading(false);
     }
-  };
-  
-  const isOwner = (ownerId) => {
-    return user?.uid === ownerId;
   };
 
   const value = {
     user,
     loading,
+    role,
+    isOwner,
+    isModerator,
     signUp,
     logIn,
     logOut,
-    isOwner,
-    isAdmin,
     _injectUser,
   };
 
@@ -199,5 +185,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

@@ -15,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/hooks/use-auth";
-import { Leaf, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { CannabisLeafIcon } from "@/components/icons/cannabis-leaf";
 
 export default function LoginPage() {
     const { logIn } = useAuth();
@@ -43,7 +44,7 @@ export default function LoginPage() {
        <CardHeader className="text-center">
         <div className="flex justify-center items-center gap-2 mb-4">
             <CannaGrowLogo />
-            <Leaf className="h-6 w-6 text-primary" />
+            <CannabisLeafIcon className="h-6 w-6 text-primary" />
             <span className="text-2xl font-headline font-bold">CannaGrow</span>
         </div>
         <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>

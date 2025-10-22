@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye, Shield, Leaf } from "lucide-react";
+import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye, UserCog } from "lucide-react";
 import { CannaGrowLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { CannabisLeafIcon } from "../icons/cannabis-leaf";
 
 const navItems = [
   { href: "/", label: "Noticias", icon: Home, requiredRole: "" },
@@ -20,21 +21,21 @@ const navItems = [
   { href: "/identify", label: "Asistente IA", icon: ScanEye, requiredRole: "" },
   { href: "/tools", label: "Herramientas", icon: Calendar, requiredRole: "" },
   { href: "/messages", label: "Mensajes", icon: MessageSquare, requiredRole: "" },
-  { href: "/admin", label: "Admin", icon: Shield, requiredRole: "admin" },
+  { href: "/admin", label: "Admin", icon: UserCog, requiredRole: "owner" },
 ];
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, role } = useAuth();
   const router = useRouter();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
   
   const accessibleNavItems = navItems.filter(item => {
     if (!item.requiredRole) return true;
-    return item.requiredRole === 'admin' && isAdmin;
+    return item.requiredRole === role;
   });
   
   React.useEffect(() => {
@@ -48,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-screen w-full items-center justify-center">
              <div className="flex items-center gap-3">
               <CannaGrowLogo />
-              <Leaf className="h-6 w-6 text-primary" />
+              <CannabisLeafIcon className="h-6 w-6 text-primary" />
               <span className="font-headline text-lg font-semibold">
                 CannaGrow
               </span>
@@ -72,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="font-headline text-lg font-semibold">
                 CannaGrow
               </span>
-               <Leaf className="h-5 w-5 text-primary/80" />
+               <CannabisLeafIcon className="h-5 w-5 text-primary/80" />
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">

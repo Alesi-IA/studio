@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AreaChart, BarChart, File, ListFilter, LogIn, Users } from 'lucide-react';
+import { AreaChart, BarChart, File, ListFilter, LogIn, Users, Crown, ShieldCheck, UserCog } from 'lucide-react';
 import {
   Bar,
   BarChart as BarChartComponent,
@@ -24,6 +24,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 const chartData = [
   { name: 'Ene', total: Math.floor(Math.random() * 20) + 10 },
@@ -35,20 +36,26 @@ const chartData = [
 ];
 
 const mockUsers = [
+    { uid: 'owner-uid', name: 'CannaOwner', email: 'owner@cannagrow.com', posts: 42, role: 'owner', photoURL: 'https://picsum.photos/seed/owner-uid/128/128' },
+    { uid: 'moderator-uid', name: 'CannaMod', email: 'mod@cannagrow.com', posts: 23, role: 'moderator', photoURL: 'https://picsum.photos/seed/moderator-uid/128/128' },
     { uid: 'user-uid-1', name: 'Cultivador1', email: 'cultivador1@email.com', posts: 15, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-1/128/128' },
     { uid: 'user-uid-2', name: 'YerbaBuena', email: 'yerba.buena@email.com', posts: 8, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-2/128/128' },
-    { uid: 'admin-uid', name: 'Admin Canna', email: 'admin@cannagrow.com', posts: 42, role: 'admin', photoURL: 'https://picsum.photos/seed/admin-uid/128/128' },
-    { uid: 'user-uid-3', name: 'Flor_de_Loto', email: 'flor.loto@email.com', posts: 23, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-3/128/128' },
     { uid: 'user-uid-4', name: 'Sativus', email: 'sativus@email.com', posts: 5, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-4/128/128' },
 ]
 
 export default function AdminPage() {
-  const { _injectUser, user: currentUser } = useAuth();
+  const { _injectUser, user: currentUser, isOwner } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  
+  useEffect(() => {
+    if(!isOwner) {
+        router.push('/');
+    }
+  }, [isOwner, router]);
+
 
   const handleImpersonate = (targetUser: (typeof mockUsers)[0]) => {
-    // Simulating the user object expected by the auth context
     const userToImpersonate = {
         uid: targetUser.uid,
         email: targetUser.email,
@@ -64,11 +71,15 @@ export default function AdminPage() {
     router.push('/');
   }
 
+  if (!isOwner) {
+    return null;
+  }
+
   return (
     <div className="w-full">
       <PageHeader
         title="Panel de Administrador"
-        description="Gestiona la comunidad y visualiza las estadísticas."
+        description="Gestiona la comunidad, roles y visualiza las estadísticas."
       />
       <div className="p-4 md:p-8 space-y-8">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -149,7 +160,7 @@ export default function AdminPage() {
                     <div className="grid gap-2">
                     <CardTitle>Gestión de Usuarios</CardTitle>
                     <CardDescription>
-                        Una lista de los usuarios recientes en la plataforma.
+                        Una lista de los usuarios de la plataforma.
                     </CardDescription>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
@@ -165,12 +176,11 @@ export default function AdminPage() {
                         </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
+                        <DropdownMenuLabel>Filtrar por rol</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem checked>
-                            Activo
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem>Archivado</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem>Dueño</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem>Moderador</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem>Usuario</DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     </div>
@@ -195,7 +205,10 @@ export default function AdminPage() {
                                     </div>
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell">
-                                     <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
+                                     <Badge variant={user.role === 'owner' ? 'destructive' : user.role === 'moderator' ? 'secondary' : 'outline'}>
+                                        {user.role === 'owner' && <Crown className="mr-1 h-3 w-3" />}
+                                        {user.role === 'moderator' && <ShieldCheck className="mr-1 h-3 w-3" />}
+                                        {user.role === 'user' && <UserCog className="mr-1 h-3 w-3" />}
                                         {user.role}
                                     </Badge>
                                 </TableCell>
@@ -219,5 +232,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    

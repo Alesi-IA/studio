@@ -5,15 +5,14 @@ import { PageHeader } from '@/components/page-header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Leaf } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Post } from '@/types';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,78 +20,64 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-const initialUserPosts: Post[] = PlaceHolderImages.filter(p => p.id.startsWith('feed-')).slice(0, 9).map((p, index) => ({
-  id: p.id,
-  authorId: `user-id-${index}`,
-  authorName: `Cultivador${index + 1}`,
-  authorAvatar: `https://picsum.photos/seed/user-id-${index}/40/40`,
-  description: p.description,
-  imageUrl: p.imageUrl,
-  imageHint: p.imageHint,
-  width: p.width,
-  height: p.height,
-  createdAt: new Date().toISOString(),
-  likes: Math.floor(Math.random() * 200),
-  comments: Array.from({ length: Math.floor(Math.random() * 5) }).map((_, i) => ({
-    id: `comment-${p.id}-${i}`,
-    authorName: `Comentador${i}`,
-    text: `¡Qué buena cosecha! Se ve increíble.`,
-  })),
-}));
+const rankConfig = {
+  owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400' },
+  moderator: { label: 'Moderador', icon: ShieldCheck, color: 'text-blue-400' },
+  user: { label: 'Usuario', icon: UserIcon, color: 'text-green-400' },
+};
 
-// Mock para simular un ID de usuario diferente al logueado
-const OTHER_USER_ID = 'other-user-id';
 
 export default function ProfilePage() {
-  const [userPosts, setUserPosts] = useState<Post[]>(initialUserPosts);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [savedPostsState, setSavedPostsState] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
-  const { user, isAdmin, logOut } = useAuth();
+  const { user, logOut } = useAuth();
   const router = useRouter();
 
-  // Simulación para ver otro perfil. En una app real, esto vendría de la URL (e.g. /profile/[userId])
   const isOwnProfile = true; 
+  
+  const rank = useMemo(() => {
+    return rankConfig[user?.role as keyof typeof rankConfig] || rankConfig.user;
+  }, [user]);
+
   const profileData = {
       displayName: user?.displayName || 'Usuario',
       photoURL: user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`,
-      isCurrentUserAdmin: isAdmin,
       uid: user?.uid,
-      bio: isAdmin ? 
-            'Dueño y operador de CannaGrow. Cultivador apasionado desde 2010. Especializado en técnicas de suelo vivo y orgánico. ¡Aquí para compartir conocimientos y ver sus hermosas plantas! 🌿' : 
-            'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
-      rank: isAdmin ? 'Maestro Cultivador' : 'Aprendiz de Cultivo'
+      bio: user?.role === 'owner' ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!' :
+           user?.role === 'moderator' ? 'Moderador de CannaGrow. Aquí para ayudar y mantener el buen ambiente.' :
+           'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+      rank,
+      role: user?.role,
   }
 
   const loadPostsAndState = useCallback(() => {
-    const storedPosts = sessionStorage.getItem('mockPosts');
-    const allPosts = storedPosts ? [...JSON.parse(storedPosts), ...initialUserPosts] : initialUserPosts;
+    const allPostsJSON = sessionStorage.getItem('mockPosts');
+    const allPosts = allPostsJSON ? JSON.parse(allPostsJSON) : [];
     
-    const uniquePosts = allPosts.filter((post: Post, index: number, self: Post[]) =>
-        index === self.findIndex((t) => t.id === post.id)
-    );
-
     const savedPostIds = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
-    const userSavedPosts = uniquePosts.filter((p: Post) => savedPostIds.has(p.id));
+    const userSavedPosts = allPosts.filter((p: Post) => savedPostIds.has(p.id));
     setSavedPostsState(userSavedPosts);
 
     const likedPostIds = new Set(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
     setLikedPosts(likedPostIds);
 
-    const myPosts = uniquePosts.filter((p: Post) => p.authorId === user?.uid);
-    setUserPosts(myPosts.length > 0 ? myPosts : initialUserPosts.slice(0, 9));
+    const myPosts = allPosts.filter((p: Post) => p.authorId === user?.uid);
+    setUserPosts(myPosts);
 
   }, [user?.uid]);
 
   useEffect(() => {
+    if (!user) return;
     loadPostsAndState();
     window.addEventListener('storage', loadPostsAndState);
     return () => {
       window.removeEventListener('storage', loadPostsAndState);
     };
-  }, [loadPostsAndState]);
+  }, [loadPostsAndState, user]);
 
 
   const handleLogout = async () => {
@@ -140,6 +125,13 @@ export default function ProfilePage() {
     const updatePostInState = (p: Post) => p.id === postId ? updatedPost : p;
     setUserPosts(userPosts.map(updatePostInState));
     setSavedPostsState(savedPostsState.map(updatePostInState));
+    
+    const allPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
+    const postIndex = allPosts.findIndex((p: Post) => p.id === postId);
+    if (postIndex > -1) {
+        allPosts[postIndex] = updatedPost;
+        sessionStorage.setItem('mockPosts', JSON.stringify(allPosts));
+    }
 
     setCommentText(''); // Clear input
     window.dispatchEvent(new Event('storage'));
@@ -164,10 +156,10 @@ export default function ProfilePage() {
         title="Perfil"
         description="Tu espacio personal en CannaGrow."
         actions={
-          isAdmin && isOwnProfile && (
+          profileData.role === 'owner' && isOwnProfile && (
               <Link href="/admin">
                 <Button variant="outline">
-                  <ShieldCheck className="mr-2" />
+                  <UserCog className="mr-2" />
                   Panel Admin
                 </Button>
               </Link>
@@ -183,16 +175,22 @@ export default function ProfilePage() {
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <h2 className="font-headline text-2xl font-bold">{profileData.displayName}</h2>
-              {profileData.isCurrentUserAdmin && (
-                <Badge variant="destructive" className="gap-1">
+              {profileData.role === 'owner' && (
+                <Badge variant="destructive" className="gap-1 bg-yellow-500/10 border-yellow-500 text-yellow-400">
+                    <Crown className="h-3 w-3" />
+                    Dueño
+                </Badge>
+              )}
+               {profileData.role === 'moderator' && (
+                <Badge variant="secondary" className="gap-1 bg-blue-500/10 border-blue-500 text-blue-400">
                     <ShieldCheck className="h-3 w-3" />
-                    Administrador
+                    Moderador
                 </Badge>
               )}
             </div>
-            <div className="flex justify-center items-center gap-2 md:justify-start">
-              <Leaf className="h-5 w-5 text-green-400" />
-              <span className="font-bold font-headline text-lg">{profileData.rank}</span>
+            <div className={`flex justify-center items-center gap-2 md:justify-start ${profileData.rank.color}`}>
+              <profileData.rank.icon className="h-5 w-5" />
+              <span className="font-bold font-headline text-lg">{profileData.rank.label}</span>
             </div>
             
             <div className="flex justify-center gap-2">
@@ -252,27 +250,35 @@ export default function ProfilePage() {
             <TabsTrigger value="tagged">Etiquetados</TabsTrigger>
           </TabsList>
           <TabsContent value="posts" className="mt-6">
-            <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:gap-4">
-              {userPosts.map((post) => (
-                <div
-                  key={post.id}
-                  className="group relative aspect-square overflow-hidden rounded-md cursor-pointer"
-                  onClick={() => setSelectedPost(post)}
-                >
-                  <Image
-                    src={post.imageUrl}
-                    alt={post.description}
-                    fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    data-ai-hint={post.imageHint}
-                  />
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-4 opacity-0 transition-opacity group-hover:opacity-100">
-                    <div className="flex items-center gap-1 text-white font-bold"><Heart className='h-5 w-5' /> {post.likes}</div>
-                    <div className="flex items-center gap-1 text-white font-bold"><MessageIcon className='h-5 w-5' /> {post.comments?.length || 0}</div>
-                  </div>
+            {userPosts.length > 0 ? (
+                <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:gap-4">
+                {userPosts.map((post) => (
+                    <div
+                    key={post.id}
+                    className="group relative aspect-square overflow-hidden rounded-md cursor-pointer"
+                    onClick={() => setSelectedPost(post)}
+                    >
+                    <Image
+                        src={post.imageUrl}
+                        alt={post.description}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        data-ai-hint={post.imageHint}
+                    />
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-4 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="flex items-center gap-1 text-white font-bold"><Heart className='h-5 w-5' /> {post.likes}</div>
+                        <div className="flex items-center gap-1 text-white font-bold"><MessageIcon className='h-5 w-5' /> {post.comments?.length || 0}</div>
+                    </div>
+                    </div>
+                ))}
                 </div>
-              ))}
-            </div>
+            ) : (
+                 <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
+                    <Bookmark className="h-12 w-12 mx-auto mb-4" />
+                    <p className="font-semibold">No has publicado nada</p>
+                    <p className="text-sm">¡Crea tu primera publicación para compartirla con la comunidad!</p>
+                </div>
+            )}
           </TabsContent>
           <TabsContent value="saved" className="mt-6">
             {savedPostsState.length > 0 ? (
@@ -380,8 +386,7 @@ export default function ProfilePage() {
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                         />
-                        <Button type="submit" variant="ghost" size="sm" disabled={!commentText.trim()}>Publicar</Button>
-                   </form>
+                        <Button type="submit" variant="ghost" size="sm" disabled={!commentText.trim()}>Publicar</Button>                   </form>
                 </CardFooter>
               </div>
             </div>
