@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
@@ -61,8 +62,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userData = userDoc.data();
         setCannaUser({ ...user, ...userData } as CannaGrowUser);
       } else {
-         // This might happen for users created before the firestore doc was standard.
-         // Default to 'user' role
          setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
       }
        setLoading(false);
@@ -92,6 +91,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+
+        await updateProfile(user, {
+            displayName: displayName,
+            photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
+        });
         
         const userRole: UserRole = email.toLowerCase() === 'alexisgrow@cannagrow.com' ? 'owner' : 'user';
 
@@ -134,7 +138,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         toast({ title: "Inicio de Sesión Exitoso" });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
-        throw error;
     } finally {
         setLoading(false);
     }
@@ -148,9 +151,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
          toast({ variant: "destructive", title: "Error", description: "No se pudo cerrar la sesión." });
     } finally {
+        setCannaUser(null);
         setLoading(false);
     }
   };
+  
+  const _injectUser = (userToImpersonate: CannaGrowUser) => {
+     if (isOwner) {
+        const fullUser = {
+            ...firebaseUser,
+            ...userToImpersonate
+        }
+        setCannaUser(fullUser as CannaGrowUser);
+     }
+  }
 
   const value = {
     user: cannaUser,
@@ -162,7 +176,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     logIn,
     logOut,
-    _injectUser: () => {}, // No-op in real auth
+    _injectUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
