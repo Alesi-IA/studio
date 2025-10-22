@@ -41,11 +41,8 @@ export default function LoginPage() {
   return (
     <Card className="mx-auto max-w-sm">
        <CardHeader className="text-center">
-        <div className="flex justify-center items-center gap-2 mb-4">
-            <CannaGrowLogo />
-            <span className="text-2xl font-headline font-bold">CannaGrow</span>
-        </div>
-        <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
+        <CannaGrowLogo className="mx-auto" />
+        <CardTitle className="text-2xl font-headline font-bold">CannaGrow</CardTitle>
         <CardDescription>
           Ingresa tu email para acceder a tu cuenta
         </CardDescription>
@@ -62,6 +59,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
                 />
             </div>
             <div className="grid gap-2">
@@ -74,7 +72,7 @@ export default function LoginPage() {
                     ¿Olvidaste tu contraseña?
                 </Link>
                 </div>
-                <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
+                <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
                  {loading ? <Loader2 className="animate-spin" /> : 'Iniciar sesión'}

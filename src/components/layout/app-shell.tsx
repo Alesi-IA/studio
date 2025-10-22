@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { AuthProvider } from "@/hooks/use-auth";
 
 const navItems = [
   { href: "/", label: "Noticias", icon: Home, requiredRole: "" },
@@ -23,8 +24,7 @@ const navItems = [
   { href: "/admin", label: "Admin", icon: UserCog, requiredRole: "owner" },
 ];
 
-
-export function AppShell({ children }: { children: React.ReactNode }) {
+function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
   const { user, loading, role } = useAuth();
@@ -193,5 +193,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </DialogContent>
 
     </Dialog>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <AppShellContent>{children}</AppShellContent>
+    </AuthProvider>
   );
 }

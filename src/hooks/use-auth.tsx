@@ -3,45 +3,21 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useToast } from './use-toast';
-import type { User } from 'firebase/auth';
+import {
+  type User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { useFirebase } from '@/firebase/provider';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 
 interface CannaGrowUser extends User {
   role: UserRole;
+  displayName: string;
 }
-
-const MOCK_USERS = {
-  owner: {
-    uid: 'owner-uid',
-    email: 'alexisgrow@cannagrow.com',
-    displayName: 'AlexisGrow',
-    role: 'owner',
-    photoURL: 'https://picsum.photos/seed/AlexisGrow/128/128'
-  },
-  coOwner: {
-    uid: 'co-owner-uid',
-    email: 'coowner@cannagrow.com',
-    displayName: 'CannaCoOwner',
-    role: 'co-owner',
-    photoURL: 'https://picsum.photos/seed/co-owner-uid/128/128'
-  },
-  moderator: {
-    uid: 'moderator-uid',
-    email: 'mod@cannagrow.com',
-    displayName: 'CannaMod',
-    role: 'moderator',
-    photoURL: 'https://picsum.photos/seed/moderator-uid/128/128'
-  },
-  user: {
-    uid: 'user-uid-123',
-    email: 'test@test.com',
-    displayName: 'Test User',
-    role: 'user',
-    photoURL: 'https://picsum.photos/seed/user-uid-123/128/128'
-  }
-};
-
 
 interface AuthContextType {
   user: CannaGrowUser | null;
@@ -53,7 +29,7 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  _injectUser: (user: CannaGrowUser) => void;
+  _injectUser: (user: CannaGrowUser) => void; // This will now be a no-op but kept for compatibility if needed elsewhere
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -70,65 +46,75 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<CannaGrowUser | null>(null);
+  const { auth, firestore, isUserLoading, user: firebaseUser } = useFirebase();
+  const [cannaUser, setCannaUser] = useState<CannaGrowUser | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    const fetchUserRole = async (user: User) => {
+      if (!firestore) return;
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
 
-  const role = user?.role || null;
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setCannaUser({ ...user, ...userData } as CannaGrowUser);
+      } else {
+         // This might happen for users created before the firestore doc was standard.
+         // Default to 'user' role
+         setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
+      }
+       setLoading(false);
+    };
+
+    if (isUserLoading) {
+      setLoading(true);
+    } else if (firebaseUser) {
+      fetchUserRole(firebaseUser);
+    } else {
+      setCannaUser(null);
+      setLoading(false);
+    }
+  }, [firebaseUser, isUserLoading, firestore]);
+
+  const role = cannaUser?.role || null;
   const isOwner = role === 'owner';
   const isCoOwner = role === 'co-owner';
   const isModerator = role === 'moderator' || role === 'co-owner' || role === 'owner';
 
-  const checkUser = useCallback(() => {
-    setLoading(true);
-    try {
-      const storedUser = sessionStorage.getItem('mockUser');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      } else {
-        // Set default user (owner) for initial setup
-        const defaultUser = MOCK_USERS.owner;
-        setUser(defaultUser);
-        sessionStorage.setItem('mockUser', JSON.stringify(defaultUser));
-      }
-    } catch (e) {
-      console.error("Failed to parse mock user from session storage", e);
-      sessionStorage.removeItem('mockUser');
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    checkUser();
-    window.addEventListener('user-change', checkUser);
-    return () => window.removeEventListener('user-change', checkUser);
-  }, [checkUser]);
-
-  const _injectUser = useCallback((mockUser: CannaGrowUser) => {
-      setUser(mockUser);
-      sessionStorage.setItem('mockUser', JSON.stringify(mockUser));
-      window.dispatchEvent(new Event('user-change'));
-  }, []);
-
   const signUp = async (displayName, email, password) => {
+    if (!auth || !firestore) {
+        toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
+        return;
+    }
     setLoading(true);
     try {
-        const newUser: CannaGrowUser = {
-            uid: `mock-uid-${Date.now()}`,
-            email,
-            displayName,
-            role: 'user', // All new signups are users
-            photoURL: `https://picsum.photos/seed/mock-uid-${Date.now()}/128/128`
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Create user profile in Firestore
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const newUserProfile = {
+            uid: user.uid,
+            email: user.email,
+            displayName: displayName,
+            role: 'user', // All new signups are users, owner can change this later
+            photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
+            bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+            createdAt: new Date().toISOString(),
         };
-        sessionStorage.setItem('mockUser', JSON.stringify(newUser));
-        setUser(newUser);
-        window.dispatchEvent(new Event('user-change'));
+
+        await setDoc(userDocRef, newUserProfile);
+        
+        // This will trigger the useEffect to update cannaUser
         toast({
             title: "¡Cuenta Creada!",
             description: "Has sido registrado exitosamente."
         });
-    } catch (error) {
-        toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta." });
+    } catch (error: any) {
+        console.error('Sign up error', error);
+        toast({ variant: "destructive", title: "Error de Registro", description: error.message || "No se pudo crear la cuenta." });
         throw error;
     } finally {
         setLoading(false);
@@ -136,37 +122,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logIn = async (email, password) => {
+    if (!auth) {
+        toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
+        return;
+    }
     setLoading(true);
     try {
-        let userToLogin: CannaGrowUser;
-        if (email.toLowerCase() === MOCK_USERS.owner.email) {
-            userToLogin = MOCK_USERS.owner;
-        } else if (email.toLowerCase() === MOCK_USERS.coOwner.email) {
-            userToLogin = MOCK_USERS.coOwner;
-        } else if (email.toLowerCase() === MOCK_USERS.moderator.email) {
-            userToLogin = MOCK_USERS.moderator;
-        } else {
-            // Find user in mock users or create a new one for demonstration
-             const existingUser = Object.values(MOCK_USERS).find(u => u.email === email.toLowerCase());
-             if (existingUser) {
-                userToLogin = existingUser
-             } else {
-                userToLogin = {
-                    ...MOCK_USERS.user,
-                    email,
-                    displayName: email.split('@')[0],
-                    uid: `mock-uid-${Date.now()}`,
-                    photoURL: `https://picsum.photos/seed/${email}/128/128`
-                };
-             }
-        }
-        
-        sessionStorage.setItem('mockUser', JSON.stringify(userToLogin));
-        setUser(userToLogin);
-        window.dispatchEvent(new Event('user-change'));
-        
+        await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Inicio de Sesión Exitoso" });
-    } catch (error) {
+    } catch (error: any) {
+        console.error('Login error', error);
         toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
         throw error;
     } finally {
@@ -175,11 +140,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logOut = async () => {
+    if (!auth) return;
     setLoading(true);
     try {
-        sessionStorage.removeItem('mockUser');
-        setUser(null);
-        window.dispatchEvent(new Event('user-change'));
+        await signOut(auth);
     } catch (error) {
          toast({ variant: "destructive", title: "Error", description: "No se pudo cerrar la sesión." });
     } finally {
@@ -188,7 +152,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const value = {
-    user,
+    user: cannaUser,
     loading,
     role,
     isOwner,
@@ -197,16 +161,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     logIn,
     logOut,
-    _injectUser,
+    _injectUser: () => {}, // No-op in real auth
   };
 
+  // We are replacing the AuthProvider with FirebaseClientProvider at the root.
+  // So we will just return the context provider here.
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider -> FirebaseClientProvider');
   }
   return context;
 };
