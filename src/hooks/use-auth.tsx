@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useToast } from './use-toast';
 import type { User } from 'firebase/auth';
 
-type UserRole = 'owner' | 'moderator' | 'user';
+type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 
 interface CannaGrowUser extends User {
   role: UserRole;
@@ -14,10 +14,17 @@ interface CannaGrowUser extends User {
 const MOCK_USERS = {
   owner: {
     uid: 'owner-uid',
-    email: 'owner@cannagrow.com',
-    displayName: 'CannaOwner',
+    email: 'alexisgrow@cannagrow.com',
+    displayName: 'AlexisGrow',
     role: 'owner',
-    photoURL: 'https://picsum.photos/seed/owner-uid/128/128'
+    photoURL: 'https://picsum.photos/seed/AlexisGrow/128/128'
+  },
+  coOwner: {
+    uid: 'co-owner-uid',
+    email: 'coowner@cannagrow.com',
+    displayName: 'CannaCoOwner',
+    role: 'co-owner',
+    photoURL: 'https://picsum.photos/seed/co-owner-uid/128/128'
   },
   moderator: {
     uid: 'moderator-uid',
@@ -41,6 +48,7 @@ interface AuthContextType {
   loading: boolean;
   role: UserRole | null;
   isOwner: boolean;
+  isCoOwner: boolean;
   isModerator: boolean;
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
@@ -53,6 +61,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   role: null,
   isOwner: false,
+  isCoOwner: false,
   isModerator: false,
   signUp: async () => {},
   logIn: async () => {},
@@ -67,7 +76,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const role = user?.role || null;
   const isOwner = role === 'owner';
-  const isModerator = role === 'moderator' || role === 'owner';
+  const isCoOwner = role === 'co-owner';
+  const isModerator = role === 'moderator' || role === 'co-owner' || role === 'owner';
 
   const checkUser = useCallback(() => {
     setLoading(true);
@@ -131,10 +141,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         let userToLogin: CannaGrowUser;
         if (email.toLowerCase() === MOCK_USERS.owner.email) {
             userToLogin = MOCK_USERS.owner;
+        } else if (email.toLowerCase() === MOCK_USERS.coOwner.email) {
+            userToLogin = MOCK_USERS.coOwner;
         } else if (email.toLowerCase() === MOCK_USERS.moderator.email) {
             userToLogin = MOCK_USERS.moderator;
         } else {
-            userToLogin = MOCK_USERS.user;
+            // Find user in mock users or create a new one for demonstration
+             const existingUser = Object.values(MOCK_USERS).find(u => u.email === email.toLowerCase());
+             if (existingUser) {
+                userToLogin = existingUser
+             } else {
+                userToLogin = {
+                    ...MOCK_USERS.user,
+                    email,
+                    displayName: email.split('@')[0],
+                    uid: `mock-uid-${Date.now()}`,
+                    photoURL: `https://picsum.photos/seed/${email}/128/128`
+                };
+             }
         }
         
         sessionStorage.setItem('mockUser', JSON.stringify(userToLogin));
@@ -168,6 +192,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     role,
     isOwner,
+    isCoOwner,
     isModerator,
     signUp,
     logIn,

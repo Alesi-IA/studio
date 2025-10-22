@@ -46,7 +46,7 @@ export default function FeedPage() {
   
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingDescription, setEditingDescription] = useState('');
-  const { user, isAdmin } = useAuth();
+  const { user, isModerator } = useAuth();
   
   const [commentStates, setCommentStates] = useState<Record<string, string>>({});
 
@@ -198,7 +198,7 @@ export default function FeedPage() {
         )}
 
         {!loading && posts.map((post) => {
-          const canManage = user?.uid === post.authorId || isAdmin;
+          const canManage = user?.uid === post.authorId || isModerator;
           const isLiked = likedPosts.has(post.id);
           const isSaved = savedPosts.has(post.id);
 

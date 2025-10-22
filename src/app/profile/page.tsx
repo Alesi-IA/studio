@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 const rankConfig = {
   owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400' },
+  'co-owner': { label: 'Co-Dueño', icon: ShieldHalf, color: 'text-orange-400' },
   moderator: { label: 'Moderador', icon: ShieldCheck, color: 'text-blue-400' },
   user: { label: 'Usuario', icon: UserIcon, color: 'text-green-400' },
 };
@@ -48,6 +49,7 @@ export default function ProfilePage() {
       photoURL: user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`,
       uid: user?.uid,
       bio: user?.role === 'owner' ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!' :
+           user?.role === 'co-owner' ? 'Co-Dueño de CannaGrow. Ayudando a que todo funcione sin problemas.' :
            user?.role === 'moderator' ? 'Moderador de CannaGrow. Aquí para ayudar y mantener el buen ambiente.' :
            'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       rank,
@@ -179,6 +181,12 @@ export default function ProfilePage() {
                 <Badge variant="destructive" className="gap-1 bg-yellow-500/10 border-yellow-500 text-yellow-400">
                     <Crown className="h-3 w-3" />
                     Dueño
+                </Badge>
+              )}
+               {profileData.role === 'co-owner' && (
+                <Badge variant="secondary" className="gap-1 bg-orange-500/10 border-orange-500 text-orange-400">
+                    <ShieldHalf className="h-3 w-3" />
+                    Co-Dueño
                 </Badge>
               )}
                {profileData.role === 'moderator' && (

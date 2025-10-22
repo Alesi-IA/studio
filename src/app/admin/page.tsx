@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AreaChart, BarChart, File, ListFilter, LogIn, Users, Crown, ShieldCheck, UserCog } from 'lucide-react';
+import { AreaChart, BarChart, File, ListFilter, LogIn, Users, Crown, ShieldCheck, UserCog, ShieldHalf } from 'lucide-react';
 import {
   Bar,
   BarChart as BarChartComponent,
@@ -36,7 +36,8 @@ const chartData = [
 ];
 
 const mockUsers = [
-    { uid: 'owner-uid', name: 'CannaOwner', email: 'owner@cannagrow.com', posts: 42, role: 'owner', photoURL: 'https://picsum.photos/seed/owner-uid/128/128' },
+    { uid: 'owner-uid', name: 'AlexisGrow', email: 'alexisgrow@cannagrow.com', posts: 42, role: 'owner', photoURL: 'https://picsum.photos/seed/AlexisGrow/128/128' },
+    { uid: 'co-owner-uid', name: 'CannaCoOwner', email: 'coowner@cannagrow.com', posts: 31, role: 'co-owner', photoURL: 'https://picsum.photos/seed/co-owner-uid/128/128' },
     { uid: 'moderator-uid', name: 'CannaMod', email: 'mod@cannagrow.com', posts: 23, role: 'moderator', photoURL: 'https://picsum.photos/seed/moderator-uid/128/128' },
     { uid: 'user-uid-1', name: 'Cultivador1', email: 'cultivador1@email.com', posts: 15, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-1/128/128' },
     { uid: 'user-uid-2', name: 'YerbaBuena', email: 'yerba.buena@email.com', posts: 8, role: 'user', photoURL: 'https://picsum.photos/seed/user-uid-2/128/128' },
@@ -179,6 +180,7 @@ export default function AdminPage() {
                         <DropdownMenuLabel>Filtrar por rol</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuCheckboxItem>Dueño</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem>Co-Dueño</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem>Moderador</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem>Usuario</DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
@@ -205,8 +207,9 @@ export default function AdminPage() {
                                     </div>
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell">
-                                     <Badge variant={user.role === 'owner' ? 'destructive' : user.role === 'moderator' ? 'secondary' : 'outline'}>
+                                     <Badge variant={user.role === 'owner' ? 'destructive' : user.role === 'co-owner' ? 'secondary' : user.role === 'moderator' ? 'secondary' : 'outline'}>
                                         {user.role === 'owner' && <Crown className="mr-1 h-3 w-3" />}
+                                        {user.role === 'co-owner' && <ShieldHalf className="mr-1 h-3 w-3" />}
                                         {user.role === 'moderator' && <ShieldCheck className="mr-1 h-3 w-3" />}
                                         {user.role === 'user' && <UserCog className="mr-1 h-3 w-3" />}
                                         {user.role}
