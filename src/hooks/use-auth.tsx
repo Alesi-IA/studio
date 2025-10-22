@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
+import { FirestorePermissionError, errorEmitter } from '@/firebase';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 
@@ -112,16 +113,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             createdAt: new Date().toISOString(),
         };
 
-        await setDoc(userDocRef, newUserProfile);
-        
-        toast({
-            title: "¡Cuenta Creada!",
-            description: "Has sido registrado exitosamente."
-        });
+        setDoc(userDocRef, newUserProfile)
+          .then(() => {
+            toast({
+                title: "¡Cuenta Creada!",
+                description: "Has sido registrado exitosamente."
+            });
+          })
+          .catch((error) => {
+             const contextualError = new FirestorePermissionError({
+                operation: 'create',
+                path: userDocRef.path,
+                requestResourceData: newUserProfile
+            });
+            errorEmitter.emit('permission-error', contextualError);
+          });
     } catch (error: any) {
         console.error('Sign up error', error);
         toast({ variant: "destructive", title: "Error de Registro", description: error.message || "No se pudo crear la cuenta." });
-        throw error;
     } finally {
         setLoading(false);
     }
