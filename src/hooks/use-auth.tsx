@@ -93,15 +93,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
+        // Determine role based on email
+        const userRole = email.toLowerCase() === 'alexisgrow@cannagrow.com' ? 'owner' : 'user';
+
         // Create user profile in Firestore
         const userDocRef = doc(firestore, 'users', user.uid);
         const newUserProfile = {
             uid: user.uid,
             email: user.email,
             displayName: displayName,
-            role: 'user', // All new signups are users, owner can change this later
+            role: userRole,
             photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
-            bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+            bio: userRole === 'owner' 
+                 ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!'
+                 : 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
             createdAt: new Date().toISOString(),
         };
 
