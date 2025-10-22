@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { CannabisLeafIcon } from "../icons/cannabis-leaf";
 
 const navItems = [
   { href: "/", label: "Noticias", icon: Home, requiredRole: "" },
@@ -49,7 +48,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-screen w-full items-center justify-center">
              <div className="flex items-center gap-3">
               <CannaGrowLogo />
-              <CannabisLeafIcon className="h-6 w-6 text-primary" />
               <span className="font-headline text-lg font-semibold">
                 CannaGrow
               </span>
@@ -73,7 +71,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="font-headline text-lg font-semibold">
                 CannaGrow
               </span>
-               <CannabisLeafIcon className="h-5 w-5 text-primary/80" />
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
