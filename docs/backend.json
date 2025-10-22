@@ -1,0 +1,379 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user profile in the CannaConnect application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user profile."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's chosen username.",
+          "format": "string"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name, can be different from the username."
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography or description of the user."
+        },
+        "profilePicture": {
+          "type": "string",
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
+        },
+        "followerIds": {
+          "type": "array",
+          "description": "References to UserProfiles that follow this user. (Relationship: UserProfile N:N UserProfile - Followers)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "followingIds": {
+          "type": "array",
+          "description": "References to UserProfiles that this user follows. (Relationship: UserProfile N:N UserProfile - Following)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "displayName"
+      ]
+    },
+    "Post": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Post",
+      "type": "object",
+      "description": "Represents a post (photo or video) shared by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the post."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to UserProfile who created the post. (Relationship: UserProfile 1:N Post)"
+        },
+        "mediaUrl": {
+          "type": "string",
+          "description": "URL of the media (photo or video).",
+          "format": "uri"
+        },
+        "caption": {
+          "type": "string",
+          "description": "The caption or description of the post."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp indicating when the post was created.",
+          "format": "date-time"
+        },
+        "likeIds": {
+          "type": "array",
+          "description": "References to UserProfiles that liked this post. (Relationship: UserProfile N:N Post - Likes)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commentIds": {
+          "type": "array",
+          "description": "References to Comments on this post. (Relationship: Post 1:N Comment)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "mediaUrl",
+        "timestamp"
+      ]
+    },
+    "Comment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Comment",
+      "type": "object",
+      "description": "Represents a comment on a post.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the comment."
+        },
+        "postId": {
+          "type": "string",
+          "description": "Reference to Post that this comment belongs to. (Relationship: Post 1:N Comment)"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to UserProfile who created the comment. (Relationship: UserProfile 1:N Comment)"
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the comment."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp indicating when the comment was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "postId",
+        "authorId",
+        "text",
+        "timestamp"
+      ]
+    },
+    "CultivationTask": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CultivationTask",
+      "type": "object",
+      "description": "Represents a cultivation task such as watering, pruning, or fertilizing.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the cultivation task."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to UserProfile who created the task. (Relationship: UserProfile 1:N CultivationTask)"
+        },
+        "taskName": {
+          "type": "string",
+          "description": "The name or title of the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the task."
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The date and time when the task is due.",
+          "format": "date-time"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Indicates whether the task has been completed."
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "taskName",
+        "dueDate",
+        "completed"
+      ]
+    },
+    "PlantAnalysis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PlantAnalysis",
+      "type": "object",
+      "description": "Represents the analysis of a plant image using AI.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the plant analysis."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to UserProfile who requested the analysis. (Relationship: UserProfile 1:N PlantAnalysis)"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the plant image analyzed.",
+          "format": "uri"
+        },
+        "analysisResults": {
+          "type": "string",
+          "description": "The results of the AI analysis, including identified problems and suggested solutions."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp indicating when the analysis was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "imageUrl",
+        "analysisResults",
+        "timestamp"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a message exchanged between users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat message."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to UserProfile who sent the message. (Relationship: UserProfile 1:N ChatMessage - Sent Messages)"
+        },
+        "recipientId": {
+          "type": "string",
+          "description": "Reference to UserProfile who received the message. (Relationship: UserProfile 1:N ChatMessage - Received Messages)"
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp indicating when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "recipientId",
+        "text",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information.  `userId` corresponds to the Firebase Auth UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/posts/{postId}",
+        "definition": {
+          "entityName": "Post",
+          "schema": {
+            "$ref": "#/backend/entities/Post"
+          },
+          "description": "Stores posts created by a specific user. `userId` corresponds to the Firebase Auth UID of the post's author.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user who created the post."
+            },
+            {
+              "name": "postId",
+              "description": "The unique ID of the post."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/posts/{postId}/comments/{commentId}",
+        "definition": {
+          "entityName": "Comment",
+          "schema": {
+            "$ref": "#/backend/entities/Comment"
+          },
+          "description": "Stores comments associated with a specific post. `userId` corresponds to the Firebase Auth UID of the post's author. `postId` is the ID of the post being commented on.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user who owns the post."
+            },
+            {
+              "name": "postId",
+              "description": "The ID of the post the comment belongs to."
+            },
+            {
+              "name": "commentId",
+              "description": "The unique ID of the comment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/cultivationTasks/{taskId}",
+        "definition": {
+          "entityName": "CultivationTask",
+          "schema": {
+            "$ref": "#/backend/entities/CultivationTask"
+          },
+          "description": "Stores cultivation tasks created by a specific user. `userId` corresponds to the Firebase Auth UID of the task's author.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user who created the task."
+            },
+            {
+              "name": "taskId",
+              "description": "The unique ID of the cultivation task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/plantAnalyses/{analysisId}",
+        "definition": {
+          "entityName": "PlantAnalysis",
+          "schema": {
+            "$ref": "#/backend/entities/PlantAnalysis"
+          },
+          "description": "Stores plant analysis records created by a specific user. `userId` corresponds to the Firebase Auth UID of the user who requested the analysis.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user who requested the analysis."
+            },
+            {
+              "name": "analysisId",
+              "description": "The unique ID of the plant analysis record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages between users.  Enables direct access to messages without nesting within user profiles. Security rules should ensure that only the sender and recipient can access the message based on `senderId` and `recipientId`.",
+          "params": [
+            {
+              "name": "messageId",
+              "description": "The unique ID of the chat message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the CannaConnect application's core features, focusing on user-generated content, social interaction, cultivation management, and AI-powered plant analysis. To ensure security and scalability, the design prioritizes authorization independence through denormalization and structural segregation.  User-generated content (posts, comments, cultivation tasks, plant analyses, and chat messages) is organized under user-specific collections, enforcing clear ownership and simplifying security rules. The structure leverages path-based ownership for user-owned data and includes denormalized fields for collaborative access where needed. This approach avoids complex `get()` calls in security rules, enabling atomic operations and improving debuggability.\n\n*   **Authorization Independence:** Achieved by storing all user-related data under their respective `userId`. Posts, comments, cultivation tasks, plant analyses, and chat messages are stored as subcollections of `/users/{userId}`, eliminating the need to fetch parent document data for authorization.\n*   **QAPs (Rules are not Filters):** Secure `list` operations are supported by segregating data based on ownership. Listing posts, tasks, or analyses is restricted to the owning user. For social features like following, follower, likes and comments the data is nested within the profile or post objects. Private messaging uses a separate collection but still keys off user IDs to ensure only the intended recipient(s) have access."
+  }
+}
