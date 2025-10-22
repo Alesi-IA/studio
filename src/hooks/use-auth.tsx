@@ -29,7 +29,7 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  _injectUser: (user: CannaGrowUser) => void; // This will now be a no-op but kept for compatibility if needed elsewhere
+  _injectUser: (user: CannaGrowUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -93,10 +93,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
-        // Determine role based on email
-        const userRole = email.toLowerCase() === 'alexisgrow@cannagrow.com' ? 'owner' : 'user';
+        const userRole: UserRole = email.toLowerCase() === 'alexisgrow@cannagrow.com' ? 'owner' : 'user';
 
-        // Create user profile in Firestore
         const userDocRef = doc(firestore, 'users', user.uid);
         const newUserProfile = {
             uid: user.uid,
@@ -112,7 +110,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         await setDoc(userDocRef, newUserProfile);
         
-        // This will trigger the useEffect to update cannaUser
         toast({
             title: "¡Cuenta Creada!",
             description: "Has sido registrado exitosamente."
@@ -136,7 +133,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Inicio de Sesión Exitoso" });
     } catch (error: any) {
-        console.error('Login error', error);
         toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
         throw error;
     } finally {
@@ -169,8 +165,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     _injectUser: () => {}, // No-op in real auth
   };
 
-  // We are replacing the AuthProvider with FirebaseClientProvider at the root.
-  // So we will just return the context provider here.
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
