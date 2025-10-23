@@ -241,7 +241,7 @@ export default function ToolsPage() {
             />
             <div className="p-4 md:p-8">
                 <Tabs defaultValue="calendar" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 md:w-auto">
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                         <TabsTrigger value="calendar">Calendario y Tareas</TabsTrigger>
                         <TabsTrigger value="guides">Guías Oficiales</TabsTrigger>
                         <TabsTrigger value="user-guides">Guías de Usuarios</TabsTrigger>
