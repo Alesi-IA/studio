@@ -247,6 +247,20 @@
         "text",
         "timestamp"
       ]
+    },
+    "UserRole": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserRole",
+      "type": "object",
+      "description": "Stores the role of a user for quick access in security rules.",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "The user's role.",
+          "enum": ["owner", "co-owner", "moderator", "user"]
+        }
+      },
+      "required": ["role"]
     }
   },
   "auth": {
@@ -262,9 +276,9 @@
         "definition": {
           "entityName": "UserProfile",
           "schema": {
-            "$ref": "#/backend/entities/UserProfile"
+            "$ref": "#/entities/UserProfile"
           },
-          "description": "Stores user profile information.  `userId` corresponds to the Firebase Auth UID.",
+          "description": "Stores user profile information. `userId` corresponds to the Firebase Auth UID.",
           "params": [
             {
               "name": "userId",
@@ -274,11 +288,27 @@
         }
       },
       {
+        "path": "/roles/{userId}",
+        "definition": {
+            "entityName": "UserRole",
+            "schema": {
+                "$ref": "#/entities/UserRole"
+            },
+            "description": "Stores user roles for quick access in security rules, avoiding circular dependencies. `userId` corresponds to the Firebase Auth UID.",
+             "params": [
+                {
+                    "name": "userId",
+                    "description": "The Firebase Auth UID of the user."
+                }
+            ]
+        }
+      },
+      {
         "path": "/users/{userId}/posts/{postId}",
         "definition": {
           "entityName": "Post",
           "schema": {
-            "$ref": "#/backend/entities/Post"
+            "$ref": "#/entities/Post"
           },
           "description": "Stores posts created by a specific user. `userId` corresponds to the Firebase Auth UID of the post's author.",
           "params": [
@@ -298,7 +328,7 @@
         "definition": {
           "entityName": "Comment",
           "schema": {
-            "$ref": "#/backend/entities/Comment"
+            "$ref": "#/entities/Comment"
           },
           "description": "Stores comments associated with a specific post. `userId` corresponds to the Firebase Auth UID of the post's author. `postId` is the ID of the post being commented on.",
           "params": [
@@ -322,7 +352,7 @@
         "definition": {
           "entityName": "CultivationTask",
           "schema": {
-            "$ref": "#/backend/entities/CultivationTask"
+            "$ref": "#/entities/CultivationTask"
           },
           "description": "Stores cultivation tasks created by a specific user. `userId` corresponds to the Firebase Auth UID of the task's author.",
           "params": [
@@ -342,7 +372,7 @@
         "definition": {
           "entityName": "PlantAnalysis",
           "schema": {
-            "$ref": "#/backend/entities/PlantAnalysis"
+            "$ref": "#/entities/PlantAnalysis"
           },
           "description": "Stores plant analysis records created by a specific user. `userId` corresponds to the Firebase Auth UID of the user who requested the analysis.",
           "params": [
@@ -362,9 +392,9 @@
         "definition": {
           "entityName": "ChatMessage",
           "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
+            "$ref": "#/entities/ChatMessage"
           },
-          "description": "Stores chat messages between users.  Enables direct access to messages without nesting within user profiles. Security rules should ensure that only the sender and recipient can access the message based on `senderId` and `recipientId`.",
+          "description": "Stores chat messages between users. Enables direct access to messages without nesting within user profiles. Security rules should ensure that only the sender and recipient can access the message based on `senderId` and `recipientId`.",
           "params": [
             {
               "name": "messageId",
@@ -374,6 +404,8 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the CannaConnect application's core features, focusing on user-generated content, social interaction, cultivation management, and AI-powered plant analysis. To ensure security and scalability, the design prioritizes authorization independence through denormalization and structural segregation.  User-generated content (posts, comments, cultivation tasks, plant analyses, and chat messages) is organized under user-specific collections, enforcing clear ownership and simplifying security rules. The structure leverages path-based ownership for user-owned data and includes denormalized fields for collaborative access where needed. This approach avoids complex `get()` calls in security rules, enabling atomic operations and improving debuggability.\n\n*   **Authorization Independence:** Achieved by storing all user-related data under their respective `userId`. Posts, comments, cultivation tasks, plant analyses, and chat messages are stored as subcollections of `/users/{userId}`, eliminating the need to fetch parent document data for authorization.\n*   **QAPs (Rules are not Filters):** Secure `list` operations are supported by segregating data based on ownership. Listing posts, tasks, or analyses is restricted to the owning user. For social features like following, follower, likes and comments the data is nested within the profile or post objects. Private messaging uses a separate collection but still keys off user IDs to ensure only the intended recipient(s) have access."
+    "reasoning": "The Firestore structure is designed for scalability and security. It separates user profile data (`/users`) from role data (`/roles`) to prevent circular dependencies in security rules. This allows for efficient role-based access control, where checking if a user is an admin doesn't require reading the entire document they are trying to access. User-generated content (posts, comments, etc.) is nested under the user's ID to enforce clear ownership and simplify security rules, following the principle of path-based security. This structure supports both individual user data management and broader administrative access patterns securely."
   }
 }
+
+    
