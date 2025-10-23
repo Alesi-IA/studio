@@ -10,7 +10,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { FirestorePermissionError, errorEmitter } from '@/firebase';
 
@@ -31,6 +31,7 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
+  updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
   _injectUser: (user: CannaGrowUser) => void;
 }
 
@@ -44,6 +45,7 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   logIn: async () => {},
   logOut: async () => {},
+  updateUserProfile: async () => {},
   _injectUser: () => {}
 });
 
@@ -118,8 +120,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                  : 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
             createdAt: new Date().toISOString(),
         };
+        
+        await setDoc(userDocRef, newUserProfile)
+          .catch((error) => {
+            if (error.code === 'permission-denied') {
+              const contextualError = new FirestorePermissionError({
+                operation: 'create',
+                path: `users/${user.uid}`,
+                requestResourceData: newUserProfile,
+              });
+              errorEmitter.emit('permission-error', contextualError);
+            } else {
+              throw error; // Re-throw other errors
+            }
+          });
 
-        await setDoc(userDocRef, newUserProfile);
 
         toast({
             title: "¡Cuenta Creada!",
@@ -128,19 +143,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     } catch (error: any) {
         console.error('Sign up error', error);
-        if (error.code === 'permission-denied') {
-             const contextualError = new FirestorePermissionError({
-                operation: 'create',
-                path: `users/${auth.currentUser?.uid || 'unknown'}`,
-                requestResourceData: {
-                  /* reconstructed data */
-                },
-            });
-            errorEmitter.emit('permission-error', contextualError);
-            toast({ variant: "destructive", title: "Error de Permisos", description: "No tienes permiso para crear un usuario." });
-        } else {
-          toast({ variant: "destructive", title: "Error de Registro", description: error.message || "No se pudo crear la cuenta." });
-        }
+        toast({ variant: "destructive", title: "Error de Registro", description: error.message || "No se pudo crear la cuenta." });
     } finally {
         setLoading(false);
     }
@@ -174,6 +177,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
+  const updateUserProfile = async (updates: Partial<CannaGrowUser>) => {
+    if (!cannaUser || !firestore) return;
+    setLoading(true);
+    try {
+      const userDocRef = doc(firestore, 'users', cannaUser.uid);
+      await updateDoc(userDocRef, updates);
+      setCannaUser(prev => prev ? { ...prev, ...updates } : null);
+      toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
+    } catch (error) {
+      console.error('Error al actualizar el perfil:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const _injectUser = (userToImpersonate: CannaGrowUser) => {
      if (isOwner) {
         const fullUser = {
@@ -194,6 +213,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     logIn,
     logOut,
+    updateUserProfile,
     _injectUser,
   };
 

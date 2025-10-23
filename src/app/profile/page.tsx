@@ -6,19 +6,22 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Post } from '@/types';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { useFirebase } from '@/firebase';
+import { CircularProgress } from '@/components/ui/circular-progress';
 
 const rankConfig = {
   owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400' },
@@ -35,8 +38,13 @@ export default function ProfilePage() {
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
-  const { user, logOut } = useAuth();
+  const { user, logOut, updateUserProfile } = useAuth();
+  const { firebaseApp } = useFirebase();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const isUploading = uploadProgress !== null;
 
   const isOwnProfile = true; 
   
@@ -80,6 +88,34 @@ export default function ProfilePage() {
       window.removeEventListener('storage', loadPostsAndState);
     };
   }, [loadPostsAndState, user]);
+
+  const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user || !firebaseApp) return;
+
+    const storage = getStorage(firebaseApp);
+    const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    setUploadProgress(0);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
+        setUploadProgress(null);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          updateUserProfile({ photoURL: downloadURL });
+          setUploadProgress(null);
+        });
+      }
+    );
+  };
 
 
   const handleLogout = async () => {
@@ -170,10 +206,35 @@ export default function ProfilePage() {
       />
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
-          <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
-            <AvatarImage src={profileData.photoURL} />
-            <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          <div className="relative group">
+            <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
+                <AvatarImage src={profileData.photoURL} />
+                <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+             {isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                <CircularProgress value={uploadProgress} />
+              </div>
+            )}
+            {isOwnProfile && !isUploading && (
+              <>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleProfileImageChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <Button 
+                  size="icon" 
+                  className="absolute bottom-0 left-0 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <h2 className="font-headline text-2xl font-bold">{profileData.displayName}</h2>
