@@ -1,79 +1,46 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // /users/{userId}
-    // Perfiles de usuario
+ 
+    // Reglas para perfiles de usuario
     match /users/{userId} {
-      // Lectura:
-      // 1. Los administradores (owner, co-owner, moderator) pueden listar todos los usuarios para el panel de admin.
-      // 2. Cualquier usuario autenticado puede leer el perfil de otro usuario.
-      allow list: if get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
-      allow get: if request.auth != null;
+      // LECTURA: Cualquier usuario autenticado puede leer perfiles.
+      // Esto es necesario para el panel de admin y para buscar otros usuarios.
+      allow read: if request.auth != null;
 
-      // Creación:
-      // 1. Un usuario solo puede crear su propio perfil.
-      allow create: if request.auth.uid == userId;
-
-      // Escritura:
-      // 1. Un usuario solo puede actualizar su propio perfil.
-      // 2. Los administradores (owner, co-owner) pueden actualizar el perfil de cualquier usuario.
-      allow update: if request.auth.uid == userId || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
-
-      // Borrado:
-      // 1. Los dueños pueden eliminar a cualquier usuario.
-      allow delete: if get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'owner';
+      // ESCRITURA: Solo el dueño del perfil o un administrador puede escribir.
+      allow write: if request.auth.uid == userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
     }
 
-    // /roles/{userId}
-    // Almacén de roles para acceso rápido en reglas de seguridad
-    match /roles/{userId} {
-      // Lectura:
-      // 1. Solo los administradores pueden leer los roles de otros.
-      // 2. Un usuario puede leer su propio rol.
-      allow get: if request.auth.uid == userId || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
-
-      // Creación y Escritura:
-      // 1. Un usuario puede crear su propio documento de rol al registrarse (con rol 'user').
-      // 2. Solo los dueños y co-dueños pueden crear o modificar el rol de otros usuarios.
-      allow write: if (request.auth.uid == userId && request.resource.data.role == 'user') || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
+    // Reglas para publicaciones
+    match /posts/{postId} {
+      // LECTURA: Cualquiera puede leer publicaciones.
+      allow read: if true;
+      // ESCRITURA: Solo el autor o un admin/moderador puede crear/eliminar.
+      // Los usuarios solo pueden actualizar sus propias publicaciones.
+      allow create, delete: if request.auth.uid == request.resource.data.authorId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
+      allow update: if request.auth.uid == resource.data.authorId;
     }
 
-    // Contenido de usuario (anidado para reglas de propiedad claras)
-    match /users/{authorId}/{collection}/{docId} {
-      // Lectura:
-      // 1. Cualquiera puede leer el contenido público (posts, guías, etc.).
-      allow get: if true;
-      
-      // Creación:
-      // 1. Un usuario solo puede crear contenido bajo su propio ID.
-      allow create: if request.auth.uid == authorId;
-      
-      // Actualización:
-      // 1. Un usuario solo puede actualizar su propio contenido.
-      allow update: if request.auth.uid == authorId;
-      
-      // Borrado:
-      // 1. Un usuario puede borrar su propio contenido.
-      // 2. Los moderadores (y superiores) pueden borrar el contenido de cualquiera.
-      allow delete: if request.auth.uid == authorId || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
+    // Reglas para comentarios
+    match /posts/{postId}/comments/{commentId} {
+      // LECTURA: Cualquiera puede leer comentarios.
+      allow read: if true;
+      // ESCRITURA: Solo el autor del comentario, el autor de la publicación o un admin/moderador pueden escribir/eliminar.
+      allow write, delete: if request.auth.uid == request.resource.data.authorId ||
+        get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
     }
 
-     // /messages/{messageId}
-    // Mensajes directos entre usuarios
-    match /messages/{messageId} {
-      // Lectura:
-      // 1. Solo el emisor o el receptor pueden leer un mensaje.
-      allow get: if request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId;
-      
-      // Creación:
-      // 1. Solo el emisor puede crear el mensaje.
-      allow create: if request.auth.uid == request.resource.data.senderId;
-      
-      // Borrado y Actualización:
-      // No se permite la edición ni el borrado para mantener la integridad del chat.
-      allow update, delete: if false;
+    // Reglas para guías de usuario
+    match /userGuides/{guideId} {
+        allow read: if true;
+        allow create: if request.auth.uid == request.resource.data.authorId;
+        allow update, delete: if request.auth.uid == resource.data.authorId ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
     }
+
   }
 }
