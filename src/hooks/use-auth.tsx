@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
             effectiveRole = 'owner';
             if (dbRole !== 'owner') {
-                await setDoc(userDocRef, { role: 'owner' }, { merge: true });
+                await updateDoc(userDocRef, { role: 'owner' });
             }
         }
 
@@ -167,6 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error('Sign up error', error);
       toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -178,20 +179,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return Promise.reject(new Error("Auth service not available"));
     }
     setLoading(true);
-    return new Promise((resolve, reject) => {
-        signInWithEmailAndPassword(auth, email, password)
-            .then(() => {
-                toast({ title: "Inicio de Sesión Exitoso" });
-                resolve();
-            })
-            .catch((error: any) => {
-                toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
-                reject(error);
-            })
-            .finally(() => {
-                setLoading(false);
-            });
-    });
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: "Inicio de Sesión Exitoso" });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
 }, [auth, toast]);
 
   const logOut = useCallback(async () => {

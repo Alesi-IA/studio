@@ -24,14 +24,17 @@ export default function RegisterPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
         try {
             await signUp(username, email, password);
             router.push('/');
         } catch (error) {
+            setError('No se pudo crear la cuenta. El email puede que ya esté en uso.');
             console.error('Failed to sign up', error)
         } finally {
             setLoading(false);
@@ -73,6 +76,7 @@ export default function RegisterPage() {
                 <Label htmlFor="password">Contraseña</Label>
                 <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required/>
             </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
                  {loading ? <Loader2 className="animate-spin" /> : 'Crear cuenta'}
             </Button>
