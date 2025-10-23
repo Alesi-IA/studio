@@ -25,7 +25,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, getCountFromServer, Timestamp } from 'firebase/firestore';
 import { subMonths, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -72,13 +72,25 @@ export default function AdminPage() {
       const usersColl = collection(firestore, 'users');
       const postsColl = collection(firestore, 'posts');
 
-      const userSnapshot = await getCountFromServer(usersColl);
-      setTotalUsers(userSnapshot.data().count);
-
-      // In a real app, posts would be in a root collection
-      // For this mock, we'll just count what we have in sessionStorage
-      const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
-      setTotalPosts(storedPosts.length);
+      try {
+        const userSnapshot = await getCountFromServer(usersColl);
+        setTotalUsers(userSnapshot.data().count);
+      } catch (error: any) {
+        if (error.code === 'permission-denied') {
+          const contextualError = new FirestorePermissionError({
+            operation: 'list', // getCountFromServer is a 'list' like operation for rules
+            path: usersColl.path,
+          });
+          errorEmitter.emit('permission-error', contextualError);
+        }
+      }
+      
+      try {
+        const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
+        setTotalPosts(storedPosts.length);
+      } catch (error) {
+        console.error("Error reading mock posts from session storage", error);
+      }
     };
     fetchCounts();
   }, [firestore]);
