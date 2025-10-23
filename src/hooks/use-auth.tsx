@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -65,6 +66,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const userData = userDoc.data();
           setCannaUser({ ...user, ...userData } as CannaGrowUser);
         } else {
+           // This case might happen if the user doc creation failed after sign up
+           // We can treat them as a regular user for now, or attempt to create the doc again
+           console.warn(`User document for ${user.uid} not found. Using default 'user' role.`);
            setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
         }
       } catch (error) {
@@ -121,7 +125,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             createdAt: new Date().toISOString(),
         };
         
-        await setDoc(userDocRef, newUserProfile)
+        // Use non-blocking write and handle permission errors via the emitter
+        setDoc(userDocRef, newUserProfile)
           .catch((error) => {
             if (error.code === 'permission-denied') {
               const contextualError = new FirestorePermissionError({
@@ -130,9 +135,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 requestResourceData: newUserProfile,
               });
               errorEmitter.emit('permission-error', contextualError);
-            } else {
-              throw error; // Re-throw other errors
             }
+            // For other errors, you might want to log them or handle them differently
+            console.error("Error creating user profile document:", error);
+            toast({
+              variant: "destructive",
+              title: "Error de Perfil",
+              description: "No se pudo crear tu perfil de usuario. Por favor, contacta soporte."
+            });
           });
 
 
@@ -143,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     } catch (error: any) {
         console.error('Sign up error', error);
-        toast({ variant: "destructive", title: "Error de Registro", description: error.message || "No se pudo crear la cuenta." });
+        toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
     } finally {
         setLoading(false);
     }
@@ -158,7 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: "Inicio de Sesión Exitoso" });
     } catch (error: any) {
-        throw new Error("Las credenciales son incorrectas.");
+        toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
     } finally {
         setLoading(false);
     }
@@ -201,7 +211,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         setCannaUser(fullUser as CannaGrowUser);
      }
-  }
+  };
 
   const value = {
     user: cannaUser,
@@ -227,3 +237,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

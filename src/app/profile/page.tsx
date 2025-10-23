@@ -50,9 +50,9 @@ export default function ProfilePage() {
   
   const rank = useMemo(() => {
     return rankConfig[user?.role as keyof typeof rankConfig] || rankConfig.user;
-  }, [user]);
+  }, [user?.role]);
 
-  const profileData = {
+  const profileData = useMemo(() => ({
       displayName: user?.displayName || 'Usuario',
       photoURL: user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`,
       uid: user?.uid,
@@ -62,9 +62,10 @@ export default function ProfilePage() {
            'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       rank,
       role: user?.role,
-  }
+  }), [user, rank]);
 
   const loadPostsAndState = useCallback(() => {
+    if (!user?.uid) return;
     const allPostsJSON = sessionStorage.getItem('mockPosts');
     const allPosts = allPostsJSON ? JSON.parse(allPostsJSON) : [];
     
@@ -75,7 +76,7 @@ export default function ProfilePage() {
     const likedPostIds = new Set(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
     setLikedPosts(likedPostIds);
 
-    const myPosts = allPosts.filter((p: Post) => p.authorId === user?.uid);
+    const myPosts = allPosts.filter((p: Post) => p.authorId === user.uid);
     setUserPosts(myPosts);
 
   }, [user?.uid]);
@@ -188,6 +189,10 @@ export default function ProfilePage() {
     window.dispatchEvent(new Event('storage'));
   };
 
+  if (!user) {
+    return null; // Or a loading spinner
+  }
+
   return (
     <div className="w-full">
       <PageHeader
@@ -207,8 +212,8 @@ export default function ProfilePage() {
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <div className="relative group">
-            <div className="relative h-24 w-24 md:h-32 md:w-32 rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500">
-                <div className="h-full w-full rounded-full p-1 bg-background">
+            <div className="relative rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500">
+                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full p-1 bg-background">
                     <Avatar className="h-full w-full">
                         <AvatarImage src={profileData.photoURL} />
                         <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
@@ -266,7 +271,7 @@ export default function ProfilePage() {
               <span className="font-bold font-headline text-lg">{profileData.rank.label}</span>
             </div>
             
-            <div className="flex justify-center gap-2">
+            <div className="flex justify-center md:justify-start gap-2">
                 {isOwnProfile ? (
                     <>
                         <Button variant="outline">Editar Perfil</Button>
@@ -304,11 +309,11 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">Publicaciones</p>
               </div>
               <div className="text-center">
-                <p className="font-bold">1.2k</p>
+                <p className="font-bold">0</p>
                 <p className="text-sm text-muted-foreground">Seguidores</p>
               </div>
               <div className="text-center">
-                <p className="font-bold">142</p>
+                <p className="font-bold">0</p>
                 <p className="text-sm text-muted-foreground">Siguiendo</p>
               </div>
             </div>
@@ -420,7 +425,7 @@ export default function ProfilePage() {
                                 <AvatarFallback>{selectedPost.authorName.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <p className='text-sm'>
-                                <Link href="#" className="font-headline font-semibold hover-underline">{selectedPost.authorName}</Link>
+                                <Link href="#" className="font-headline font-semibold hover:underline">{selectedPost.authorName}</Link>
                                 {' '}
                                 {selectedPost.description}
                             </p>
@@ -459,7 +464,8 @@ export default function ProfilePage() {
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                         />
-                        <Button type="submit" variant="ghost" size="sm" disabled={!commentText.trim()}>Publicar</Button>                   </form>
+                        <Button type="submit" variant="ghost" size="sm" disabled={!commentText.trim()}>Publicar</Button>
+                    </form>
                 </CardFooter>
               </div>
             </div>
@@ -469,3 +475,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
