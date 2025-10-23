@@ -146,6 +146,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         createdAt: new Date().toISOString(),
       };
       
+      // Use non-blocking update with contextual error handling
       setDoc(userDocRef, newUserProfile)
         .then(() => {
           toast({
@@ -154,20 +155,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           });
         })
         .catch((error) => {
+          // Check if it's a permission error and emit our custom error
           if (error.code === 'permission-denied') {
             const contextualError = new FirestorePermissionError({
               operation: 'create',
-              path: `users/${user.uid}`,
+              path: userDocRef.path,
               requestResourceData: newUserProfile,
             });
             errorEmitter.emit('permission-error', contextualError);
+          } else {
+            // For other types of errors, log them and show a generic toast
+            console.error("Error creating user profile document:", error);
+            toast({
+              variant: "destructive",
+              title: "Error de Perfil",
+              description: "No se pudo crear tu perfil de usuario. Por favor, contacta soporte."
+            });
           }
-          console.error("Error creating user profile document:", error);
-          toast({
-            variant: "destructive",
-            title: "Error de Perfil",
-            description: "No se pudo crear tu perfil de usuario. Por favor, contacta soporte."
-          });
         });
   
     } catch (error: any) {
@@ -224,7 +228,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error.code === 'permission-denied') {
           const contextualError = new FirestorePermissionError({
             operation: 'update',
-            path: `users/${cannaUser.uid}`,
+            path: userDocRef.path,
             requestResourceData: updates,
           });
           errorEmitter.emit('permission-error', contextualError);
