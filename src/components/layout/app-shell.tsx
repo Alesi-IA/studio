@@ -11,9 +11,8 @@ import { Button } from "../ui/button";
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { NewPostForm } from "./new-post-form";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, AuthProvider } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { AuthProvider } from "@/hooks/use-auth";
 
 const navItems = [
   { href: "/", label: "Noticias", icon: Home, requiredRole: "" },

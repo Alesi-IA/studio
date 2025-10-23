@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -11,7 +12,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { useFirebase, useAuthUser } from '@/firebase/provider';
+import { useFirebase } from '@/firebase/provider';
 import { FirestorePermissionError, errorEmitter } from '@/firebase';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
@@ -36,23 +37,10 @@ interface AuthContextType {
   _injectUser: (user: CannaGrowUser) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  role: null,
-  isOwner: false,
-  isCoOwner: false,
-  isModerator: false,
-  signUp: async () => {},
-  logIn: async () => {},
-  logOut: async () => {},
-  updateUserProfile: async () => {},
-  _injectUser: () => {}
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { auth, firestore } = useFirebase();
-  const { isUserLoading, user: firebaseUser } = useAuthUser();
+const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
+  const { auth, firestore, isUserLoading, user: firebaseUser } = useFirebase();
   const [cannaUser, setCannaUser] = useState<CannaGrowUser | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -221,7 +209,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
         }
         
-        setCannaUser(prev => prev ? ({...prev, ...updates}) : null)
+        setCannaUser(prev => prev ? ({...prev, ...updates}) : null);
         toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
 
     } catch (error: any) {
@@ -264,12 +252,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const { areServicesAvailable } = useFirebase();
+
+  // Render content only when Firebase services are confirmed to be available.
+  // This prevents race conditions where child components might try to use
+  // Firebase before it's ready.
+  return areServicesAvailable ? <AuthProviderContent>{children}</AuthProviderContent> : null;
 };
 
-export const useAuth = () => {
+
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider -> FirebaseClientProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
