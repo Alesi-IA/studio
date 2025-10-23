@@ -1,88 +1,75 @@
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    function getUserRole(userId) {
-      return get(/databases/$(database)/documents/roles/$(userId)).data.role;
-    }
-
-    function isOwner(userId) {
-        return getUserRole(userId) == 'owner';
-    }
-
-    function isCoOwner(userId) {
-        return getUserRole(userId) == 'co-owner';
-    }
-
-    function isModerator(userId) {
-        return getUserRole(userId) in ['owner', 'co-owner', 'moderator'];
-    }
-    
-    match /users/{userId} {
-      // Admins (owner, co-owner, moderator) can list all users.
-      // Any signed-in user can read any individual user profile.
-      allow list, get: if isModerator(request.auth.uid);
-      allow get: if isSignedIn();
-
-      // Users can create their own profile.
-      allow create: if request.auth.uid == userId;
-      
-      // Users can update their own profile.
-      // Admins can update any user profile, but cannot change an owner's role.
-      allow update: if request.auth.uid == userId || (isModerator(request.auth.uid) && !isOwner(userId));
-
-      // Only owners can delete users, but not themselves.
-      allow delete: if isOwner(request.auth.uid) && request.auth.uid != userId;
-    }
-
-    match /roles/{userId} {
-      // Any signed-in user can read any role.
-      allow get: if isSignedIn();
-      
-      // Admins can create or update roles, but cannot edit an owner's role unless they are an owner.
-      allow write: if isModerator(request.auth.uid) && (!isOwner(userId) || isOwner(request.auth.uid));
-    }
-
-    match /posts/{postId} {
-      // Anyone can read any post.
-      allow get: if true;
-      allow list: if true;
-      
-      // Signed-in users can create posts.
-      allow create: if isSignedIn();
-      
-      // The author of the post or an admin can update or delete it.
-      allow update, delete: if resource.data.authorId == request.auth.uid || isModerator(request.auth.uid);
-    }
-
-    match /posts/{postId}/comments/{commentId} {
-      // Anyone can read comments.
-      allow get: if true;
-      allow list: if true;
-      
-      // Signed-in users can create comments.
-      allow create: if isSignedIn();
-
-      // The author of the comment or an admin can update or delete it.
-      allow update, delete: if resource.data.authorId == request.auth.uid || isModerator(request.auth.uid);
-    }
-
-     match /{path=**}/comments/{commentId} {
-       // Anyone can read comments.
-      allow get: if true;
-      allow list: if true;
-      
-      // Signed-in users can create comments.
-      allow create: if isSignedIn();
-
-      // The author of the comment or an admin can update or delete it.
-      allow update, delete: if resource.data.authorId == request.auth.uid || isModerator(request.auth.uid);
+{
+  "rules": {
+    "users": {
+      "$userId": {
+        // PERMISOS DE LECTURA
+        // Cualquier usuario autenticado puede leer el perfil de otro usuario.
+        "allow read": "if request.auth != null;",
+        
+        // PERMISOS DE ESCRITURA
+        // Un usuario solo puede crear su propio perfil.
+        "allow create": "if request.auth.uid == $userId;",
+        
+        // Un usuario puede actualizar su propio perfil.
+        // Los administradores (owner, co-owner) pueden actualizar cualquier perfil.
+        "allow update": "if request.auth.uid == $userId || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner'];",
+        
+        // Solo los administradores (owner, co-owner) pueden eliminar usuarios.
+        "allow delete": "if get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner'];"
+      },
+      // Permitir a cualquier usuario autenticado listar los perfiles de usuario.
+      // Esto es necesario para que el panel de administrador y futuras funciones de búsqueda funcionen.
+      "allow list": "if request.auth != null;"
+    },
+    "roles": {
+      "$userId": {
+        // PERMISOS DE LECTURA
+        // Solo el propio usuario y los administradores pueden leer un rol.
+        "allow read": "if request.auth.uid == $userId || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner'];",
+        
+        // PERMISOS DE ESCRITURA
+        // Un usuario puede crear su propio documento de rol al registrarse.
+        "allow create": "if request.auth.uid == $userId;",
+        
+        // Solo los dueños pueden cambiar roles.
+        "allow write": "if get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'owner';"
+      }
+    },
+    "posts": {
+      "$postId": {
+        // Cualquiera puede leer las publicaciones
+        "allow read": "if true;",
+        // Un usuario solo puede crear/actualizar/eliminar sus propias publicaciones
+        "allow write": "if request.auth.uid == request.resource.data.authorId;"
+      }
+    },
+    "comments": {
+      "$commentId": {
+        // Cualquiera puede leer los comentarios
+        "allow read": "if true;",
+        // Un usuario solo puede crear sus propios comentarios
+        "allow create": "if request.auth.uid == request.resource.data.authorId;",
+        // Un usuario puede eliminar sus propios comentarios, o un moderador puede eliminar cualquiera
+        "allow delete": "if request.auth.uid == resource.data.authorId || get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];"
+      }
+    },
+    "cultivationTasks": {
+      "$taskId": {
+        // Un usuario solo puede acceder a sus propias tareas de cultivo
+        "allow read, write": "if request.auth.uid == resource.data.authorId;"
+      }
+    },
+    "plantAnalyses": {
+      "$analysisId": {
+        // Un usuario solo puede acceder a sus propios análisis de plantas
+        "allow read, write": "if request.auth.uid == resource.data.authorId;"
+      }
+    },
+    "messages": {
+      "$messageId": {
+        // Solo el remitente o el destinatario pueden leer/escribir un mensaje
+        "allow read, write": "if request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId;"
+      }
     }
   }
 }
