@@ -41,6 +41,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role.",
+          "enum": ["owner", "co-owner", "moderator", "user"]
         }
       },
       "required": [
@@ -247,20 +252,6 @@
         "text",
         "timestamp"
       ]
-    },
-    "UserRole": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UserRole",
-      "type": "object",
-      "description": "Stores the role of a user for quick access in security rules.",
-      "properties": {
-        "role": {
-          "type": "string",
-          "description": "The user's role.",
-          "enum": ["owner", "co-owner", "moderator", "user"]
-        }
-      },
-      "required": ["role"]
     }
   },
   "auth": {
@@ -285,22 +276,6 @@
               "description": "The Firebase Auth UID of the user."
             }
           ]
-        }
-      },
-      {
-        "path": "/roles/{userId}",
-        "definition": {
-            "entityName": "UserRole",
-            "schema": {
-                "$ref": "#/entities/UserRole"
-            },
-            "description": "Stores user roles for quick access in security rules, avoiding circular dependencies. `userId` corresponds to the Firebase Auth UID.",
-             "params": [
-                {
-                    "name": "userId",
-                    "description": "The Firebase Auth UID of the user."
-                }
-            ]
         }
       },
       {
@@ -404,8 +379,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed for scalability and security. It separates user profile data (`/users`) from role data (`/roles`) to prevent circular dependencies in security rules. This allows for efficient role-based access control, where checking if a user is an admin doesn't require reading the entire document they are trying to access. User-generated content (posts, comments, etc.) is nested under the user's ID to enforce clear ownership and simplify security rules, following the principle of path-based security. This structure supports both individual user data management and broader administrative access patterns securely."
+    "reasoning": "The Firestore structure is designed for scalability and security. User profile data (`/users`) contains a `role` field. User-generated content (posts, comments, etc.) is nested under the user's ID to enforce clear ownership and simplify security rules. This structure supports both individual user data management and broader administrative access patterns securely, with role-based access control managed directly through the `role` field in each user's document."
   }
 }
-
-    
