@@ -38,6 +38,7 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
   const [loading, setLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const viewport = scrollAreaRef.current?.querySelector('[data-viewport]');
@@ -148,11 +149,17 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
         </div>
       </ScrollArea>
       <footer className="p-4 bg-transparent mt-auto shrink-0">
-        <form onSubmit={handleSubmit} className="relative">
+        <form ref={formRef} onSubmit={handleSubmit} className="relative">
             <Input
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    formRef.current?.requestSubmit();
+                  }
+                }}
                 placeholder="Escribe tu pregunta aquí..."
                 className="pr-12 h-12 rounded-full text-base border-2 border-border/80 focus:border-primary shadow-inner"
                 disabled={loading}
