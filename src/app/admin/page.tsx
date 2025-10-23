@@ -55,10 +55,8 @@ export default function AdminPage() {
   const [totalPosts, setTotalPosts] = useState(0);
 
   const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users')) : null, [firestore]);
-  const postsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'posts')) : null, [firestore]);
-
+  
   const { data: usersData, isLoading: isLoadingUsers } = useCollection(usersQuery);
-  const { data: postsData, isLoading: isLoadingPosts } = useCollection(postsQuery);
 
   useEffect(() => {
     if (!isOwner) {
@@ -86,10 +84,16 @@ export default function AdminPage() {
       }
       
       try {
-        const storedPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
-        setTotalPosts(storedPosts.length);
-      } catch (error) {
-        console.error("Error reading mock posts from session storage", error);
+        const postSnapshot = await getCountFromServer(postsColl);
+        setTotalPosts(postSnapshot.data().count);
+      } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            const contextualError = new FirestorePermissionError({
+                operation: 'list',
+                path: postsColl.path,
+            });
+            errorEmitter.emit('permission-error', contextualError);
+        }
       }
     };
     fetchCounts();
