@@ -1,179 +1,88 @@
-/**
- * @fileoverview Firestore Security Rules for CannaConnect application.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for most data, with shared access for private messaging.
- * All user-generated content (posts, comments, cultivation tasks, plant analyses) is stored under
- * user-specific collections to ensure clear ownership and simplify security rules.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profile information.
- * - /users/{userId}/posts/{postId}: Stores posts created by a specific user.
- * - /users/{userId}/posts/{postId}/comments/{commentId}: Stores comments associated with a specific post.
- * - /users/{userId}/cultivationTasks/{taskId}: Stores cultivation tasks created by a specific user.
- * - /users/{userId}/plantAnalyses/{analysisId}: Stores plant analysis records created by a specific user.
- * - /messages/{messageId}: Stores chat messages between users.
- *
- * Key Security Decisions:
- * - Users can only read/write their own profile data and their associated content (posts, tasks, analyses).
- * - Users can only access chat messages where they are the sender or recipient.
- * - Listing of all users is disallowed for privacy.
- *
- * Denormalization for Authorization:
- * - Each document in user-owned subcollections (posts, tasks, analyses) implicitly has the `userId`
- *   as the owner, avoiding the need for separate `get()` calls to verify ownership.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the request is authenticated.
-     * @return {boolean} True if the request is authenticated, false otherwise.
-     */
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
+    
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/roles/$(userId)).data.role;
+    }
 
-    /**
-     * @description Checks if the authenticated user is the owner of the resource.
-     * @param {string} userId The user ID to compare against the authenticated user's ID.
-     * @return {boolean} True if the authenticated user is the owner, false otherwise.
-     */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+        return getUserRole(userId) == 'owner';
     }
 
-    /**
-     * @description Checks if the authenticated user is the owner of the existing resource.
-     *              This function is for update/delete operations, ensuring the document exists.
-     * @param {string} userId The user ID to compare against the authenticated user's ID.
-     * @return {boolean} True if the authenticated user is the owner and the document exists.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    function isCoOwner(userId) {
+        return getUserRole(userId) == 'co-owner';
     }
 
-    /**
-     * @description
-     *  - Allows users to read their own profile data.
-     *  - Allows users to create their profile, enforcing that the `id` matches their `auth.uid`.
-     *  - Allows users to update their own profile.
-     *  - Disallows listing all users.
-     * @path /users/{userId}
-     * @allow (get) User with UID 'user123' can read their own profile.
-     * @allow (create) User with UID 'user123' can create their own profile with matching ID.
-     * @allow (update) User with UID 'user123' can update their own profile.
-     * @deny (list) No one can list all user profiles.
-     * @deny (create) User with UID 'user456' cannot create a profile with ID 'user123'.
-     * @principle Enforces document ownership and prevents unauthorized data access.
-     */
+    function isModerator(userId) {
+        return getUserRole(userId) in ['owner', 'co-owner', 'moderator'];
+    }
+    
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      // Admins (owner, co-owner, moderator) can list all users.
+      // Any signed-in user can read any individual user profile.
+      allow list, get: if isModerator(request.auth.uid);
+      allow get: if isSignedIn();
+
+      // Users can create their own profile.
+      allow create: if request.auth.uid == userId;
+      
+      // Users can update their own profile.
+      // Admins can update any user profile, but cannot change an owner's role.
+      allow update: if request.auth.uid == userId || (isModerator(request.auth.uid) && !isOwner(userId));
+
+      // Only owners can delete users, but not themselves.
+      allow delete: if isOwner(request.auth.uid) && request.auth.uid != userId;
     }
 
-    /**
-     * @description
-     *  - Allows the owner of a user profile to manage their posts.
-     *  - Enforces that the 'authorId' field in a new post matches the `userId` in the path.
-     * @path /users/{userId}/posts/{postId}
-     * @allow (get) User with UID 'user123' can read their own post.
-     * @allow (list) User with UID 'user123' can list their own posts.
-     * @allow (create) User with UID 'user123' can create a post with authorId 'user123'.
-     * @allow (update) User with UID 'user123' can update their own post.
-     * @allow (delete) User with UID 'user123' can delete their own post.
-     * @deny (create) User with UID 'user456' cannot create a post under /users/user123.
-     * @principle Enforces document ownership for writes and allows owner-only reads.
-     */
-    match /users/{userId}/posts/{postId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.authorId == userId;
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    match /roles/{userId} {
+      // Any signed-in user can read any role.
+      allow get: if isSignedIn();
+      
+      // Admins can create or update roles, but cannot edit an owner's role unless they are an owner.
+      allow write: if isModerator(request.auth.uid) && (!isOwner(userId) || isOwner(request.auth.uid));
     }
 
-    /**
-     * @description
-     *  - Allows the owner of a post to manage comments on their posts.
-     * @path /users/{userId}/posts/{postId}/comments/{commentId}
-     * @allow (get) User with UID 'user123' can read a comment on their post.
-     * @allow (list) User with UID 'user123' can list comments on their post.
-     * @allow (create) User with UID 'user123' can create a comment on their post.
-     * @allow (update) User with UID 'user123' can update a comment on their post.
-     * @allow (delete) User with UID 'user123' can delete a comment on their post.
-     * @deny (create) User with UID 'user456' cannot create a comment on user123's post.
-     * @principle Enforces document ownership and allows owner-only reads.
-     */
-    match /users/{userId}/posts/{postId}/comments/{commentId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    match /posts/{postId} {
+      // Anyone can read any post.
+      allow get: if true;
+      allow list: if true;
+      
+      // Signed-in users can create posts.
+      allow create: if isSignedIn();
+      
+      // The author of the post or an admin can update or delete it.
+      allow update, delete: if resource.data.authorId == request.auth.uid || isModerator(request.auth.uid);
     }
 
-    /**
-     * @description
-     *  - Allows the owner of a user profile to manage their cultivation tasks.
-     * @path /users/{userId}/cultivationTasks/{taskId}
-     * @allow (get) User with UID 'user123' can read their own cultivation task.
-     * @allow (list) User with UID 'user123' can list their own cultivation tasks.
-     * @allow (create) User with UID 'user123' can create a cultivation task.
-     * @allow (update) User with UID 'user123' can update their own cultivation task.
-     * @allow (delete) User with UID 'user123' can delete their own cultivation task.
-     * @deny (create) User with UID 'user456' cannot create a cultivation task under user123's profile.
-     * @principle Enforces document ownership and allows owner-only reads.
-     */
-    match /users/{userId}/cultivationTasks/{taskId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.authorId == userId;
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    match /posts/{postId}/comments/{commentId} {
+      // Anyone can read comments.
+      allow get: if true;
+      allow list: if true;
+      
+      // Signed-in users can create comments.
+      allow create: if isSignedIn();
+
+      // The author of the comment or an admin can update or delete it.
+      allow update, delete: if resource.data.authorId == request.auth.uid || isModerator(request.auth.uid);
     }
 
-    /**
-     * @description
-     *  - Allows the owner of a user profile to manage their plant analyses.
-     * @path /users/{userId}/plantAnalyses/{analysisId}
-     * @allow (get) User with UID 'user123' can read their own plant analysis.
-     * @allow (list) User with UID 'user123' can list their own plant analyses.
-     * @allow (create) User with UID 'user123' can create a plant analysis.
-     * @allow (update) User with UID 'user123' can update their own plant analysis.
-     * @allow (delete) User with UID 'user123' can delete their own plant analysis.
-     * @deny (create) User with UID 'user456' cannot create a plant analysis under user123's profile.
-     * @principle Enforces document ownership and allows owner-only reads.
-     */
-    match /users/{userId}/plantAnalyses/{analysisId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.authorId == userId;
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
+     match /{path=**}/comments/{commentId} {
+       // Anyone can read comments.
+      allow get: if true;
+      allow list: if true;
+      
+      // Signed-in users can create comments.
+      allow create: if isSignedIn();
 
-    /**
-     * @description
-     *  - Allows only the sender and recipient to read a chat message.
-     *  - Allows anyone to create a chat message, but enforces that the senderId and recipientId are valid.
-     *  - Disallows updating or deleting messages (for simplicity; consider adding time-based deletion).
-     * @path /messages/{messageId}
-     * @allow (get) User with UID 'user123' can read a message where they are the sender or recipient.
-     * @allow (create) User with UID 'user123' can create a message with themselves as sender or recipient.
-     * @deny (get) User with UID 'user456' cannot read a message between user123 and another user.
-     * @principle Enforces that only the sender and recipient can read a message.
-     */
-    match /messages/{messageId} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId);
-      allow list: if false;
-      allow create: if isSignedIn() && (request.resource.data.senderId == request.auth.uid || request.resource.data.recipientId == request.auth.uid);
-      allow update: if false;
-      allow delete: if false;
+      // The author of the comment or an admin can update or delete it.
+      allow update, delete: if resource.data.authorId == request.auth.uid || isModerator(request.auth.uid);
     }
   }
 }
