@@ -24,10 +24,10 @@ import { useFirebase } from '@/firebase';
 import { CircularProgress } from '@/components/ui/circular-progress';
 
 const rankConfig = {
-  owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400' },
-  'co-owner': { label: 'Co-Dueño', icon: ShieldHalf, color: 'text-orange-400' },
-  moderator: { label: 'Moderador', icon: ShieldCheck, color: 'text-blue-400' },
-  user: { label: 'Usuario', icon: UserIcon, color: 'text-green-400' },
+  owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400' },
+  'co-owner': { label: 'Co-Dueño', icon: ShieldHalf, color: 'text-orange-400', badgeClass: 'bg-orange-500/10 border-orange-500 text-orange-400' },
+  moderator: { label: 'Moderador', icon: ShieldCheck, color: 'text-blue-400', badgeClass: 'bg-blue-500/10 border-blue-500 text-blue-400' },
+  user: { label: 'Miembro', icon: UserIcon, color: 'text-green-400', badgeClass: 'bg-green-500/10 border-green-500 text-green-400' },
 };
 
 
@@ -247,28 +247,12 @@ export default function ProfilePage() {
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <h2 className="font-headline text-2xl font-bold">{profileData.displayName}</h2>
-              {profileData.role === 'owner' && (
-                <Badge variant="destructive" className="gap-1 bg-yellow-500/10 border-yellow-500 text-yellow-400">
-                    <Crown className="h-3 w-3" />
-                    Dueño
+              {profileData.role && (
+                <Badge variant="secondary" className={cn("gap-1", rank.badgeClass)}>
+                    <rank.icon className="h-3 w-3" />
+                    {rank.label}
                 </Badge>
               )}
-               {profileData.role === 'co-owner' && (
-                <Badge variant="secondary" className="gap-1 bg-orange-500/10 border-orange-500 text-orange-400">
-                    <ShieldHalf className="h-3 w-3" />
-                    Co-Dueño
-                </Badge>
-              )}
-               {profileData.role === 'moderator' && (
-                <Badge variant="secondary" className="gap-1 bg-blue-500/10 border-blue-500 text-blue-400">
-                    <ShieldCheck className="h-3 w-3" />
-                    Moderador
-                </Badge>
-              )}
-            </div>
-            <div className={`flex justify-center items-center gap-2 md:justify-start ${profileData.rank.color}`}>
-              <profileData.rank.icon className="h-5 w-5" />
-              <span className="font-bold font-headline text-lg">{profileData.rank.label}</span>
             </div>
             
             <div className="flex justify-center md:justify-start gap-2">
