@@ -218,6 +218,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true);
     const userDocRef = doc(firestore, 'users', cannaUser.uid);
   
+    // Use the non-blocking pattern with contextual error handling
     updateDoc(userDocRef, updates)
       .catch((error) => {
         if (error.code === 'permission-denied') {
@@ -233,6 +234,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       })
       .finally(() => {
+        // This will run immediately after updateDoc is called, not after it completes.
+        // We set loading to false optimistically.
         setLoading(false);
       });
   
