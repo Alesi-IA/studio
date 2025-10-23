@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Regla de diagnóstico: Permite leer y escribir en cualquier ruta si el usuario está autenticado.
+    // Esto es temporal para asegurar que la autenticación está pasando correctamente.
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
