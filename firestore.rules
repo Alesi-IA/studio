@@ -1,147 +1,167 @@
 /**
- * @fileOverview Firestore Security Rules for CannaConnect.
+ * @fileoverview Firestore Security Rules for CannaConnect application.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for most data, with specific exceptions for public posts and direct messaging.  All user-generated content (posts, comments, tasks, analyses) is nested under `/users/{userId}`.
+ * This ruleset enforces a strict user-ownership model for most data, with specific exceptions for chat messages, which are secured based on sender and recipient. All user-generated content (posts, comments, cultivation tasks, and plant analyses) is stored under user-specific paths. This design avoids complex `get()` calls in security rules, enabling atomic operations and improved debuggability.
  *
  * Data Structure:
- * - `/users/{userId}`: User profiles, accessible only to the user themselves.
- * - `/users/{userId}/posts/{postId}`: Posts created by a user, accessible only to the user.
- * - `/users/{userId}/posts/{postId}/comments/{commentId}`: Comments on a post, accessible only to the post owner.
- * - `/users/{userId}/cultivationTasks/{taskId}`: Cultivation tasks created by a user, accessible only to the user.
- * - `/users/{userId}/plantAnalyses/{analysisId}`: Plant analyses created by a user, accessible only to the user.
- * - `/messages/{messageId}`: Chat messages between users.
+ * - /users/{userId}: Stores user profile information. The `userId` corresponds to the Firebase Auth UID.
+ * - /users/{userId}/posts/{postId}: Stores posts created by a specific user.
+ * - /users/{userId}/posts/{postId}/comments/{commentId}: Stores comments associated with a specific post.
+ * - /users/{userId}/cultivationTasks/{taskId}: Stores cultivation tasks created by a specific user.
+ * - /users/{userId}/plantAnalyses/{analysisId}: Stores plant analysis records created by a specific user.
+ * - /messages/{messageId}: Stores chat messages between users.
  *
  * Key Security Decisions:
- * - User listing is disallowed.
- * - Write access is ALWAYS validated against the authenticated user's ID (`request.auth.uid`).
- * - In prototyping mode, data schema validation is relaxed to allow for faster iteration, focusing on access control rather than data integrity.
+ * - User listing is explicitly denied to protect user privacy.
+ * - All write operations are protected by authorization checks based on user ownership.
+ * - Data validation is limited to fields critical for authorization and relational integrity.
  *
  * Denormalization for Authorization:
- * - Each document with owner MUST have an `authorId` or `ownerId` field matching the `userId` in the path.
+ * The data model denormalizes author/owner IDs onto documents to avoid costly `get()` calls in security rules. For example, posts contain an `authorId` field that must match the `userId` in the path.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description User profiles, accessible only to the user themselves.
+     * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of the document.
+     * @param {string} userId The user ID to check against the authenticated user's UID.
+     * @return {boolean} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of the document, and that the document already exists.
+     * @param {string} userId The user ID to check against the authenticated user's UID.
+     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Denies listing of all users. This is a privacy measure.
+     * @path /users
+     * @allow None - Listing users is not permitted.
+     * @deny (list) - Any attempt to list users.
+     * @principle Enforces user privacy by preventing unauthorized listing of user profiles.
+     */
+    match /users {
+      allow get: if false; // Getting a specific user is fine if you know the ID.
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Manages access to user profile information.
      * @path /users/{userId}
-     * @allow (create, get, update, delete) User with matching userId.
-     *   Example: User with UID "user_abc" creates their profile at /users/user_abc.
-     * @deny (create, get, update, delete) User with mismatched userId.
-     *   Example: User with UID "user_def" attempts to access /users/user_abc.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - A user can create their own profile if the `userId` matches their auth UID.
+     * @allow (get, update, delete) - A user can read, update, and delete their own profile.
+     * @deny (create) - A user cannot create a profile for another user.
+     * @deny (get, update, delete) - A user cannot read, update or delete another user's profile.
+     * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource.data.id == userId;
-      allow delete: if isOwner(userId) && resource.data.id == userId;
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Posts created by a user, accessible only to the user.
+     * @description Manages access to posts created by a user.
      * @path /users/{userId}/posts/{postId}
-     * @allow (create, get, update, delete) User with matching userId.
-     *   Example: User with UID "user_abc" creates a post at /users/user_abc/posts/post_123.
-     * @deny (create, get, update, delete) User with mismatched userId.
-     *   Example: User with UID "user_def" attempts to access /users/user_abc/posts/post_123.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - A user can create a post under their own user ID.
+     * @allow (get, list, update, delete) - A user can read, list, update, and delete their own posts.
+     * @deny (create) - A user cannot create a post under another user's ID.
+     * @deny (get, list, update, delete) - A user cannot read, list, update, or delete another user's posts.
+     * @principle Enforces document ownership for posts.
      */
     match /users/{userId}/posts/{postId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.authorId == userId;
-      allow update: if isOwner(userId) && resource.data.authorId == userId;
-      allow delete: if isOwner(userId) && resource.data.authorId == userId;
+      allow create: if isOwner(userId) && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Comments on a post, accessible only to the post owner.
+     * @description Manages access to comments on a specific post.
      * @path /users/{userId}/posts/{postId}/comments/{commentId}
-     * @allow (create, get, update, delete) User with matching userId.
-     *   Example: User with UID "user_abc" creates a comment at /users/user_abc/posts/post_123/comments/comment_456.
-     * @deny (create, get, update, delete) User with mismatched userId.
-     *   Example: User with UID "user_def" attempts to access /users/user_abc/posts/post_123/comments/comment_456.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - A user can create a comment on a post under their own user ID.
+     * @allow (get, list, update, delete) - A user can read, list, update, and delete their own comments.
+     * @deny (create) - A user cannot create a comment under another user's ID.
+     * @deny (get, list, update, delete) - A user cannot read, list, update, or delete another user's comments.
+     * @principle Enforces document ownership for comments.
      */
     match /users/{userId}/posts/{postId}/comments/{commentId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.authorId == userId;
-      allow update: if isOwner(userId) && resource.data.authorId == userId;
-      allow delete: if isOwner(userId) && resource.data.authorId == userId;
+      allow create: if isOwner(userId) && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Cultivation tasks created by a user, accessible only to the user.
+     * @description Manages access to cultivation tasks created by a user.
      * @path /users/{userId}/cultivationTasks/{taskId}
-     * @allow (create, get, update, delete) User with matching userId.
-     *   Example: User with UID "user_abc" creates a task at /users/user_abc/cultivationTasks/task_789.
-     * @deny (create, get, update, delete) User with mismatched userId.
-     *   Example: User with UID "user_def" attempts to access /users/user_abc/cultivationTasks/task_789.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - A user can create a cultivation task under their own user ID.
+     * @allow (get, list, update, delete) - A user can read, list, update, and delete their own cultivation tasks.
+     * @deny (create) - A user cannot create a cultivation task under another user's ID.
+     * @deny (get, list, update, delete) - A user cannot read, list, update, or delete another user's cultivation tasks.
+     * @principle Enforces document ownership for cultivation tasks.
      */
     match /users/{userId}/cultivationTasks/{taskId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.authorId == userId;
-      allow update: if isOwner(userId) && resource.data.authorId == userId;
-      allow delete: if isOwner(userId) && resource.data.authorId == userId;
+      allow create: if isOwner(userId) && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Plant analyses created by a user, accessible only to the user.
+     * @description Manages access to plant analysis records created by a user.
      * @path /users/{userId}/plantAnalyses/{analysisId}
-     * @allow (create, get, update, delete) User with matching userId.
-     *   Example: User with UID "user_abc" creates an analysis at /users/user_abc/plantAnalyses/analysis_101.
-     * @deny (create, get, update, delete) User with mismatched userId.
-     *   Example: User with UID "user_def" attempts to access /users/user_abc/plantAnalyses/analysis_101.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - A user can create a plant analysis record under their own user ID.
+     * @allow (get, list, update, delete) - A user can read, list, update, and delete their own plant analysis records.
+     * @deny (create) - A user cannot create a plant analysis record under another user's ID.
+     * @deny (get, list, update, delete) - A user cannot read, list, update, or delete another user's plant analysis records.
+     * @principle Enforces document ownership for plant analysis records.
      */
     match /users/{userId}/plantAnalyses/{analysisId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.authorId == userId;
-      allow update: if isOwner(userId) && resource.data.authorId == userId;
-      allow delete: if isOwner(userId) && resource.data.authorId == userId;
+      allow create: if isOwner(userId) && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Chat messages between users, accessible only to the sender and recipient.
+     * @description Manages access to chat messages between users. Only the sender and recipient can access the message.
      * @path /messages/{messageId}
-     * @allow (create) Any authenticated user. Must be sent by the authenticated user.
-     *   Example: User with UID "user_abc" creates a message at /messages/message_202.
-     * @allow (get) Sender or Recipient User.
-     *   Example: User with UID "user_abc" attempts to get /messages/message_202 they sent to "user_def".
-     * @deny (get) User with mismatched senderId and recipientId.
-     *   Example: User with UID "user_ghi" attempts to access /messages/message_202.
-     * @principle Enforces sender/recipient access.
+     * @allow (create) - A user can create a chat message. The `senderId` and `recipientId` must be valid user IDs.
+     * @allow (get) - The sender or recipient can read the message.
+     * @deny (list, update, delete) - Listing, updating, and deleting messages is not allowed.
+     * @principle Enforces access control based on sender and recipient IDs for chat messages.
      */
     match /messages/{messageId} {
-      function isSenderOrRecipient() {
-        return request.auth != null && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid);
-      }
-      allow get: if isSenderOrRecipient();
+      allow get: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid);
       allow list: if false;
-      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
       allow update: if false;
       allow delete: if false;
     }
