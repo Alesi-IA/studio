@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { useFirebase } from '@/firebase/provider';
+import { useFirebase, useAuthUser } from '@/firebase/provider';
 import { FirestorePermissionError, errorEmitter } from '@/firebase';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
@@ -51,7 +51,8 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { auth, firestore, isUserLoading, user: firebaseUser } = useFirebase();
+  const { auth, firestore } = useFirebase();
+  const { isUserLoading, user: firebaseUser } = useAuthUser();
   const [cannaUser, setCannaUser] = useState<CannaGrowUser | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -272,5 +273,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
