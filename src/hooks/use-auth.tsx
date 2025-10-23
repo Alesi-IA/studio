@@ -62,11 +62,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const userDoc = await getDoc(userDocRef);
         let userData;
+
         if (userDoc.exists()) {
           userData = userDoc.data();
         } else {
            console.warn(`User document for ${user.uid} not found. Creating with default 'user' role.`);
-           userData = { role: 'user', displayName: user.displayName };
+           const newUserProfile = {
+             uid: user.uid,
+             email: user.email?.toLowerCase(),
+             displayName: user.displayName,
+             role: 'user',
+             photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/128/128`,
+             bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+             createdAt: new Date().toISOString(),
+           };
+           await setDoc(userDocRef, newUserProfile);
+           userData = newUserProfile;
         }
 
         const finalUserData = { ...user, ...userData } as CannaGrowUser;
@@ -77,10 +88,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           finalUserData.role = 'owner';
           
           const roleDocRef = doc(firestore, 'roles', user.uid);
-          updateDoc(userDocRef, { role: 'owner' }).catch(err => {
+          await updateDoc(userDocRef, { role: 'owner' }).catch(err => {
              console.error("Failed to persist owner role to Firestore 'users' collection:", err);
           });
-          setDoc(roleDocRef, { role: 'owner' }).catch(err => {
+          await setDoc(roleDocRef, { role: 'owner' }).catch(err => {
              console.error("Failed to persist owner role to Firestore 'roles' collection:", err);
           });
         }
