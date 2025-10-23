@@ -38,3 +38,15 @@ export interface UserGuide {
     likes: number;
     comments: UserGuideComment[];
 }
+
+export interface UserProfile {
+    uid: string;
+    email: string;
+    displayName: string;
+    role: 'owner' | 'co-owner' | 'moderator' | 'user';
+    photoURL?: string;
+    bio?: string;
+    createdAt: string;
+}
+
+    

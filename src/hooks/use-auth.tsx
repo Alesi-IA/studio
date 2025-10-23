@@ -19,6 +19,7 @@ type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 interface CannaGrowUser extends User {
   role: UserRole;
   displayName: string;
+  bio: string;
 }
 
 interface AuthContextType {
@@ -31,7 +32,7 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
+  updateUserProfile: (updates: Partial<Pick<CannaGrowUser, 'displayName' | 'bio' | 'photoURL'>>) => Promise<void>;
   _injectUser: (user: CannaGrowUser) => void;
 }
 
@@ -97,7 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       } catch (error) {
         console.error("Error fetching user role:", error);
-        const fallbackUser = { ...user, role: 'user', displayName: user.displayName } as CannaGrowUser;
+        const fallbackUser = { ...user, role: 'user', displayName: user.displayName, bio: '' } as CannaGrowUser;
         if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
             fallbackUser.role = 'owner';
         }
@@ -206,16 +207,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [auth, toast]);
   
-  const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>) => {
-    if (!cannaUser || !firestore) return;
+  const updateUserProfile = useCallback(async (updates: Partial<Pick<CannaGrowUser, 'displayName' | 'bio' | 'photoURL'>>) => {
+    if (!cannaUser || !firestore || !auth.currentUser) return;
     setLoading(true);
     const userDocRef = doc(firestore, 'users', cannaUser.uid);
     
     try {
+        // Update Firestore document
         await updateDoc(userDocRef, updates);
-        setCannaUser(prev => prev ? ({...prev, ...updates}) : null)
 
-    } catch (error) {
+        // If displayName or photoURL are being updated, update Firebase Auth profile as well
+        if (updates.displayName || updates.photoURL) {
+            await updateProfile(auth.currentUser, {
+                displayName: updates.displayName,
+                photoURL: updates.photoURL,
+            });
+        }
+        
+        setCannaUser(prev => prev ? ({...prev, ...updates}) : null)
+        toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
+
+    } catch (error: any) {
         if (error.code === 'permission-denied') {
           const contextualError = new FirestorePermissionError({ operation: 'update', path: userDocRef.path, requestResourceData: updates });
           errorEmitter.emit('permission-error', contextualError);
@@ -227,7 +239,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
     }
   
-  }, [cannaUser, firestore, toast]);
+  }, [cannaUser, firestore, auth, toast]);
 
 
   const _injectUser = (userToImpersonate: CannaGrowUser) => {
@@ -264,3 +276,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

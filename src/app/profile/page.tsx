@@ -6,14 +6,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Post } from '@/types';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useFirebase } from '@/firebase';
 import { CircularProgress } from '@/components/ui/circular-progress';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const rankConfig = {
   owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400' },
@@ -46,6 +49,12 @@ export default function ProfilePage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const isUploading = uploadProgress !== null;
 
+  // State for Edit Profile Dialog
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editingDisplayName, setEditingDisplayName] = useState(user?.displayName || '');
+  const [editingBio, setEditingBio] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
   const isOwnProfile = true; 
   
   const rank = useMemo(() => {
@@ -56,13 +65,22 @@ export default function ProfilePage() {
       displayName: user?.displayName || 'Usuario',
       photoURL: user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`,
       uid: user?.uid,
-      bio: user?.role === 'owner' ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!' :
-           user?.role === 'co-owner' ? 'Co-Dueño de CannaGrow. Ayudando a que todo funcione sin problemas.' :
-           user?.role === 'moderator' ? 'Moderador de CannaGrow. Aquí para ayudar y mantener el buen ambiente.' :
-           'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+      bio: user?.bio || (
+          user?.role === 'owner' ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!' :
+          user?.role === 'co-owner' ? 'Co-Dueño de CannaGrow. Ayudando a que todo funcione sin problemas.' :
+          user?.role === 'moderator' ? 'Moderador de CannaGrow. Aquí para ayudar y mantener el buen ambiente.' :
+          'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.'
+      ),
       rank,
       role: user?.role,
-  }), [user, rank]);
+  }), [user]);
+
+   useEffect(() => {
+    if (user) {
+      setEditingDisplayName(user.displayName || '');
+      setEditingBio(user.bio || '');
+    }
+  }, [user]);
 
   const loadPostsAndState = useCallback(() => {
     if (!user?.uid) return;
@@ -117,6 +135,16 @@ export default function ProfilePage() {
       }
     );
   };
+  
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    await updateUserProfile({
+        displayName: editingDisplayName,
+        bio: editingBio
+    });
+    setIsSavingProfile(false);
+    setIsEditProfileOpen(false);
+  }
 
 
   const handleLogout = async () => {
@@ -234,13 +262,22 @@ export default function ProfilePage() {
                   accept="image/*"
                   className="hidden"
                 />
-                <Button 
-                  size="icon" 
-                  className="absolute bottom-1 right-1 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+                 <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                              size="icon" 
+                              className="absolute bottom-1 right-1 h-8 w-8 rounded-full"
+                              onClick={() => fileInputRef.current?.click()}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Cambiar foto de perfil</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
               </>
             )}
           </div>
@@ -257,23 +294,49 @@ export default function ProfilePage() {
             
             <div className="flex justify-center md:justify-start gap-2">
                 {isOwnProfile ? (
-                    <>
+                  <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+                    <DialogTrigger asChild>
                         <Button variant="outline">Editar Perfil</Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <Settings className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                 <DropdownMenuItem>Editar Perfil</DropdownMenuItem>
-                                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                                     <LogOut className="mr-2 h-4 w-4"/>
-                                     Cerrar Sesión
-                                 </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </>
+                    </DialogTrigger>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <Settings className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                             <DialogTrigger asChild>
+                                <DropdownMenuItem>Editar Perfil</DropdownMenuItem>
+                             </DialogTrigger>
+                             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                                 <LogOut className="mr-2 h-4 w-4"/>
+                                 Cerrar Sesión
+                             </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Editar tu perfil</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="displayName">Nombre de usuario</Label>
+                                <Input id="displayName" value={editingDisplayName} onChange={(e) => setEditingDisplayName(e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="bio">Biografía</Label>
+                                <Textarea id="bio" value={editingBio} onChange={(e) => setEditingBio(e.target.value)} className="min-h-[100px]" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)}>Cancelar</Button>
+                            <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
+                                {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Guardar cambios
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 ) : (
                     <>
                         <Button>Seguir</Button>
