@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 
@@ -62,16 +61,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userDocRef = doc(firestore, 'users', user.uid);
       try {
         const userDoc = await getDoc(userDocRef);
+        let userData;
         if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setCannaUser({ ...user, ...userData } as CannaGrowUser);
+          userData = userDoc.data();
         } else {
-           console.warn(`User document for ${user.uid} not found. Using default 'user' role.`);
-           setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
+           console.warn(`User document for ${user.uid} not found. Creating with default 'user' role.`);
+           // We will handle the owner logic below, so default to 'user'
+           userData = { role: 'user', displayName: user.displayName };
+           // No need to create the doc here, the logic below handles it if needed.
         }
+
+        // --- Proactive Owner Check ---
+        const finalUserData = { ...user, ...userData } as CannaGrowUser;
+        const normalizedEmail = finalUserData.email?.toLowerCase();
+        
+        if (normalizedEmail === 'alexisgrow@cannagrow.com' && finalUserData.role !== 'owner') {
+          console.log("Owner email detected. Elevating permissions.");
+          finalUserData.role = 'owner';
+          
+          // Persist the correction to Firestore
+          updateDoc(userDocRef, { role: 'owner' }).catch(err => {
+             console.error("Failed to persist owner role to Firestore:", err);
+          });
+        }
+        
+        setCannaUser(finalUserData);
+
       } catch (error) {
         console.error("Error fetching user role:", error);
-        setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
+        // Fallback for safety
+        const fallbackUser = { ...user, role: 'user', displayName: user.displayName } as CannaGrowUser;
+        if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
+            fallbackUser.role = 'owner';
+        }
+        setCannaUser(fallbackUser);
       } finally {
         setLoading(false);
       }
@@ -90,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const role = cannaUser?.role || null;
   const isOwner = role === 'owner';
   const isCoOwner = role === 'co-owner';
-  const isModerator = role === 'moderator' || role === 'co-owner' || 'owner';
+  const isModerator = role === 'moderator' || role === 'co-owner' || role === 'owner';
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) {
@@ -123,7 +146,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         createdAt: new Date().toISOString(),
       };
       
-      // Use non-blocking write with proper error handling
       setDoc(userDocRef, newUserProfile)
         .then(() => {
           toast({
@@ -156,7 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [auth, firestore, toast]);
 
-  const logIn = useCallback(async (email, password): Promise<void> => {
+  const logIn = useCallback(async (email: string, password: string): Promise<void> => {
     if (!auth) {
         toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
         return Promise.reject(new Error("Auth service not available"));
@@ -194,10 +216,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>) => {
     if (!cannaUser || !firestore) return;
     setLoading(true);
-    
     const userDocRef = doc(firestore, 'users', cannaUser.uid);
-    
-    // Non-blocking update with contextual error handling
+  
     updateDoc(userDocRef, updates)
       .catch((error) => {
         if (error.code === 'permission-denied') {
@@ -215,6 +235,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .finally(() => {
         setLoading(false);
       });
+  
   }, [cannaUser, firestore, toast]);
 
 
