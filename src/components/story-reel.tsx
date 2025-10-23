@@ -4,18 +4,8 @@
 import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Plus, PlusCircle } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-
-const mockStories = [
-  { id: 'user-2', name: 'Sativus', avatar: 'https://picsum.photos/seed/user-2/80/80', hasStory: true },
-  { id: 'user-3', name: 'IndicaLover', avatar: 'https://picsum.photos/seed/user-3/80/80', hasStory: true },
-  { id: 'user-4', name: 'CultivadorARG', avatar: 'https://picsum.photos/seed/user-4/80/80', hasStory: false },
-  { id: 'user-5', name: 'BuenaCosecha', avatar: 'https://picsum.photos/seed/user-5/80/80', hasStory: true },
-  { id: 'user-6', name: 'Dr. Cogollo', avatar: 'https://picsum.photos/seed/user-6/80/80', hasStory: false },
-  { id: 'user-7', name: 'FitoPaez', avatar: 'https://picsum.photos/seed/user-7/80/80', hasStory: true },
-  { id: 'user-8', name: 'Charly', avatar: 'https://picsum.photos/seed/user-8/80/80', hasStory: true },
-];
 
 function StoryCircle({ name, avatar, hasStory, isCurrentUser = false }: { name: string; avatar: string, hasStory: boolean; isCurrentUser?: boolean }) {
     const ringClasses = hasStory ? 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-border';
@@ -55,14 +45,6 @@ export function StoryReel() {
                         isCurrentUser
                     />
                 )}
-                {mockStories.map((story) => (
-                    <StoryCircle 
-                        key={story.id}
-                        name={story.name}
-                        avatar={story.avatar}
-                        hasStory={story.hasStory}
-                    />
-                ))}
             </div>
             <ScrollBar orientation="horizontal" className="h-2" />
         </ScrollArea>
