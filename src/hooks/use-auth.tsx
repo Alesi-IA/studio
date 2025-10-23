@@ -66,14 +66,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const userData = userDoc.data();
           setCannaUser({ ...user, ...userData } as CannaGrowUser);
         } else {
-           // This case might happen if the user doc creation failed after sign up
-           // We can treat them as a regular user for now, or attempt to create the doc again
            console.warn(`User document for ${user.uid} not found. Using default 'user' role.`);
            setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
-        // Fallback to basic user if role fetching fails
         setCannaUser({ ...user, role: 'user', displayName: user.displayName } as CannaGrowUser);
       } finally {
         setLoading(false);
@@ -95,7 +92,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isCoOwner = role === 'co-owner';
   const isModerator = role === 'moderator' || role === 'co-owner' || role === 'owner';
 
-  const signUp = async (displayName, email, password) => {
+  const signUp = useCallback(async (displayName, email, password) => {
     if (!auth || !firestore) {
         toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
         return;
@@ -125,8 +122,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             createdAt: new Date().toISOString(),
         };
         
-        // Use non-blocking write and handle permission errors via the emitter
         setDoc(userDocRef, newUserProfile)
+          .then(() => {
+            toast({
+                title: "¡Cuenta Creada!",
+                description: "Has sido registrado exitosamente."
+            });
+          })
           .catch((error) => {
             if (error.code === 'permission-denied') {
               const contextualError = new FirestorePermissionError({
@@ -136,7 +138,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               });
               errorEmitter.emit('permission-error', contextualError);
             }
-            // For other errors, you might want to log them or handle them differently
             console.error("Error creating user profile document:", error);
             toast({
               variant: "destructive",
@@ -145,23 +146,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
           });
 
-
-        toast({
-            title: "¡Cuenta Creada!",
-            description: "Has sido registrado exitosamente."
-        });
-
     } catch (error: any) {
         console.error('Sign up error', error);
         toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
     } finally {
         setLoading(false);
     }
-  };
+  }, [auth, firestore, toast]);
 
-  const logIn = async (email, password) => {
+  const logIn = useCallback(async (email, password) => {
     if (!auth) {
-        throw new Error("Servicios de autenticación no disponibles.");
+        toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
+        return;
     }
     setLoading(true);
     try {
@@ -172,36 +168,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
         setLoading(false);
     }
-  };
+  }, [auth, toast]);
 
-  const logOut = async () => {
+  const logOut = useCallback(async () => {
     if (!auth) return;
     setLoading(true);
     try {
         await signOut(auth);
+        setCannaUser(null);
     } catch (error) {
          toast({ variant: "destructive", title: "Error", description: "No se pudo cerrar la sesión." });
     } finally {
-        setCannaUser(null);
         setLoading(false);
     }
-  };
+  }, [auth, toast]);
   
-  const updateUserProfile = async (updates: Partial<CannaGrowUser>) => {
+  const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>) => {
     if (!cannaUser || !firestore) return;
     setLoading(true);
-    try {
-      const userDocRef = doc(firestore, 'users', cannaUser.uid);
-      await updateDoc(userDocRef, updates);
-      setCannaUser(prev => prev ? { ...prev, ...updates } : null);
-      toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
-    } catch (error) {
-      console.error('Error al actualizar el perfil:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
-    } finally {
-      setLoading(false);
-    }
-  };
+    
+    const userDocRef = doc(firestore, 'users', cannaUser.uid);
+    
+    updateDoc(userDocRef, updates)
+      .then(() => {
+        setCannaUser(prev => prev ? { ...prev, ...updates } : null);
+        toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
+      })
+      .catch((error) => {
+        if (error.code === 'permission-denied') {
+          const contextualError = new FirestorePermissionError({
+            operation: 'update',
+            path: `users/${cannaUser.uid}`,
+            requestResourceData: updates,
+          });
+          errorEmitter.emit('permission-error', contextualError);
+        }
+        console.error('Error al actualizar el perfil:', error);
+        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [cannaUser, firestore, toast]);
 
   const _injectUser = (userToImpersonate: CannaGrowUser) => {
      if (isOwner) {
@@ -237,5 +245,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
