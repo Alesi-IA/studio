@@ -207,10 +207,14 @@ export default function ProfilePage() {
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <div className="relative group">
-            <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-primary/50">
-                <AvatarImage src={profileData.photoURL} />
-                <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <div className="relative h-24 w-24 md:h-32 md:w-32 rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500">
+                <div className="h-full w-full rounded-full p-1 bg-background">
+                    <Avatar className="h-full w-full">
+                        <AvatarImage src={profileData.photoURL} />
+                        <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                </div>
+            </div>
              {isUploading && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
                 <CircularProgress value={uploadProgress} />
@@ -227,7 +231,7 @@ export default function ProfilePage() {
                 />
                 <Button 
                   size="icon" 
-                  className="absolute bottom-0 left-0 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute bottom-1 right-1 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Pencil className="h-4 w-4" />

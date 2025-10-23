@@ -39,6 +39,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { StoryReel } from '@/components/story-reel';
 
 export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -56,12 +57,19 @@ export default function FeedPage() {
 
   const loadPosts = useCallback(() => {
     setLoading(true);
-    const storedPostsJSON = sessionStorage.getItem('mockPosts');
-    const storedPosts = storedPostsJSON ? JSON.parse(storedPostsJSON) : [];
-    const sortedPosts = storedPosts.sort((a:Post, b:Post) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setPosts(sortedPosts);
+    // Simulating post loading from sessionStorage
+    try {
+      const storedPostsJSON = sessionStorage.getItem('mockPosts');
+      const storedPosts = storedPostsJSON ? JSON.parse(storedPostsJSON) : [];
+      const sortedPosts = storedPosts.sort((a:Post, b:Post) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPosts(sortedPosts);
+    } catch(e) {
+      console.error("Failed to parse mock posts", e)
+      setPosts([]);
+    }
     setLoading(false);
   }, []);
+
 
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
@@ -83,7 +91,8 @@ export default function FeedPage() {
 
   const persistInteractions = (key: 'likedPosts' | 'savedPosts', newSet: Set<string>) => {
     sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
-    window.dispatchEvent(new Event('storage'));
+    // No need to dispatch a storage event here as sessionStorage is tab-specific.
+    // The event listener is for changes from other tabs/windows which won't happen here.
   };
   
   const handleToggleSave = (postId: string) => {
@@ -117,6 +126,9 @@ export default function FeedPage() {
     const updatedPosts = [...posts];
     updatedPosts[postIndex] = { ...post, likes: Math.max(0, currentLikes) };
     setPosts(updatedPosts);
+    
+    // Also update sessionStorage
+    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     persistInteractions('likedPosts', newLikedPosts);
   };
 
@@ -143,7 +155,6 @@ export default function FeedPage() {
         const updatedPosts = posts.filter(p => p.id !== postToDelete.id);
         setPosts(updatedPosts);
         sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
-        window.dispatchEvent(new Event('storage'));
     } catch (error) {
         console.error("Error al eliminar la publicación (simulado): ", error);
     }
@@ -163,184 +174,186 @@ export default function FeedPage() {
     setPosts(updatedPosts);
     sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     
-    window.dispatchEvent(new Event('storage'));
     setEditingPost(null);
   };
 
   return (
     <div className="w-full">
-      <div className="mx-auto max-w-2xl space-y-8 px-4 py-6 md:px-8">
-        {loading && Array.from({length: 3}).map((_, i) => (
-          <Card key={i}>
-            <CardHeader className='flex-row items-center gap-3'>
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <div className='flex-1 space-y-2'>
-                <Skeleton className="h-4 w-1/4" />
-                <Skeleton className="h-3 w-1/3" />
+      <div className="mx-auto max-w-2xl space-y-8 py-6 md:py-8">
+        <StoryReel />
+        <div className="px-4 md:px-0 space-y-8">
+            {loading && Array.from({length: 3}).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className='flex-row items-center gap-3'>
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className='flex-1 space-y-2'>
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                </CardHeader>
+                <CardContent className='p-0'>
+                  <Skeleton className="aspect-[4/5] w-full" />
+                </CardContent>
+                <CardFooter className='flex-col items-start p-4 gap-4'>
+                   <Skeleton className="h-6 w-1/2" />
+                   <Skeleton className="h-4 w-full" />
+                </CardFooter>
+              </Card>
+            ))}
+
+            {!loading && posts.length === 0 && (
+              <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg flex flex-col items-center gap-4">
+                <BookHeart className="h-16 w-16" />
+                <h3 className="font-headline text-2xl font-semibold">Tu feed está vacío</h3>
+                <p className="max-w-md">¡Parece que todavía no hay publicaciones! Sé el primero en compartir algo con la comunidad.</p>
               </div>
-            </CardHeader>
-            <CardContent className='p-0'>
-              <Skeleton className="aspect-[4/5] w-full" />
-            </CardContent>
-            <CardFooter className='flex-col items-start p-4 gap-4'>
-               <Skeleton className="h-6 w-1/2" />
-               <Skeleton className="h-4 w-full" />
-            </CardFooter>
-          </Card>
-        ))}
+            )}
 
-        {!loading && posts.length === 0 && (
-          <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg flex flex-col items-center gap-4">
-            <BookHeart className="h-16 w-16" />
-            <h3 className="font-headline text-2xl font-semibold">Tu feed está vacío</h3>
-            <p className="max-w-md">¡Parece que todavía no hay publicaciones! Sé el primero en compartir algo con la comunidad.</p>
-          </div>
-        )}
+            {!loading && posts.map((post) => {
+              const canManage = user?.uid === post.authorId || isModerator;
+              const isLiked = likedPosts.has(post.id);
+              const isSaved = savedPosts.has(post.id);
 
-        {!loading && posts.map((post) => {
-          const canManage = user?.uid === post.authorId || isModerator;
-          const isLiked = likedPosts.has(post.id);
-          const isSaved = savedPosts.has(post.id);
-
-          return (
-            <Card key={post.id} className="overflow-hidden">
-              <CardHeader className="flex flex-row items-center gap-3">
-                <Avatar>
-                  <AvatarImage
-                    src={post.authorAvatar || `https://picsum.photos/seed/${post.authorId}/40/40`}
-                    alt={post.authorName}
-                  />
-                  <AvatarFallback>{post.authorName?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 gap-0.5 text-sm">
-                  <Link
-                    href="#"
-                    className="font-headline font-semibold hover:underline"
-                  >
-                    {post.authorName}
-                  </Link>
-                  {post.strain && <p className="text-xs text-muted-foreground">
-                    Cepa: {post.strain}
-                  </p>}
-                </div>
-                {canManage && (
-                  <AlertDialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-5 w-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditClick(post)}>
-                          Editar
-                        </DropdownMenuItem>
-                        <AlertDialogTrigger asChild>
-                           <DropdownMenuItem className="text-destructive">
-                            Eliminar
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Esto eliminará permanentemente la publicación.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(post)}>
-                            Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </CardHeader>
-              <CardContent className="p-0">
-                  <Image
-                    src={post.imageUrl}
-                    alt={post.description}
-                    className="w-full h-auto object-cover"
-                    data-ai-hint={post.imageHint}
-                    width={post.width}
-                    height={post.height}
-                  />
-              </CardContent>
-              <CardFooter className="flex-col items-start gap-4 p-4">
-                <div className="flex w-full items-center">
-                   <Button variant="ghost" size="icon" onClick={() => handleToggleLike(post.id)}>
-                    <Heart className={cn("h-5 w-5 transition-all", isLiked ? 'text-red-500 fill-red-500 animate-in zoom-in-125' : '')} />
-                    <span className="sr-only">Me gusta</span>
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <MessageCircle className="h-5 w-5" />
-                    <span className="sr-only">Comentar</span>
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <Send className="h-5 w-5" />
-                    <span className="sr-only">Compartir</span>
-                  </Button>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" >
-                            <Award className="h-5 w-5" />
-                            <span className="sr-only">Premiar</span>
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Premiar la mejor respuesta (próximamente)</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                   <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
-                      <Bookmark className={cn("h-5 w-5 transition-colors", isSaved ? 'fill-foreground' : '')} />
-                      <span className="sr-only">Guardar</span>
-                  </Button>
-                </div>
-                <div className="grid gap-1.5 text-sm w-full">
-                  <p className="font-semibold">
-                    {post.likes || 0} me gusta
-                  </p>
-                  <p>
-                    <Link
-                      href="#"
-                      className="font-headline font-semibold hover:underline"
-                    >
-                      {post.authorName}
-                    </Link>{' '}
-                    {post.description}
-                  </p>
-                  {(post.comments || []).length > 0 && (
-                    <ScrollArea className="max-h-24 pr-4">
-                      {(post.comments || []).map(comment => (
-                          <div key={comment.id} className="mt-1 flex gap-2">
-                            <p>
-                              <Link href="#" className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
-                              {' '}
-                              {comment.text}
-                            </p>
-                          </div>
-                      ))}
-                    </ScrollArea>
-                  )}
-                   <form onSubmit={(e) => { e.preventDefault(); handleAddComment(post.id); }} className='flex items-center gap-2 mt-2'>
-                        <Input 
-                            placeholder="Añadir un comentario..." 
-                            className='h-8 text-xs'
-                            value={commentStates[post.id] || ''}
-                            onChange={(e) => handleCommentChange(post.id, e.target.value)}
-                        />
-                        <Button type="submit" variant="ghost" size="sm" disabled={!commentStates[post.id]?.trim()}>Publicar</Button>
-                   </form>
-                </div>
-              </CardFooter>
-            </Card>
-          );
-        })}
+              return (
+                <Card key={post.id} className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center gap-3">
+                    <Avatar>
+                      <AvatarImage
+                        src={post.authorAvatar || `https://picsum.photos/seed/${post.authorId}/40/40`}
+                        alt={post.authorName}
+                      />
+                      <AvatarFallback>{post.authorName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 gap-0.5 text-sm">
+                      <Link
+                        href="#"
+                        className="font-headline font-semibold hover:underline"
+                      >
+                        {post.authorName}
+                      </Link>
+                      {post.strain && <p className="text-xs text-muted-foreground">
+                        Cepa: {post.strain}
+                      </p>}
+                    </div>
+                    {canManage && (
+                      <AlertDialog>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-5 w-5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditClick(post)}>
+                              Editar
+                            </DropdownMenuItem>
+                            <AlertDialogTrigger asChild>
+                               <DropdownMenuItem className="text-destructive">
+                                Eliminar
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Esto eliminará permanentemente la publicación.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(post)}>
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </CardHeader>
+                  <CardContent className="p-0">
+                      <Image
+                        src={post.imageUrl}
+                        alt={post.description}
+                        className="w-full h-auto object-cover"
+                        data-ai-hint={post.imageHint}
+                        width={post.width || 800}
+                        height={post.height || 1000}
+                      />
+                  </CardContent>
+                  <CardFooter className="flex-col items-start gap-4 p-4">
+                    <div className="flex w-full items-center">
+                       <Button variant="ghost" size="icon" onClick={() => handleToggleLike(post.id)}>
+                        <Heart className={cn("h-5 w-5 transition-all", isLiked ? 'text-red-500 fill-red-500 animate-in zoom-in-125' : '')} />
+                        <span className="sr-only">Me gusta</span>
+                      </Button>
+                      <Button variant="ghost" size="icon">
+                        <MessageCircle className="h-5 w-5" />
+                        <span className="sr-only">Comentar</span>
+                      </Button>
+                      <Button variant="ghost" size="icon">
+                        <Send className="h-5 w-5" />
+                        <span className="sr-only">Compartir</span>
+                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" >
+                                <Award className="h-5 w-5" />
+                                <span className="sr-only">Premiar</span>
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Premiar la mejor respuesta (próximamente)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                       <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
+                          <Bookmark className={cn("h-5 w-5 transition-colors", isSaved ? 'fill-foreground' : '')} />
+                          <span className="sr-only">Guardar</span>
+                      </Button>
+                    </div>
+                    <div className="grid gap-1.5 text-sm w-full">
+                      <p className="font-semibold">
+                        {post.likes || 0} me gusta
+                      </p>
+                      <p>
+                        <Link
+                          href="#"
+                          className="font-headline font-semibold hover:underline"
+                        >
+                          {post.authorName}
+                        </Link>{' '}
+                        {post.description}
+                      </p>
+                      {(post.comments || []).length > 0 && (
+                        <ScrollArea className="max-h-24 pr-4">
+                          {(post.comments || []).map(comment => (
+                              <div key={comment.id} className="mt-1 flex gap-2">
+                                <p>
+                                  <Link href="#" className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
+                                  {' '}
+                                  {comment.text}
+                                </p>
+                              </div>
+                          ))}
+                        </ScrollArea>
+                      )}
+                       <form onSubmit={(e) => { e.preventDefault(); handleAddComment(post.id); }} className='flex items-center gap-2 mt-2'>
+                            <Input 
+                                placeholder="Añadir un comentario..." 
+                                className='h-8 text-xs'
+                                value={commentStates[post.id] || ''}
+                                onChange={(e) => handleCommentChange(post.id, e.target.value)}
+                            />
+                            <Button type="submit" variant="ghost" size="sm" disabled={!commentStates[post.id]?.trim()}>Publicar</Button>
+                       </form>
+                    </div>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+        </div>
       </div>
 
        <Dialog open={!!editingPost} onOpenChange={(isOpen) => !isOpen && setEditingPost(null)}>
