@@ -58,13 +58,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const fetchUserRole = async (user: User) => {
       if (!firestore) return;
+      
+      // Force refresh the token to get custom claims
+      const idTokenResult = await user.getIdTokenResult(true);
+      const claims = idTokenResult.claims;
+      
       const userDocRef = doc(firestore, 'users', user.uid);
       try {
         const userDoc = await getDoc(userDocRef);
         let userData;
+        let dbRole: UserRole = 'user';
 
         if (userDoc.exists()) {
           userData = userDoc.data();
+          dbRole = userData.role || 'user';
         } else {
            console.warn(`User document for ${user.uid} not found. Creating with default 'user' role.`);
            const newUserProfile = {
@@ -80,27 +87,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
            userData = newUserProfile;
         }
 
-        const finalUserData = { ...user, ...userData } as CannaGrowUser;
-        const normalizedEmail = finalUserData.email?.toLowerCase();
+        let effectiveRole: UserRole = claims.role || dbRole;
         
-        if (normalizedEmail === 'alexisgrow@cannagrow.com' && finalUserData.role !== 'owner') {
-          console.log("Owner email detected. Elevating permissions.");
-          finalUserData.role = 'owner';
-          
-          const roleDocRef = doc(firestore, 'roles', user.uid);
-          await updateDoc(userDocRef, { role: 'owner' }).catch(err => {
-             console.error("Failed to persist owner role to Firestore 'users' collection:", err);
-          });
-          await setDoc(roleDocRef, { role: 'owner' }).catch(err => {
-             console.error("Failed to persist owner role to Firestore 'roles' collection:", err);
-          });
+        // This is a critical security check and elevation for the owner.
+        if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
+            effectiveRole = 'owner';
+            // If the claim is not set, this would be the place to call a cloud function to set it.
+            // For now, we elevate in the client, and rules will use the claim when available.
         }
+
+        const finalUserData = { ...user, ...userData, role: effectiveRole } as CannaGrowUser;
         
         setCannaUser(finalUserData);
 
       } catch (error) {
         console.error("Error fetching user role:", error);
-        const fallbackUser = { ...user, role: 'user', displayName: user.displayName } as CannaGrowUser;
+        const fallbackUser = { ...user, role: claims.role || 'user', displayName: user.displayName } as CannaGrowUser;
         if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
             fallbackUser.role = 'owner';
         }
@@ -141,7 +143,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       const normalizedEmail = email.toLowerCase();
-      const userRole: UserRole = normalizedEmail === 'alexisgrow@cannagrow.com' ? 'owner' : 'user';
+      const userRole: UserRole = 'user'; // All new signups are users
   
       const userDocRef = doc(firestore, 'users', user.uid);
       const roleDocRef = doc(firestore, 'roles', user.uid);
@@ -152,29 +154,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         displayName: displayName,
         role: userRole,
         photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
-        bio: userRole === 'owner' 
-             ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!'
-             : 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+        bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
         createdAt: new Date().toISOString(),
       };
       
+      // Create user profile document
       await setDoc(userDocRef, newUserProfile).catch((error) => {
           if (error.code === 'permission-denied') {
             const contextualError = new FirestorePermissionError({ operation: 'create', path: userDocRef.path, requestResourceData: newUserProfile });
             errorEmitter.emit('permission-error', contextualError);
           } else {
-            console.error("Error creating user profile document:", error);
-            toast({ variant: "destructive", title: "Error de Perfil", description: "No se pudo crear tu perfil de usuario."});
+            throw error; // Rethrow other errors
           }
       });
 
+      // Create role document
       await setDoc(roleDocRef, { role: userRole }).catch((error) => {
           if (error.code === 'permission-denied') {
             const contextualError = new FirestorePermissionError({ operation: 'create', path: roleDocRef.path, requestResourceData: { role: userRole } });
             errorEmitter.emit('permission-error', contextualError);
           } else {
-            console.error("Error creating user role document:", error);
-            toast({ variant: "destructive", title: "Error de Rol", description: "No se pudo establecer tu rol de usuario."});
+            throw error;
           }
       });
   
@@ -237,10 +237,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      await updateDoc(userDocRef, userUpdates);
-      if (Object.keys(roleUpdates).length > 0) {
-        await setDoc(roleDocRef, roleUpdates, { merge: true });
-      }
+        // Here you would ideally call a Cloud Function to update the role and set a custom claim
+        if (Object.keys(roleUpdates).length > 0) {
+            await setDoc(roleDocRef, roleUpdates, { merge: true });
+        }
+        await updateDoc(userDocRef, userUpdates);
+        // After updating the role in DB, force a token refresh to get the new claim on the client
+        await cannaUser.getIdTokenResult(true);
+        // Update local state
+        setCannaUser(prev => prev ? ({...prev, ...userUpdates, ...roleUpdates}) : null)
+
     } catch (error) {
         if (error.code === 'permission-denied') {
           const contextualError = new FirestorePermissionError({ operation: 'update', path: userDocRef.path, requestResourceData: updates });
