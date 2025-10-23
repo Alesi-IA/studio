@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -91,72 +92,74 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isCoOwner = role === 'co-owner';
   const isModerator = role === 'moderator' || role === 'co-owner' || 'owner';
 
-  const signUp = useCallback(async (displayName, email, password) => {
+  const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) {
-        toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
-        return;
+      toast({ variant: 'destructive', title: 'Error', description: 'Servicios de autenticación no disponibles.' });
+      return;
     }
     setLoading(true);
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        await updateProfile(user, {
-            displayName: displayName,
-            photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
-        });
-        
-        const userRole: UserRole = email.toLowerCase() === 'alexisgrow@cannagrow.com' ? 'owner' : 'user';
-
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const newUserProfile = {
-            uid: user.uid,
-            email: user.email,
-            displayName: displayName,
-            role: userRole,
-            photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
-            bio: userRole === 'owner' 
-                 ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!'
-                 : 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
-            createdAt: new Date().toISOString(),
-        };
-        
-        setDoc(userDocRef, newUserProfile)
-          .then(() => {
-            toast({
-                title: "¡Cuenta Creada!",
-                description: "Has sido registrado exitosamente."
-            });
-          })
-          .catch((error) => {
-            if (error.code === 'permission-denied') {
-              const contextualError = new FirestorePermissionError({
-                operation: 'create',
-                path: `users/${user.uid}`,
-                requestResourceData: newUserProfile,
-              });
-              errorEmitter.emit('permission-error', contextualError);
-            }
-            console.error("Error creating user profile document:", error);
-            toast({
-              variant: "destructive",
-              title: "Error de Perfil",
-              description: "No se pudo crear tu perfil de usuario. Por favor, contacta soporte."
-            });
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+  
+      await updateProfile(user, {
+        displayName: displayName,
+        photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
+      });
+      
+      const normalizedEmail = email.toLowerCase();
+      const userRole: UserRole = normalizedEmail === 'alexisgrow@cannagrow.com' ? 'owner' : 'user';
+  
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const newUserProfile = {
+        uid: user.uid,
+        email: normalizedEmail, // Store normalized email
+        displayName: displayName,
+        role: userRole,
+        photoURL: `https://picsum.photos/seed/${user.uid}/128/128`,
+        bio: userRole === 'owner' 
+             ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!'
+             : 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Use non-blocking write with proper error handling
+      setDoc(userDocRef, newUserProfile)
+        .then(() => {
+          toast({
+            title: "¡Cuenta Creada!",
+            description: "Has sido registrado exitosamente."
           });
-
+        })
+        .catch((error) => {
+          if (error.code === 'permission-denied') {
+            const contextualError = new FirestorePermissionError({
+              operation: 'create',
+              path: `users/${user.uid}`,
+              requestResourceData: newUserProfile,
+            });
+            errorEmitter.emit('permission-error', contextualError);
+          }
+          console.error("Error creating user profile document:", error);
+          toast({
+            variant: "destructive",
+            title: "Error de Perfil",
+            description: "No se pudo crear tu perfil de usuario. Por favor, contacta soporte."
+          });
+        });
+  
     } catch (error: any) {
-        console.error('Sign up error', error);
-        toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
+      console.error('Sign up error', error);
+      toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }, [auth, firestore, toast]);
 
-  const logIn = useCallback(async (email, password) => {
+  const logIn = useCallback(async (email, password): Promise<void> => {
     if (!auth) {
         toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
-        return;
+        return Promise.reject(new Error("Auth service not available"));
     }
     setLoading(true);
     return new Promise((resolve, reject) => {
@@ -194,6 +197,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     const userDocRef = doc(firestore, 'users', cannaUser.uid);
     
+    // Non-blocking update with contextual error handling
     updateDoc(userDocRef, updates)
       .catch((error) => {
         if (error.code === 'permission-denied') {
@@ -212,6 +216,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       });
   }, [cannaUser, firestore, toast]);
+
 
   const _injectUser = (userToImpersonate: CannaGrowUser) => {
      if (isOwner) {
