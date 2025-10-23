@@ -42,7 +42,7 @@ export default function ProfilePage() {
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
   const { user, logOut, updateUserProfile } = useAuth();
-  const { firebaseApp } = useFirebase();
+  const { storage } = useFirebase(); // Use storage from useFirebase
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,9 +110,8 @@ export default function ProfilePage() {
 
   const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user || !firebaseApp) return;
+    if (!file || !user || !storage) return;
 
-    const storage = getStorage(firebaseApp);
     const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
