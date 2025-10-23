@@ -1,6 +1,6 @@
 'use server';
 
-import { ai } from '@/ai/genkit';
+import { genkit } from '@/ai/genkit';
 import { AnalyzePlantInputSchema, AnalyzePlantOutputSchema } from '@/app/ai/schemas';
 import type { AnalyzePlantOutput } from './types';
 
@@ -16,7 +16,7 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
   }
 
   try {
-    const { output } = await ai.generate({
+    const { output } = await genkit.generate({
       prompt: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
 
 TODA tu respuesta debe ser en español.

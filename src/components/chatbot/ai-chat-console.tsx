@@ -37,6 +37,7 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const viewport = scrollAreaRef.current?.querySelector('[data-viewport]');
@@ -47,8 +48,8 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
     }
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!input.trim() || loading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: input };
@@ -73,6 +74,7 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -148,6 +150,7 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
       <footer className="p-4 bg-transparent mt-auto shrink-0">
         <form onSubmit={handleSubmit} className="relative">
             <Input
+                ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 placeholder="Escribe tu pregunta aquí..."

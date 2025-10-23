@@ -5,7 +5,7 @@
  * - assistantChat - Responde a las preguntas del usuario sobre el cultivo de cannabis y otros temas.
  */
 
-import { ai } from '@/ai/genkit';
+import { genkit } from '@/ai/genkit';
 import type { ChatMessage } from '@/app/chatbot/types';
 import { z } from 'zod';
 
@@ -26,7 +26,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     const validatedHistory = HistorySchema.parse(history);
 
     // 2. Generate the response using the validated history.
-    const { output } = await ai.generate({
+    const { output } = await genkit.generate({
       model: 'googleai/gemini-1.5-flash',
       prompt: [
         { role: 'system', content: systemPrompt },
