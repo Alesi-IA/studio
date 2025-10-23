@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 
@@ -90,7 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const role = cannaUser?.role || null;
   const isOwner = role === 'owner';
   const isCoOwner = role === 'co-owner';
-  const isModerator = role === 'moderator' || role === 'co-owner' || role === 'owner';
+  const isModerator = role === 'moderator' || role === 'co-owner' || 'owner';
 
   const signUp = useCallback(async (displayName, email, password) => {
     if (!auth || !firestore) {
@@ -160,15 +159,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
     }
     setLoading(true);
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast({ title: "Inicio de Sesión Exitoso" });
-    } catch (error: any) {
-        toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
-    } finally {
-        setLoading(false);
-    }
-  }, [auth, toast]);
+    return new Promise((resolve, reject) => {
+        signInWithEmailAndPassword(auth, email, password)
+            .then(() => {
+                toast({ title: "Inicio de Sesión Exitoso" });
+                resolve();
+            })
+            .catch((error: any) => {
+                toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
+                reject(error);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    });
+}, [auth, toast]);
 
   const logOut = useCallback(async () => {
     if (!auth) return;
@@ -190,10 +195,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const userDocRef = doc(firestore, 'users', cannaUser.uid);
     
     updateDoc(userDocRef, updates)
-      .then(() => {
-        setCannaUser(prev => prev ? { ...prev, ...updates } : null);
-        toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
-      })
       .catch((error) => {
         if (error.code === 'permission-denied') {
           const contextualError = new FirestorePermissionError({
@@ -202,9 +203,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             requestResourceData: updates,
           });
           errorEmitter.emit('permission-error', contextualError);
+        } else {
+            console.error('Error al actualizar el perfil:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
         }
-        console.error('Error al actualizar el perfil:', error);
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
       })
       .finally(() => {
         setLoading(false);

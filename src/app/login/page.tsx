@@ -33,7 +33,8 @@ export default function LoginPage() {
             await logIn(email, password);
             router.push('/');
         } catch (err: any) {
-             setError(err.message);
+             // Error is already handled by the toast in logIn function
+             // We can optionally set a state error if we want to display it inline
         } finally {
             setLoading(false);
         }
