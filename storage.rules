@@ -1,18 +1,11 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    // Coincide con cualquier archivo dentro de la carpeta 'profile-pictures'
-    match /profile-pictures/{userId}/{allPaths=**} {
-      
-      // LECTURA: Cualquiera puede leer las imágenes de perfil.
-      // Esto es necesario para que los perfiles de usuario se muestren en toda la aplicación.
+    // Permite al usuario escribir solo en su propia carpeta de imágenes de perfil.
+    // La lectura de imágenes sigue siendo pública.
+    match /profile-pictures/{userId}/{fileName} {
       allow read;
-
-      // ESCRITURA (Crear, Actualizar, Eliminar):
-      // Solo el usuario autenticado cuya UID coincide con el {userId} en la ruta
-      // puede subir, reemplazar o eliminar archivos en su propia carpeta.
-      allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
