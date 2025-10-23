@@ -52,7 +52,7 @@ export default function ProfilePage() {
   // State for Edit Profile Dialog
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editingDisplayName, setEditingDisplayName] = useState(user?.displayName || '');
-  const [editingBio, setEditingBio] = useState('');
+  const [editingBio, setEditingBio] = useState(user?.bio || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const isOwnProfile = true; 
@@ -76,11 +76,11 @@ export default function ProfilePage() {
   }), [user]);
 
    useEffect(() => {
-    if (user) {
+    if (isEditProfileOpen && user) {
       setEditingDisplayName(user.displayName || '');
       setEditingBio(user.bio || '');
     }
-  }, [user]);
+  }, [isEditProfileOpen, user]);
 
   const loadPostsAndState = useCallback(() => {
     if (!user?.uid) return;
@@ -129,8 +129,9 @@ export default function ProfilePage() {
       },
       () => {
         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          updateUserProfile({ photoURL: downloadURL });
-          setUploadProgress(null);
+          updateUserProfile({ photoURL: downloadURL }).then(() => {
+             setUploadProgress(null);
+          });
         });
       }
     );
@@ -294,10 +295,8 @@ export default function ProfilePage() {
             
             <div className="flex justify-center md:justify-start gap-2">
                 {isOwnProfile ? (
-                  <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline">Editar Perfil</Button>
-                    </DialogTrigger>
+                  <>
+                    <Button variant="outline" onClick={() => setIsEditProfileOpen(true)}>Editar Perfil</Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -305,38 +304,14 @@ export default function ProfilePage() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                             <DialogTrigger asChild>
-                                <DropdownMenuItem>Editar Perfil</DropdownMenuItem>
-                             </DialogTrigger>
+                             <DropdownMenuItem onClick={() => setIsEditProfileOpen(true)}>Editar Perfil</DropdownMenuItem>
                              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                                  <LogOut className="mr-2 h-4 w-4"/>
                                  Cerrar Sesión
                              </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Editar tu perfil</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="displayName">Nombre de usuario</Label>
-                                <Input id="displayName" value={editingDisplayName} onChange={(e) => setEditingDisplayName(e.target.value)} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="bio">Biografía</Label>
-                                <Textarea id="bio" value={editingBio} onChange={(e) => setEditingBio(e.target.value)} className="min-h-[100px]" />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)}>Cancelar</Button>
-                            <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
-                                {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Guardar cambios
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  </>
                 ) : (
                     <>
                         <Button>Seguir</Button>
@@ -367,6 +342,31 @@ export default function ProfilePage() {
             <p className="text-sm max-w-prose">{profileData.bio}</p>
           </div>
         </div>
+        
+        <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Editar tu perfil</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="displayName">Nombre de usuario</Label>
+                        <Input id="displayName" value={editingDisplayName} onChange={(e) => setEditingDisplayName(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="bio">Biografía</Label>
+                        <Textarea id="bio" value={editingBio} onChange={(e) => setEditingBio(e.target.value)} className="min-h-[100px]" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
+                        {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Guardar cambios
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
         <Tabs defaultValue="posts" className="w-full">
           <TabsList>
@@ -523,4 +523,5 @@ export default function ProfilePage() {
   );
 }
 
+    
     
