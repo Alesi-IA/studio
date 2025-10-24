@@ -14,22 +14,25 @@ import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
-  { href: "/", label: "Noticias", icon: Home, requiredRole: "" },
-  { href: "/search", label: "Buscar", icon: Search, requiredRole: "" },
-  { href: "/identify", label: "Asistente IA", icon: ScanEye, requiredRole: "" },
-  { href: "/tools", label: "Herramientas", icon: Calendar, requiredRole: "" },
-  { href: "/messages", label: "Mensajes", icon: MessageSquare, requiredRole: "" },
-  { href: "/admin", label: "Admin", icon: UserCog, requiredRole: "owner" },
+  { href: "/", label: "Noticias", icon: Home },
+  { href: "/search", label: "Buscar", icon: Search },
+  { href: "/identify", label: "Asistente IA", icon: ScanEye },
+  { href: "/tools", label: "Herramientas", icon: Calendar },
+  { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
 
+// We will fetch the full profile with role where needed, e.g., in AppShell itself
+// For now, nav does not need role-based filtering, we can add it back later if needed.
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
-  const { user, loading, role } = useAuth();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
 
+  // 1. Primary Loading State
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center">
@@ -43,9 +46,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user && !showOnboarding) {
+  // 2. If not loading, and we are on an onboarding page, render it.
+  if (showOnboarding) {
+     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
+  }
+
+  // 3. If not loading, not on onboarding, and no user, redirect.
+  if (!user) {
     router.push('/login');
-    return ( // Must return a loader to prevent rendering children while redirecting
+    return ( // Render loader while redirecting
       <div className="flex min-h-screen w-full items-center justify-center">
         <div className="flex items-center gap-3">
           <CannaGrowLogo />
@@ -56,29 +65,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
-  if (showOnboarding) {
-    return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
-  }
-  
-  if (!user) { // This case should theoretically not be hit due to the redirect, but as a safeguard:
-     return (
-        <div className="flex min-h-screen w-full items-center justify-center">
-             <div className="flex items-center gap-3">
-              <CannaGrowLogo />
-              <span className="font-headline text-lg font-semibold">
-                CannaGrow
-              </span>
-            </div>
-        </div>
-    )
-  }
-  
-  const accessibleNavItems = navItems.filter(item => {
-    if (!item.requiredRole) return true;
-    return item.requiredRole === role;
-  });
 
+  // 4. If we reach here, we are logged in and can show the app.
   return (
     <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
       <div className="flex min-h-screen w-full">
@@ -93,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 p-2 space-y-1">
-            {accessibleNavItems.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -137,7 +125,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
                   <CannaGrowLogo />
                   <span>CannaGrow</span>
-                </Link>                 <div className="flex items-center gap-2">
+                </Link>
+                <div className="flex items-center gap-2">
                     <Link href="/messages">
                         <Button variant="ghost" size="icon">
                             <MessageSquare className="h-5 w-5" />
@@ -161,10 +150,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
         </div>
 
-
         {/* Mobile Bottom Bar */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20 place-items-center">
-          {accessibleNavItems.filter(i => i.href !== '/admin' && i.href !== '/messages').map((item, index) => {
+          {navItems.filter(i => i.href !== '/admin' && i.href !== '/messages').map((item, index) => {
             if (index === 2) {
               return (
                 <React.Fragment key="new-post-trigger">
@@ -209,7 +197,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </DialogHeader>
         <NewPostForm onPostCreated={() => setIsNewPostOpen(false)} />
       </DialogContent>
-
     </Dialog>
   );
 }
