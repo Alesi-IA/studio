@@ -13,7 +13,6 @@ import {
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { FirestorePermissionError, errorEmitter } from '@/firebase';
-import { AppShell } from '@/components/layout/app-shell';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 
@@ -39,23 +38,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { auth, firestore, isUserLoading, user: firebaseUser, areServicesAvailable } = useFirebase();
   const [cannaUser, setCannaUser] = useState<CannaGrowUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const { toast } = useToast();
   
   useEffect(() => {
-    if (!areServicesAvailable) {
-      setAuthLoading(true);
+    setAuthLoading(isUserLoading || !areServicesAvailable);
+  
+    if (isUserLoading || !areServicesAvailable) {
       return;
     }
-    
-    if (isUserLoading) {
-      setAuthLoading(true);
-      return;
-    }
-
+  
     const fetchUserRole = async (user: User) => {
       if (!firestore) return;
       
@@ -64,7 +59,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
         const userDoc = await getDoc(userDocRef);
         let userData;
         let dbRole: UserRole = 'user';
-
+  
         if (userDoc.exists()) {
           userData = userDoc.data();
           dbRole = userData.role || 'user';
@@ -90,11 +85,11 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
                 await updateDoc(userDocRef, { role: 'owner' });
             }
         }
-
+  
         const finalUserData = { ...user, ...userData, role: effectiveRole } as CannaGrowUser;
         
         setCannaUser(finalUserData);
-
+  
       } catch (error) {
         console.error("Error fetching user role:", error);
         const fallbackUser = { ...user, role: 'user', displayName: user.displayName, bio: '' } as CannaGrowUser;
@@ -106,7 +101,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
         setAuthLoading(false);
       }
     };
-
+  
     if (firebaseUser) {
       fetchUserRole(firebaseUser);
     } else {
@@ -251,15 +246,9 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      <AppShell>
-        {children}
-      </AppShell>
+      {children}
     </AuthContext.Provider>
   )
-};
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  return <AuthProviderContent>{children}</AuthProviderContent>;
 };
 
 export const useAuth = (): AuthContextType => {
