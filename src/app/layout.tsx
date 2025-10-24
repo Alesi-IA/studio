@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
+import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
   title: 'CannaConnect',
@@ -26,8 +27,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
+          <AuthProvider>
             <AppShell>{children}</AppShell>
             <Toaster />
+          </AuthProvider>
         </FirebaseClientProvider>
       </body>
     </html>
