@@ -31,7 +31,7 @@ export default function LoginPage() {
         setError(null);
         try {
             await logIn(email, password);
-            // AppShell will handle the redirect now
+            // Redirection is now handled by the AuthProvider
         } catch (err: any) {
              setError("Las credenciales son incorrectas. Por favor, inténtalo de nuevo.");
         } finally {

@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 
@@ -14,9 +15,10 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
-  user: User | null; // Keep it simple: just the Firebase user
+  user: User | null;
   loading: boolean;
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
@@ -27,23 +29,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore, areServicesAvailable } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!areServicesAvailable || !auth) {
+    if (!auth) {
       setLoading(false);
       return;
     }
-
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
     });
-
     return () => unsubscribe();
-  }, [auth, areServicesAvailable]);
+  }, [auth]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const isPublicRoute = pathname === '/login' || pathname === '/register';
+
+    if (user && isPublicRoute) {
+      router.push('/');
+    }
+    
+    if (!user && !isPublicRoute) {
+      router.push('/login');
+    }
+  }, [user, loading, pathname, router]);
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) throw new Error("Auth services not available");
@@ -69,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     
-    // This creates the user profile document in Firestore
     await setDoc(userDocRef, newUserProfile);
 
   }, [auth, firestore]);
@@ -92,8 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updateProfile(auth.currentUser, updates);
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, updates, { merge: true });
-      // Manually refresh user state to reflect changes immediately
-      setUser(auth.currentUser);
+      
+      const refreshedUser = { ...auth.currentUser };
+      setUser(refreshedUser as User);
+
     } catch (error) {
       console.error("Error updating profile:", error);
     }
