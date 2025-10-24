@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Home, Search, Calendar, MessageSquare, PlusCircle, ScanEye, UserCog } from "lucide-react";
 import { CannaGrowLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,6 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Noticias", icon: Home, requiredRole: "" },
@@ -25,9 +24,9 @@ const navItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
   const { user, loading, role } = useAuth();
-  const router = useRouter();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
 
@@ -44,15 +43,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (!user && !showOnboarding) {
+    router.push('/login');
+    return ( // Must return a loader to prevent rendering children while redirecting
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <div className="flex items-center gap-3">
+          <CannaGrowLogo />
+          <span className="font-headline text-lg font-semibold">
+            CannaGrow
+          </span>
+        </div>
+      </div>
+    );
+  }
+  
   if (showOnboarding) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
-
-  if (!user) {
-    // This case should be handled by a redirect, but as a fallback,
-    // we can show a loader or nothing to prevent rendering a broken UI.
-    // The redirect logic is now in the AuthProvider.
-    return (
+  
+  if (!user) { // This case should theoretically not be hit due to the redirect, but as a safeguard:
+     return (
         <div className="flex min-h-screen w-full items-center justify-center">
              <div className="flex items-center gap-3">
               <CannaGrowLogo />

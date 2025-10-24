@@ -10,11 +10,12 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { FirestorePermissionError, errorEmitter } from '@/firebase';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 
@@ -40,81 +41,55 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function AuthProviderContent({ children }: { children: ReactNode }) {
-  const { auth, firestore, isUserLoading, user: firebaseUser, areServicesAvailable } = useFirebase();
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const { auth, firestore } = useFirebase();
   const [cannaUser, setCannaUser] = useState<CannaGrowUser | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    // Overall loading state depends on both Firebase auth check and our profile fetch
-    const loading = isUserLoading || !areServicesAvailable;
-    setAuthLoading(loading);
+    if (!auth) {
+        setLoading(false);
+        return;
+    };
 
-    if (loading) {
-      return;
-    }
-
-    const fetchUserRole = async (user: User) => {
-      if (!firestore) return;
-
-      const userDocRef = doc(firestore, 'users', user.uid);
-      try {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        if (cannaUser?.uid === firebaseUser.uid) {
+            setLoading(false);
+            return;
+        }
+        
+        const userDocRef = doc(firestore, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
-        let userData;
-        let dbRole: UserRole = 'user';
-
+        
         if (userDoc.exists()) {
-          userData = userDoc.data();
-          dbRole = userData.role || 'user';
+          const userData = userDoc.data();
+          const effectiveRole = firebaseUser.email?.toLowerCase() === 'alexisgrow@cannagrow.com' ? 'owner' : userData.role || 'user';
+          
+          setCannaUser({ ...firebaseUser, ...userData, role: effectiveRole } as CannaGrowUser);
         } else {
-          console.warn(`User document for ${user.uid} not found. Creating with default 'user' role.`);
-          const newUserProfile = {
-            uid: user.uid,
-            email: user.email?.toLowerCase(),
-            displayName: user.displayName,
+           const newUserProfile = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email?.toLowerCase(),
+            displayName: firebaseUser.displayName,
             role: 'user',
-            photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/128/128`,
+            photoURL: firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/128/128`,
             bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
             createdAt: new Date().toISOString(),
           };
           await setDoc(userDocRef, newUserProfile);
-          userData = newUserProfile;
+          setCannaUser({ ...firebaseUser, ...newUserProfile } as CannaGrowUser);
         }
 
-        let effectiveRole: UserRole = dbRole;
-        if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
-          effectiveRole = 'owner';
-          if (dbRole !== 'owner') {
-            await updateDoc(userDocRef, { role: 'owner' });
-          }
-        }
-
-        const finalUserData = { ...user, ...userData, role: effectiveRole } as CannaGrowUser;
-        setCannaUser(finalUserData);
-      } catch (error) {
-        console.error("Error fetching user role:", error);
-        const fallbackUser = { ...user, role: 'user', displayName: user.displayName, bio: '' } as CannaGrowUser;
-        if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
-            fallbackUser.role = 'owner';
-        }
-        setCannaUser(fallbackUser);
+      } else {
+        setCannaUser(null);
       }
-    };
+      setLoading(false);
+    });
 
-    if (firebaseUser) {
-      fetchUserRole(firebaseUser);
-    } else {
-      setCannaUser(null);
-      // If no user and not on an auth page, redirect to login
-      const isAuthPage = pathname === '/login' || pathname === '/register';
-      if (!isAuthPage) {
-        router.push('/login');
-      }
-    }
-  }, [firebaseUser, isUserLoading, firestore, areServicesAvailable, pathname, router]);
+    return () => unsubscribe();
+  }, [auth, firestore, cannaUser?.uid]);
 
   const role = cannaUser?.role || null;
   const isOwner = role === 'owner';
@@ -224,7 +199,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
   const _injectUser = (userToImpersonate: CannaGrowUser) => {
      if (isOwner) {
         const fullUser = {
-            ...firebaseUser,
+            ...auth.currentUser,
             ...userToImpersonate
         }
         setCannaUser(fullUser as CannaGrowUser);
@@ -233,7 +208,7 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
 
   const value = {
     user: cannaUser,
-    loading: authLoading,
+    loading: loading,
     role,
     isOwner,
     isCoOwner,
@@ -245,24 +220,8 @@ function AuthProviderContent({ children }: { children: ReactNode }) {
     _injectUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const { areServicesAvailable } = useFirebase();
-
-    // Render nothing until Firebase is ready, to prevent hooks from running prematurely.
-    if (!areServicesAvailable) {
-        return null; 
-    }
-
-    return <AuthProviderContent>{children}</AuthProviderContent>;
-};
-
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
