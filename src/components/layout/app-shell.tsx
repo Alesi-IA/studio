@@ -27,25 +27,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
 
-  const isPublicRoute = pathname === '/login' || pathname === '/register';
-
   useEffect(() => {
-    // Don't run any redirection logic until the initial loading is complete
-    if (loading) {
-      return;
-    }
-    
-    // User is logged in but on a public route, redirect to feed
-    if (user && isPublicRoute) {
-      router.push('/');
-    }
-    
-    // User is not logged in and not on a public route, redirect to login
+    if (loading) return; // Don't do anything while loading
+
+    const isPublicRoute = pathname === '/login' || pathname === '/register';
+
+    // If the user is not logged in and not on a public route, redirect to login
     if (!user && !isPublicRoute) {
       router.push('/login');
     }
 
-  }, [user, loading, isPublicRoute, router]);
+    // If the user is logged in and on a public route, redirect to the feed
+    if (user && isPublicRoute) {
+      router.push('/');
+    }
+  }, [user, loading, pathname, router]);
 
   // 1. Handle loading state
   if (loading) {
@@ -59,155 +55,156 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const isPublicRoute = pathname === '/login' || pathname === '/register';
+
   // 2. If we are on a public route (and not logged in), render the page without the shell
-  if (isPublicRoute) {
+  if (!user && isPublicRoute) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
 
-  // 3. If we reach here, user is logged in, show the full app shell.
-  // Or, if user is not logged in but on a non-public route, this will render briefly
-  // before the useEffect redirects them. We can show a loader for that case.
-  if (!user) {
-     return (
-      <div className="flex min-h-screen w-full items-center justify-center">
-        <div className="flex items-center gap-3">
-          <CannaGrowLogo />
-          <span className="font-headline text-lg font-semibold">CannaGrow</span>
+  // 3. If we reach here, user is logged in (or we are in a redirect state), show the full app shell.
+  if (user) {
+    return (
+      <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
+        <div className="flex min-h-screen w-full">
+          {/* Desktop Sidebar */}
+          <aside className="hidden md:flex flex-col w-64 border-r fixed h-full">
+            <div className="p-4">
+              <Link href="/" className="flex items-center gap-3">
+                <CannaGrowLogo />
+                <span className="font-headline text-lg font-semibold">
+                  CannaGrow
+                </span>
+              </Link>
+            </div>
+            <nav className="flex-1 p-2 space-y-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent",
+                    (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "bg-accent text-primary" : ""
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+            <div className="p-4 mt-auto">
+              <DialogTrigger asChild>
+                <Button className="w-full">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nueva Publicación
+                </Button>
+              </DialogTrigger>
+            </div>
+            <div className="border-t p-4">
+                <Link href="/profile" className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                      <AvatarImage
+                          src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
+                          alt={user?.displayName || 'User'}
+                      />
+                      <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                      <span className="font-semibold">{user?.displayName || 'Usuario'}</span>
+                      <span className="text-xs text-muted-foreground">Ver perfil</span>
+                  </div>
+                </Link>
+            </div>
+          </aside>
+
+          <div className="flex flex-col flex-1 md:ml-64">
+              <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:hidden shrink-0">
+                  <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
+                    <CannaGrowLogo />
+                    <span>CannaGrow</span>
+                  </Link>
+                  <div className="flex items-center gap-2">
+                      <Link href="/messages">
+                          <Button variant="ghost" size="icon">
+                              <MessageSquare className="h-5 w-5" />
+                              <span className="sr-only">Mensajes</span>
+                          </Button>
+                      </Link>
+                      <Link href="/profile">
+                      <Button variant="ghost" size="icon">
+                          <Avatar className="h-8 w-8">
+                              <AvatarImage
+                                  src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
+                                  alt={user?.displayName || 'User'}
+                              />
+                              <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                          </Avatar>
+                          <span className="sr-only">Perfil</span>
+                      </Button>
+                      </Link>
+                  </div>
+              </header>
+            <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
+          </div>
+
+          {/* Mobile Bottom Bar */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20 place-items-center">
+            {navItems.filter(i => i.href !== '/messages').map((item, index) => {
+              if (index === 2) {
+                return (
+                  <React.Fragment key="new-post-trigger">
+                    <DialogTrigger asChild>
+                      <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
+                        <PlusCircle className="h-7 w-7" />
+                        <span className="sr-only">Nueva Publicación</span>
+                      </button>
+                    </DialogTrigger>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+                        pathname.startsWith(item.href) ? "text-primary" : ""
+                      )}
+                    >
+                      <item.icon className="h-6 w-6" />
+                      <span className="text-xs sr-only">{item.label}</span>
+                    </Link>
+                  </React.Fragment>
+                );
+              }
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
+                    (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "text-primary" : ""
+                  )}
+                >
+                  <item.icon className="h-6 w-6" />
+                  <span className="text-xs sr-only">{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
         </div>
-      </div>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear nueva publicación</DialogTitle>
+          </DialogHeader>
+          <NewPostForm onPostCreated={() => setIsNewPostOpen(false)} />
+        </DialogContent>
+      </Dialog>
     );
   }
 
+  // Fallback for redirecting state
   return (
-    <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
-      <div className="flex min-h-screen w-full">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col w-64 border-r fixed h-full">
-          <div className="p-4">
-            <Link href="/" className="flex items-center gap-3">
-              <CannaGrowLogo />
-              <span className="font-headline text-lg font-semibold">
-                CannaGrow
-              </span>
-            </Link>
-          </div>
-          <nav className="flex-1 p-2 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent",
-                  (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "bg-accent text-primary" : ""
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
-          <div className="p-4 mt-auto">
-            <DialogTrigger asChild>
-              <Button className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Nueva Publicación
-              </Button>
-            </DialogTrigger>
-          </div>
-           <div className="border-t p-4">
-              <Link href="/profile" className="flex items-center gap-3">
-                <Avatar className="h-9 w-9">
-                    <AvatarImage
-                        src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
-                        alt={user?.displayName || 'User'}
-                    />
-                    <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                    <span className="font-semibold">{user?.displayName || 'Usuario'}</span>
-                    <span className="text-xs text-muted-foreground">Ver perfil</span>
-                </div>
-              </Link>
-          </div>
-        </aside>
-
-        <div className="flex flex-col flex-1 md:ml-64">
-            <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:hidden shrink-0">
-                <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                  <CannaGrowLogo />
-                  <span>CannaGrow</span>
-                </Link>
-                <div className="flex items-center gap-2">
-                    <Link href="/messages">
-                        <Button variant="ghost" size="icon">
-                            <MessageSquare className="h-5 w-5" />
-                            <span className="sr-only">Mensajes</span>
-                        </Button>
-                    </Link>
-                    <Link href="/profile">
-                    <Button variant="ghost" size="icon">
-                        <Avatar className="h-8 w-8">
-                            <AvatarImage
-                                src={user?.photoURL || `https://picsum.photos/seed/${user?.uid}/40/40`}
-                                alt={user?.displayName || 'User'}
-                            />
-                            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                        </Avatar>
-                        <span className="sr-only">Perfil</span>
-                    </Button>
-                    </Link>
-                </div>
-            </header>
-          <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
-        </div>
-
-        {/* Mobile Bottom Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t bg-background grid grid-cols-5 items-center z-20 place-items-center">
-          {navItems.filter(i => i.href !== '/messages').map((item, index) => {
-            if (index === 2) {
-              return (
-                <React.Fragment key="new-post-trigger">
-                  <DialogTrigger asChild>
-                    <button className="flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-green-400 to-primary text-primary-foreground shadow-lg hover:from-green-500 hover:to-primary/90 transition-all duration-200 transform hover:scale-110">
-                      <PlusCircle className="h-7 w-7" />
-                      <span className="sr-only">Nueva Publicación</span>
-                    </button>
-                  </DialogTrigger>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                      pathname.startsWith(item.href) ? "text-primary" : ""
-                    )}
-                  >
-                    <item.icon className="h-6 w-6" />
-                    <span className="text-xs sr-only">{item.label}</span>
-                  </Link>
-                </React.Fragment>
-              );
-            }
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex flex-col items-center justify-center h-full w-full gap-1 p-2 rounded-md transition-colors text-muted-foreground hover:bg-accent",
-                  (pathname.startsWith(item.href) && item.href !== '/') || pathname === item.href ? "text-primary" : ""
-                )}
-              >
-                <item.icon className="h-6 w-6" />
-                <span className="text-xs sr-only">{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
+    <div className="flex min-h-screen w-full items-center justify-center">
+      <div className="flex items-center gap-3">
+        <CannaGrowLogo />
+        <span className="font-headline text-lg font-semibold">CannaGrow</span>
       </div>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Crear nueva publicación</DialogTitle>
-        </DialogHeader>
-        <NewPostForm onPostCreated={() => setIsNewPostOpen(false)} />
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }

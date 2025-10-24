@@ -31,7 +31,10 @@ export default function LoginPage() {
         setError(null);
         try {
             await logIn(email, password);
-            // The redirection is now handled by AppShell
+            // On successful login, AuthProvider's onAuthStateChanged will update the user state.
+            // AppShell will then detect the user and render the main app content.
+            // We can now safely redirect.
+            router.push('/');
         } catch (err: any) {
              setError("Las credenciales son incorrectas. Por favor, inténtalo de nuevo.");
         } finally {
