@@ -21,9 +21,6 @@ const navItems = [
   { href: "/messages", label: "Mensajes", icon: MessageSquare },
 ];
 
-// We will fetch the full profile with role where needed, e.g., in AppShell itself
-// For now, nav does not need role-based filtering, we can add it back later if needed.
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -32,7 +29,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
 
-  // 1. Primary Loading State
+  // The redirection logic is now in a useEffect to prevent "setstate-in-render" errors.
+  React.useEffect(() => {
+    if (!loading && !user && !showOnboarding) {
+      router.push('/login');
+    }
+  }, [user, loading, showOnboarding, router]);
+
+  // 1. Primary Loading State: If auth is loading, show a full-screen loader.
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center">
@@ -46,15 +50,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 2. If not loading, and we are on an onboarding page, render it.
+  // 2. Onboarding pages: If not loading and on login/register, show the page directly.
   if (showOnboarding) {
      return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
-
-  // 3. If not loading, not on onboarding, and no user, redirect.
+  
+  // 3. If we are still waiting for redirection or user to be confirmed, show loader.
   if (!user) {
-    router.push('/login');
-    return ( // Render loader while redirecting
+    return (
       <div className="flex min-h-screen w-full items-center justify-center">
         <div className="flex items-center gap-3">
           <CannaGrowLogo />
@@ -65,6 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
 
   // 4. If we reach here, we are logged in and can show the app.
   return (
