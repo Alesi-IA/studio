@@ -39,7 +39,8 @@ export interface UserGuide {
     comments: UserGuideComment[];
 }
 
-export interface UserProfile {
+// Unified user type
+export interface CannaGrowUser {
     uid: string;
     email: string;
     displayName: string;
@@ -48,5 +49,3 @@ export interface UserProfile {
     bio?: string;
     createdAt: string;
 }
-
-    

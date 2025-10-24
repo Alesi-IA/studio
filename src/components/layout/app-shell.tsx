@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -23,10 +24,9 @@ const navItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const pathname = usePathname();
   const [isNewPostOpen, setIsNewPostOpen] = React.useState(false);
+  const pathname = usePathname();
 
-  // 1. Handle loading state
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center">
@@ -38,15 +38,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If we are on a public route and there's no user, render the page.
+  // If there is a user, the AuthProvider's redirect logic will handle it.
   const isPublicRoute = pathname === '/login' || pathname === '/register';
-
-  // 2. If not logged in and on a public route, render the public page
   if (!user && isPublicRoute) {
-      return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
+     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
-  
-  // 3. If logged in, render the full app shell.
-  // The redirection logic is now handled in AuthProvider.
+
+  // If there is a user, show the main app shell.
+  // If there's no user and it's not a public route, AuthProvider will redirect.
   if (user) {
     return (
       <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
@@ -182,14 +182,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Fallback for the case where user is null and not on a public route.
-  // This state should be brief as the AuthProvider's effect will redirect.
-   return (
-      <div className="flex min-h-screen w-full items-center justify-center">
-        <div className="flex items-center gap-3">
-          <CannaGrowLogo />
-          <span className="font-headline text-lg font-semibold">CannaGrow</span>
-        </div>
+  // Fallback for non-public routes when no user is logged in.
+  // The AuthProvider's redirect will handle this, but this provides a loader in the meantime.
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center">
+      <div className="flex items-center gap-3">
+        <CannaGrowLogo />
+        <span className="font-headline text-lg font-semibold">CannaGrow</span>
       </div>
-    );
+    </div>
+  );
 }

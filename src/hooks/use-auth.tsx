@@ -1,53 +1,95 @@
 
-
-// @ts-nocheck
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useToast } from './use-toast';
 import {
-  type User,
+  type User as FirebaseUser,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
+import type { CannaGrowUser } from '@/types';
 
 interface AuthContextType {
-  user: User | null;
+  user: CannaGrowUser | null;
   loading: boolean;
+  isOwner: boolean;
+  isModerator: boolean;
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  updateUserProfile: (updates: Partial<{displayName: string, photoURL: string, bio: string}>) => Promise<void>;
+  updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
+  _injectUser: (user: CannaGrowUser) => void; // For admin impersonation
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore } = useFirebase();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { auth, firestore, isUserLoading: isFirebaseUserLoading } = useFirebase();
+  const [user, setUser] = useState<CannaGrowUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
+
+  const fetchUserProfile = useCallback(async (firebaseUser: FirebaseUser): Promise<CannaGrowUser> => {
+    const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+      return userDoc.data() as CannaGrowUser;
+    } else {
+      // This is a fallback for users that might exist in Auth but not in Firestore
+      // (e.g., if Firestore document creation failed during signup)
+      const newUserProfile: CannaGrowUser = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email!,
+        displayName: firebaseUser.displayName || 'Cultivador Anónimo',
+        role: 'user',
+        photoURL: firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/128/128`,
+        bio: 'Entusiasta del cultivo.',
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(userDocRef, newUserProfile);
+      return newUserProfile;
+    }
+  }, [firestore]);
+  
 
   useEffect(() => {
     if (!auth) {
-      setLoading(false);
+      setAuthLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, [auth]);
 
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        setAuthLoading(true);
+        try {
+          const userProfile = await fetchUserProfile(firebaseUser);
+          setUser(userProfile);
+        } catch (error) {
+          console.error("Failed to fetch user profile:", error);
+          setUser(null); // Log out user if profile fetch fails
+        } finally {
+          setAuthLoading(false);
+        }
+      } else {
+        setUser(null);
+        setAuthLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth, fetchUserProfile]);
+  
+  // Redirection logic
   useEffect(() => {
+    const loading = authLoading || isFirebaseUserLoading;
     if (loading) return;
 
     const isPublicRoute = pathname === '/login' || pathname === '/register';
@@ -59,7 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user && !isPublicRoute) {
       router.push('/login');
     }
-  }, [user, loading, pathname, router]);
+  }, [user, authLoading, isFirebaseUserLoading, pathname, router]);
+
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) throw new Error("Auth services not available");
@@ -70,28 +113,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const photoURL = `https://picsum.photos/seed/${firebaseUser.uid}/128/128`;
 
     await updateProfile(firebaseUser, {
-      displayName: displayName,
-      photoURL: photoURL,
+      displayName,
+      photoURL,
     });
     
     const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-    const newUserProfile = {
+    const newUserProfile: CannaGrowUser = {
       uid: firebaseUser.uid,
       email: email.toLowerCase(),
-      displayName: displayName,
-      role: 'user', // All new users are 'user' role by default
-      photoURL: photoURL,
+      displayName,
+      role: 'user',
+      photoURL,
       bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       createdAt: new Date().toISOString(),
     };
     
     await setDoc(userDocRef, newUserProfile);
+    setUser(newUserProfile);
 
   }, [auth, firestore]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
     if (!auth) throw new Error("Auth service not available");
     await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged will handle setting the user state
   }, [auth]);
 
   const logOut = useCallback(async () => {
@@ -100,30 +145,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, [auth]);
 
-  const updateUserProfile = useCallback(async (updates: Partial<{displayName: string, photoURL: string, bio: string}>) => {
-    if (!user || !firestore || !auth.currentUser) return;
+  const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>) => {
+    if (!user || !firestore || !auth.currentUser) {
+       toast({ variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión para actualizar tu perfil.' });
+       return;
+    };
     
+    setAuthLoading(true);
     try {
-      await updateProfile(auth.currentUser, updates);
+      // 1. Update Firebase Auth profile
+      await updateProfile(auth.currentUser, {
+        displayName: updates.displayName,
+        photoURL: updates.photoURL,
+      });
+
+      // 2. Update Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, updates, { merge: true });
       
-      const refreshedUser = { ...auth.currentUser };
-      setUser(refreshedUser as User);
+      // 3. Create the new user state by merging previous state with updates
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+
+      toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
 
     } catch (error) {
       console.error("Error updating profile:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
+    } finally {
+      setAuthLoading(false);
     }
-  }, [user, firestore, auth]);
+  }, [user, firestore, auth, toast]);
 
+  const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
+    if (user?.role === 'owner') {
+      setUser(injectedUser);
+    } else {
+       toast({ variant: 'destructive', title: 'No autorizado', description: 'Solo los dueños pueden suplantar a otros usuarios.' });
+    }
+  }, [user, toast]);
 
   const value = {
     user,
-    loading,
+    loading: authLoading || isFirebaseUserLoading,
+    isOwner: user?.role === 'owner',
+    isModerator: user?.role === 'moderator' || user?.role === 'co-owner' || user?.role === 'owner',
     signUp,
     logIn,
     logOut,
     updateUserProfile,
+    _injectUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

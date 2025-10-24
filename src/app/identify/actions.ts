@@ -1,6 +1,6 @@
 'use server';
 
-import { genkit } from '@/ai/genkit';
+import { ai } from '@/ai/genkit';
 import { IdentifyStrainInputSchema, IdentifyStrainOutputSchema } from '@/app/ai/schemas';
 import type { IdentifyStrainOutput } from './types';
 
@@ -16,7 +16,7 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
   }
 
   try {
-    const { output } = await genkit.generate({
+    const { output } = await ai.generate({
       prompt: `Eres un experto en identificación y salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis.
 
 1.  **Identifica la Cepa:** Determina la cepa más probable de la planta.
