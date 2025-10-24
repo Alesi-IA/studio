@@ -8,7 +8,7 @@ import { CannaGrowLogo } from "@/components/icons/logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
-import React from "react";
+import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { NewPostForm } from "./new-post-form";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,19 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isPublicRoute = pathname === '/login' || pathname === '/register';
 
-  React.useEffect(() => {
-    if (loading) return; // Do nothing while loading
-
-    if (user && isPublicRoute) {
-      router.push('/');
-    }
-
-    if (!user && !isPublicRoute) {
-      router.push('/login');
-    }
-  }, [user, loading, isPublicRoute, router]);
-
-  // 1. Show loader while auth state is being determined
+  // 1. Handle loading state
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center">
@@ -53,25 +41,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 2. If not loading, and we are on a public route, render it (children will be login/register page)
-  if (isPublicRoute) {
-     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
-  }
-  
-  // 3. If not loading and not on a public route, but there's no user, we are in a redirect state.
-  // Render a loader to avoid flashing content. useEffect will handle the redirect.
-  if (!user) {
-    return (
-       <div className="flex min-h-screen w-full items-center justify-center">
-        <div className="flex items-center gap-3">
-          <CannaGrowLogo />
-          <span className="font-headline text-lg font-semibold">CannaGrow</span>
+  // 2. Handle redirection logic AFTER loading is complete
+  if (!loading) {
+    // User is logged in but stuck on a public route, redirect to feed
+    if (user && isPublicRoute) {
+      router.push('/');
+      return ( // Render a loader while redirecting
+        <div className="flex min-h-screen w-full items-center justify-center">
+          <div className="flex items-center gap-3">
+            <CannaGrowLogo />
+            <span className="font-headline text-lg font-semibold">CannaGrow</span>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    
+    // User is not logged in and not on a public route, redirect to login
+    if (!user && !isPublicRoute) {
+      router.push('/login');
+      return ( // Render a loader while redirecting
+         <div className="flex min-h-screen w-full items-center justify-center">
+          <div className="flex items-center gap-3">
+            <CannaGrowLogo />
+            <span className="font-headline text-lg font-semibold">CannaGrow</span>
+          </div>
+        </div>
+      );
+    }
   }
 
-  // 4. If we reach here, we are logged in and can show the full app.
+  // 3. If we are on a public route (and not logged in), render the page
+  if (isPublicRoute) {
+    return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
+  }
+
+  // 4. If we reach here, user is logged in and not on a public route, show the full app.
   return (
     <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
       <div className="flex min-h-screen w-full">
