@@ -31,7 +31,7 @@ export default function LoginPage() {
         setError(null);
         try {
             await logIn(email, password);
-            router.push('/');
+            // The redirection is now handled by AppShell
         } catch (err: any) {
              setError("Las credenciales son incorrectas. Por favor, inténtalo de nuevo.");
         } finally {
