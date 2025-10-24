@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { AppShell } from '@/components/layout/app-shell';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
@@ -28,7 +27,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <FirebaseClientProvider>
           <AuthProvider>
-            <AppShell>{children}</AppShell>
+            {children}
             <Toaster />
           </AuthProvider>
         </FirebaseClientProvider>

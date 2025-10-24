@@ -13,6 +13,7 @@ import {
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { FirestorePermissionError, errorEmitter } from '@/firebase';
+import { AppShell } from '@/components/layout/app-shell';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 
@@ -46,6 +47,11 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
   
   useEffect(() => {
     if (!areServicesAvailable) {
+      setAuthLoading(true);
+      return;
+    }
+    
+    if (isUserLoading) {
       setAuthLoading(true);
       return;
     }
@@ -101,9 +107,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    if (isUserLoading) {
-      setAuthLoading(true);
-    } else if (firebaseUser) {
+    if (firebaseUser) {
       fetchUserRole(firebaseUser);
     } else {
       setCannaUser(null);
@@ -162,7 +166,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
       toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
       throw error;
     } finally {
-      setAuthLoading(false);
+      // The useEffect will handle setting loading to false
     }
   }, [auth, firestore, toast]);
 
@@ -177,28 +181,24 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
       toast({ title: "Inicio de Sesión Exitoso" });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
+      setAuthLoading(false); // Ensure loading is false on error
       throw error;
-    } finally {
-      setAuthLoading(false);
     }
 }, [auth, toast]);
 
   const logOut = useCallback(async () => {
     if (!auth) return;
-    setAuthLoading(true);
     try {
         await signOut(auth);
         setCannaUser(null);
     } catch (error) {
          toast({ variant: "destructive", title: "Error", description: "No se pudo cerrar la sesión." });
-    } finally {
-        setAuthLoading(false);
     }
   }, [auth, toast]);
   
   const updateUserProfile = useCallback(async (updates: Partial<Pick<CannaGrowUser, 'displayName' | 'bio' | 'photoURL'>>) => {
     if (!cannaUser || !firestore || !auth.currentUser) return;
-    setAuthLoading(true);
+    
     const userDocRef = doc(firestore, 'users', cannaUser.uid);
     
     try {
@@ -221,8 +221,6 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
             console.error('Error al actualizar el perfil:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
         }
-    } finally {
-        setAuthLoading(false);
     }
   
   }, [cannaUser, firestore, auth, toast]);
@@ -251,8 +249,14 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
     _injectUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider value={value}>
+      <AppShell>
+        {children}
+      </AppShell>
+    </AuthContext.Provider>
+  )
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return <AuthProviderContent>{children}</AuthProviderContent>;
