@@ -12,27 +12,16 @@ import {
   updateProfile,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
-import { FirestorePermissionError, errorEmitter } from '@/firebase';
-
-type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
-
-// This will be the user profile fetched from Firestore
-interface CannaGrowUser extends User {
-  role: UserRole;
-  displayName: string;
-  bio: string;
-}
 
 interface AuthContextType {
   user: User | null; // Keep it simple: just the Firebase user
   loading: boolean;
-  // We'll fetch role and other profile data separately where needed
-  // This simplifies the core auth logic and avoids race conditions
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
+  updateUserProfile: (updates: Partial<{displayName: string, photoURL: string, bio: string}>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -61,10 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
+    
+    const photoURL = `https://picsum.photos/seed/${firebaseUser.uid}/128/128`;
 
     await updateProfile(firebaseUser, {
       displayName: displayName,
-      photoURL: `https://picsum.photos/seed/${firebaseUser.uid}/128/128`,
+      photoURL: photoURL,
     });
     
     const userDocRef = doc(firestore, 'users', firebaseUser.uid);
@@ -72,13 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uid: firebaseUser.uid,
       email: email.toLowerCase(),
       displayName: displayName,
-      role: 'user',
-      photoURL: `https://picsum.photos/seed/${firebaseUser.uid}/128/128`,
+      role: 'user', // All new users are 'user' role by default
+      photoURL: photoURL,
       bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       createdAt: new Date().toISOString(),
     };
     
+    // This creates the user profile document in Firestore
     await setDoc(userDocRef, newUserProfile);
+
   }, [auth, firestore]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
@@ -92,12 +85,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, [auth]);
 
+  const updateUserProfile = useCallback(async (updates: Partial<{displayName: string, photoURL: string, bio: string}>) => {
+    if (!user || !firestore || !auth.currentUser) return;
+    
+    try {
+      await updateProfile(auth.currentUser, updates);
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, updates, { merge: true });
+      // Manually refresh user state to reflect changes immediately
+      setUser(auth.currentUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
+  }, [user, firestore, auth]);
+
+
   const value = {
     user,
     loading,
     signUp,
     logIn,
     logOut,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
