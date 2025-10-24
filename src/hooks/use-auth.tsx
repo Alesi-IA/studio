@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -13,6 +14,7 @@ import {
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { FirestorePermissionError, errorEmitter } from '@/firebase';
+import { useRouter, usePathname } from 'next/navigation';
 
 type UserRole = 'owner' | 'co-owner' | 'moderator' | 'user';
 
@@ -38,58 +40,60 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+function AuthProviderContent({ children }: { children: ReactNode }) {
   const { auth, firestore, isUserLoading, user: firebaseUser, areServicesAvailable } = useFirebase();
   const [cannaUser, setCannaUser] = useState<CannaGrowUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const { toast } = useToast();
-  
+  const router = useRouter();
+  const pathname = usePathname();
+
   useEffect(() => {
-    setAuthLoading(isUserLoading || !areServicesAvailable);
-  
-    if (isUserLoading || !areServicesAvailable) {
+    // Overall loading state depends on both Firebase auth check and our profile fetch
+    const loading = isUserLoading || !areServicesAvailable;
+    setAuthLoading(loading);
+
+    if (loading) {
       return;
     }
-  
+
     const fetchUserRole = async (user: User) => {
       if (!firestore) return;
-      
+
       const userDocRef = doc(firestore, 'users', user.uid);
       try {
         const userDoc = await getDoc(userDocRef);
         let userData;
         let dbRole: UserRole = 'user';
-  
+
         if (userDoc.exists()) {
           userData = userDoc.data();
           dbRole = userData.role || 'user';
         } else {
-           console.warn(`User document for ${user.uid} not found. Creating with default 'user' role.`);
-           const newUserProfile = {
-             uid: user.uid,
-             email: user.email?.toLowerCase(),
-             displayName: user.displayName,
-             role: 'user',
-             photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/128/128`,
-             bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
-             createdAt: new Date().toISOString(),
-           };
-           await setDoc(userDocRef, newUserProfile);
-           userData = newUserProfile;
+          console.warn(`User document for ${user.uid} not found. Creating with default 'user' role.`);
+          const newUserProfile = {
+            uid: user.uid,
+            email: user.email?.toLowerCase(),
+            displayName: user.displayName,
+            role: 'user',
+            photoURL: user.photoURL || `https://picsum.photos/seed/${user.uid}/128/128`,
+            bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
+            createdAt: new Date().toISOString(),
+          };
+          await setDoc(userDocRef, newUserProfile);
+          userData = newUserProfile;
         }
-        
+
         let effectiveRole: UserRole = dbRole;
         if (user.email?.toLowerCase() === 'alexisgrow@cannagrow.com') {
-            effectiveRole = 'owner';
-            if (dbRole !== 'owner') {
-                await updateDoc(userDocRef, { role: 'owner' });
-            }
+          effectiveRole = 'owner';
+          if (dbRole !== 'owner') {
+            await updateDoc(userDocRef, { role: 'owner' });
+          }
         }
-  
+
         const finalUserData = { ...user, ...userData, role: effectiveRole } as CannaGrowUser;
-        
         setCannaUser(finalUserData);
-  
       } catch (error) {
         console.error("Error fetching user role:", error);
         const fallbackUser = { ...user, role: 'user', displayName: user.displayName, bio: '' } as CannaGrowUser;
@@ -97,18 +101,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             fallbackUser.role = 'owner';
         }
         setCannaUser(fallbackUser);
-      } finally {
-        setAuthLoading(false);
       }
     };
-  
+
     if (firebaseUser) {
       fetchUserRole(firebaseUser);
     } else {
       setCannaUser(null);
-      setAuthLoading(false);
+      // If no user and not on an auth page, redirect to login
+      const isAuthPage = pathname === '/login' || pathname === '/register';
+      if (!isAuthPage) {
+        router.push('/login');
+      }
     }
-  }, [firebaseUser, isUserLoading, firestore, areServicesAvailable]);
+  }, [firebaseUser, isUserLoading, firestore, areServicesAvailable, pathname, router]);
 
   const role = cannaUser?.role || null;
   const isOwner = role === 'owner';
@@ -120,7 +126,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toast({ variant: 'destructive', title: 'Error', description: 'Servicios de autenticación no disponibles.' });
       return;
     }
-    setAuthLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -160,8 +165,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Sign up error', error);
       toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
       throw error;
-    } finally {
-      // The useEffect will handle setting loading to false
     }
   }, [auth, firestore, toast]);
 
@@ -170,13 +173,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
         return Promise.reject(new Error("Auth service not available"));
     }
-    setAuthLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Inicio de Sesión Exitoso" });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
-      setAuthLoading(false); // Ensure loading is false on error
       throw error;
     }
 }, [auth, toast]);
@@ -249,7 +250,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </AuthContext.Provider>
   )
+}
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const { areServicesAvailable } = useFirebase();
+
+    // Render nothing until Firebase is ready, to prevent hooks from running prematurely.
+    if (!areServicesAvailable) {
+        return null; 
+    }
+
+    return <AuthProviderContent>{children}</AuthProviderContent>;
 };
+
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);

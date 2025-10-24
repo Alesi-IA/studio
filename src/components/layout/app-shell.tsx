@@ -30,19 +30,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const showOnboarding = pathname === '/login' || pathname === '/register';
-  
-  const accessibleNavItems = navItems.filter(item => {
-    if (!item.requiredRole) return true;
-    return item.requiredRole === role;
-  });
-  
-  React.useEffect(() => {
-    if (!loading && !user && !showOnboarding) {
-      router.push('/login');
-    }
-  }, [user, loading, showOnboarding, router, pathname]);
 
   if (loading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <div className="flex items-center gap-3">
+          <CannaGrowLogo />
+          <span className="font-headline text-lg font-semibold">
+            CannaGrow
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (showOnboarding) {
+    return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
+  }
+
+  if (!user) {
+    // This case should be handled by a redirect, but as a fallback,
+    // we can show a loader or nothing to prevent rendering a broken UI.
+    // The redirect logic is now in the AuthProvider.
     return (
         <div className="flex min-h-screen w-full items-center justify-center">
              <div className="flex items-center gap-3">
@@ -55,22 +64,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     )
   }
   
-  if (showOnboarding) {
-    return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
-  }
-
-  if (!user) {
-     return (
-        <div className="flex min-h-screen w-full items-center justify-center">
-             <div className="flex items-center gap-3">
-              <CannaGrowLogo />
-              <span className="font-headline text-lg font-semibold">
-                CannaGrow
-              </span>
-            </div>
-        </div>
-    )
-  }
+  const accessibleNavItems = navItems.filter(item => {
+    if (!item.requiredRole) return true;
+    return item.requiredRole === role;
+  });
 
   return (
     <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
