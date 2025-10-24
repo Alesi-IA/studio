@@ -29,6 +29,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isPublicRoute = pathname === '/login' || pathname === '/register';
 
+  useEffect(() => {
+    // Don't run any redirection logic until the initial loading is complete
+    if (loading) {
+      return;
+    }
+    
+    // User is logged in but on a public route, redirect to feed
+    if (user && isPublicRoute) {
+      router.push('/');
+    }
+    
+    // User is not logged in and not on a public route, redirect to login
+    if (!user && !isPublicRoute) {
+      router.push('/login');
+    }
+
+  }, [user, loading, isPublicRoute, router]);
+
   // 1. Handle loading state
   if (loading) {
     return (
@@ -41,41 +59,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 2. Handle redirection logic AFTER loading is complete
-  if (!loading) {
-    // User is logged in but stuck on a public route, redirect to feed
-    if (user && isPublicRoute) {
-      router.push('/');
-      return ( // Render a loader while redirecting
-        <div className="flex min-h-screen w-full items-center justify-center">
-          <div className="flex items-center gap-3">
-            <CannaGrowLogo />
-            <span className="font-headline text-lg font-semibold">CannaGrow</span>
-          </div>
-        </div>
-      );
-    }
-    
-    // User is not logged in and not on a public route, redirect to login
-    if (!user && !isPublicRoute) {
-      router.push('/login');
-      return ( // Render a loader while redirecting
-         <div className="flex min-h-screen w-full items-center justify-center">
-          <div className="flex items-center gap-3">
-            <CannaGrowLogo />
-            <span className="font-headline text-lg font-semibold">CannaGrow</span>
-          </div>
-        </div>
-      );
-    }
-  }
-
-  // 3. If we are on a public route (and not logged in), render the page
+  // 2. If we are on a public route (and not logged in), render the page without the shell
   if (isPublicRoute) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
   }
 
-  // 4. If we reach here, user is logged in and not on a public route, show the full app.
+  // 3. If we reach here, user is logged in, show the full app shell.
+  // Or, if user is not logged in but on a non-public route, this will render briefly
+  // before the useEffect redirects them. We can show a loader for that case.
+  if (!user) {
+     return (
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <div className="flex items-center gap-3">
+          <CannaGrowLogo />
+          <span className="font-headline text-lg font-semibold">CannaGrow</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
       <div className="flex min-h-screen w-full">
