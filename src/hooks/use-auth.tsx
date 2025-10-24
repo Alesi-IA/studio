@@ -1,8 +1,7 @@
-
 // @ts-nocheck
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useToast } from './use-toast';
 import {
   type User,
@@ -40,12 +39,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
-  const { auth, firestore, isUserLoading, user: firebaseUser } = useFirebase();
+  const { auth, firestore, isUserLoading, user: firebaseUser, areServicesAvailable } = useFirebase();
   const [cannaUser, setCannaUser] = useState<CannaGrowUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const { toast } = useToast();
   
   useEffect(() => {
+    if (!areServicesAvailable) {
+      setAuthLoading(true);
+      return;
+    }
+
     const fetchUserRole = async (user: User) => {
       if (!firestore) return;
       
@@ -93,19 +97,19 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
         }
         setCannaUser(fallbackUser);
       } finally {
-        setLoading(false);
+        setAuthLoading(false);
       }
     };
 
     if (isUserLoading) {
-      setLoading(true);
+      setAuthLoading(true);
     } else if (firebaseUser) {
       fetchUserRole(firebaseUser);
     } else {
       setCannaUser(null);
-      setLoading(false);
+      setAuthLoading(false);
     }
-  }, [firebaseUser, isUserLoading, firestore]);
+  }, [firebaseUser, isUserLoading, firestore, areServicesAvailable]);
 
   const role = cannaUser?.role || null;
   const isOwner = role === 'owner';
@@ -117,7 +121,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
       toast({ variant: 'destructive', title: 'Error', description: 'Servicios de autenticación no disponibles.' });
       return;
     }
-    setLoading(true);
+    setAuthLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -158,7 +162,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
       toast({ variant: "destructive", title: "Error de Registro", description: "No se pudo crear la cuenta. El email puede estar ya en uso." });
       throw error;
     } finally {
-      setLoading(false);
+      setAuthLoading(false);
     }
   }, [auth, firestore, toast]);
 
@@ -167,7 +171,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
         toast({ variant: "destructive", title: "Error", description: "Servicios de autenticación no disponibles." });
         return Promise.reject(new Error("Auth service not available"));
     }
-    setLoading(true);
+    setAuthLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Inicio de Sesión Exitoso" });
@@ -175,33 +179,30 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
       toast({ variant: "destructive", title: "Error de Inicio de Sesión", description: "Las credenciales son incorrectas." });
       throw error;
     } finally {
-      setLoading(false);
+      setAuthLoading(false);
     }
 }, [auth, toast]);
 
   const logOut = useCallback(async () => {
     if (!auth) return;
-    setLoading(true);
+    setAuthLoading(true);
     try {
         await signOut(auth);
         setCannaUser(null);
     } catch (error) {
          toast({ variant: "destructive", title: "Error", description: "No se pudo cerrar la sesión." });
     } finally {
-        setLoading(false);
+        setAuthLoading(false);
     }
   }, [auth, toast]);
   
   const updateUserProfile = useCallback(async (updates: Partial<Pick<CannaGrowUser, 'displayName' | 'bio' | 'photoURL'>>) => {
     if (!cannaUser || !firestore || !auth.currentUser) return;
-    setLoading(true);
+    setAuthLoading(true);
     const userDocRef = doc(firestore, 'users', cannaUser.uid);
     
     try {
-        // Update Firestore document
         await updateDoc(userDocRef, updates);
-
-        // If displayName or photoURL are being updated, update Firebase Auth profile as well
         if (updates.displayName || updates.photoURL) {
             await updateProfile(auth.currentUser, {
                 displayName: updates.displayName,
@@ -221,11 +222,10 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
         }
     } finally {
-        setLoading(false);
+        setAuthLoading(false);
     }
   
   }, [cannaUser, firestore, auth, toast]);
-
 
   const _injectUser = (userToImpersonate: CannaGrowUser) => {
      if (isOwner) {
@@ -239,7 +239,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
 
   const value = {
     user: cannaUser,
-    loading,
+    loading: authLoading,
     role,
     isOwner,
     isCoOwner,
@@ -254,16 +254,9 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { areServicesAvailable } = useFirebase();
-
-  // Render content only when Firebase services are confirmed to be available.
-  // This prevents race conditions where child components might try to use
-  // Firebase before it's ready.
-  return areServicesAvailable ? <AuthProviderContent>{children}</AuthProviderContent> : null;
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  return <AuthProviderContent>{children}</AuthProviderContent>;
 };
-
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
