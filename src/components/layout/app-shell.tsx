@@ -40,9 +40,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!loading && !user && !showOnboarding) {
       router.push('/login');
     }
-  }, [user, loading, showOnboarding, router]);
-  
-  if (loading || (!user && !showOnboarding)) {
+  }, [user, loading, showOnboarding, router, pathname]);
+
+  if (loading) {
     return (
         <div className="flex min-h-screen w-full items-center justify-center">
              <div className="flex items-center gap-3">
@@ -57,6 +57,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   
   if (showOnboarding) {
     return <main className="flex min-h-screen flex-col items-center justify-center p-4">{children}</main>;
+  }
+
+  if (!user) {
+     return (
+        <div className="flex min-h-screen w-full items-center justify-center">
+             <div className="flex items-center gap-3">
+              <CannaGrowLogo />
+              <span className="font-headline text-lg font-semibold">
+                CannaGrow
+              </span>
+            </div>
+        </div>
+    )
   }
 
   return (
@@ -117,8 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
                   <CannaGrowLogo />
                   <span>CannaGrow</span>
-                </Link>
-                 <div className="flex items-center gap-2">
+                </Link>                 <div className="flex items-center gap-2">
                     <Link href="/messages">
                         <Button variant="ghost" size="icon">
                             <MessageSquare className="h-5 w-5" />
