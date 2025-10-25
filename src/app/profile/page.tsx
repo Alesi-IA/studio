@@ -44,7 +44,7 @@ export default function ProfilePage() {
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
-  const { user, loading, logOut, updateUserProfile } = useAuth();
+  const { user, loading, logOut, updateUserProfile, setUser } = useAuth();
   const { storage } = useFirebase(); // Use storage from useFirebase
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -138,13 +138,12 @@ export default function ProfilePage() {
         console.error("Upload failed:", error);
         setUploadProgress(null);
       },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-          const updatedUser = await updateUserProfile({ photoURL: downloadURL });
-          if (updatedUser) {
-            setUploadProgress(null);
-          }
-        });
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        await updateUserProfile({ photoURL: downloadURL });
+        // The user object in useAuth is updated, which will cause a re-render
+        // No need to call setUser here as useAuth handles it.
+        setUploadProgress(null);
       }
     );
   };
