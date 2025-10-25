@@ -44,7 +44,7 @@ export default function ProfilePage() {
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
-  const { user, loading, logOut, updateUserProfile, setUser } = useAuth();
+  const { user, loading, logOut, updateUserProfile } = useAuth();
   const { storage } = useFirebase(); // Use storage from useFirebase
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,8 +54,8 @@ export default function ProfilePage() {
 
   // State for Edit Profile Dialog
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [editingDisplayName, setEditingDisplayName] = useState(user?.displayName || '');
-  const [editingBio, setEditingBio] = useState(user?.bio || '');
+  const [editingDisplayName, setEditingDisplayName] = useState('');
+  const [editingBio, setEditingBio] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const isOwnProfile = true; 
@@ -141,8 +141,6 @@ export default function ProfilePage() {
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         await updateUserProfile({ photoURL: downloadURL });
-        // The user object in useAuth is updated, which will cause a re-render
-        // No need to call setUser here as useAuth handles it.
         setUploadProgress(null);
       }
     );
@@ -161,7 +159,6 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await logOut();
-    router.push('/login');
   }
 
   const handleToggleLike = (postId: string) => {

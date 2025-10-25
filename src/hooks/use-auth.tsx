@@ -24,8 +24,7 @@ interface AuthContextType {
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
-  setUser: React.Dispatch<React.SetStateAction<CannaGrowUser | null>>; // Expose setUser
-  _injectUser: (user: CannaGrowUser) => void; // For admin impersonation
+  _injectUser: (user: CannaGrowUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,13 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             // Combine auth data and firestore data
-            const firestoreData = userDoc.data() as CannaGrowUser;
+            const firestoreData = userDoc.data();
             return {
-                ...firestoreData, // Firestore data is the source of truth for role, bio, etc.
                 uid: firebaseUser.uid,
                 email: firebaseUser.email!,
                 displayName: firebaseUser.displayName || firestoreData.displayName,
                 photoURL: firebaseUser.photoURL || firestoreData.photoURL,
+                role: firestoreData.role || 'user',
+                bio: firestoreData.bio || '',
+                createdAt: firestoreData.createdAt,
             };
         } else {
             console.warn(`No profile found in Firestore for user ${firebaseUser.uid}. Attempting to create one.`);
@@ -153,7 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) return;
     await signOut(auth);
     setUser(null);
-  }, [auth]);
+    router.push('/login');
+  }, [auth, router]);
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<void> => {
     if (!user || !firestore || !auth.currentUser) {
@@ -207,7 +209,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logIn,
     logOut,
     updateUserProfile,
-    setUser,
     _injectUser,
   };
 
