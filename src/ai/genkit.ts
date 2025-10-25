@@ -8,4 +8,8 @@ const ai = genkit({
   enableTracingAndMetrics: true,
 });
 
-export { ai };
+function isApiKeyConfigured() {
+    return !!process.env.GEMINI_API_KEY;
+}
+
+export { ai, isApiKeyConfigured };

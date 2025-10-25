@@ -1,12 +1,18 @@
 'use server';
 
-import { ai } from '@/ai/genkit';
+import { ai, isApiKeyConfigured } from '@/ai/genkit';
 import { AnalyzePlantInputSchema, AnalyzePlantOutputSchema } from '@/app/ai/schemas';
 import type { AnalyzePlantOutput } from './types';
 
 export { type AnalyzePlantOutput } from './types';
 
+const NO_API_KEY_ERROR = "La clave API de Gemini no está configurada. Por favor, añádela a tus variables de entorno para usar las funciones de IA.";
+
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
+  if (!isApiKeyConfigured()) {
+    return { data: null, error: NO_API_KEY_ERROR };
+  }
+  
   // We only validate that we receive a string.
   const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
   
