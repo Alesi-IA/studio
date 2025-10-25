@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Sprout, Wheat, Grape, Award, Library, Loader2, Grid3x3, UserSquare, Crown } from 'lucide-react';
+import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Sprout, Wheat, Grape, Award, Library, Loader2, Grid3x3, UserSquare, Crown, Send } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
@@ -503,3 +503,5 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     </div>
   );
 }
+
+    
