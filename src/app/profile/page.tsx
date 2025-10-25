@@ -44,7 +44,7 @@ export default function ProfilePage() {
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
-  const { user, logOut, updateUserProfile } = useAuth();
+  const { user, loading, logOut, updateUserProfile } = useAuth();
   const { storage } = useFirebase(); // Use storage from useFirebase
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -139,10 +139,11 @@ export default function ProfilePage() {
         setUploadProgress(null);
       },
       () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          updateUserProfile({ photoURL: downloadURL }).then(() => {
-             setUploadProgress(null);
-          });
+        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+          const updatedUser = await updateUserProfile({ photoURL: downloadURL });
+          if (updatedUser) {
+            setUploadProgress(null);
+          }
         });
       }
     );
@@ -229,7 +230,7 @@ export default function ProfilePage() {
     window.dispatchEvent(new Event('storage'));
   };
 
-  if (!user) {
+  if (loading || !user) {
     return null; // Or a loading spinner
   }
 
@@ -551,5 +552,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
