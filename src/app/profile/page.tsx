@@ -247,10 +247,6 @@ export default function ProfilePage() {
                 <p className="font-bold">{userPosts.length}</p>
                 <p className="text-sm text-muted-foreground">Publicaciones</p>
               </div>
-               <div className="text-center">
-                <p className="font-bold">{userGuides.length}</p>
-                <p className="text-sm text-muted-foreground">Guías</p>
-              </div>
               <div className="text-center">
                 <p className="font-bold">0</p>
                 <p className="text-sm text-muted-foreground">Seguidores</p>
@@ -258,10 +254,6 @@ export default function ProfilePage() {
               <div className="text-center">
                 <p className="font-bold">0</p>
                 <p className="text-sm text-muted-foreground">Siguiendo</p>
-              </div>
-               <div className="text-center">
-                <p className="font-bold">{user.experiencePoints || 0}</p>
-                <p className="text-sm text-muted-foreground">XP</p>
               </div>
             </div>
 
@@ -458,3 +450,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
