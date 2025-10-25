@@ -201,12 +201,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       // If the updated user is the current user, refresh their data
       if (user && user.uid === userId) {
-        setUser(prevUser => prevUser ? ({ ...prevUser, experiencePoints: (prevUser.experiencePoints || 0) + amount }) : null);
+        const updatedUser = await fetchUserProfile(auth.currentUser!);
+        setUser(updatedUser);
       }
     } catch (error) {
       console.error(`Failed to add ${amount}XP to user ${userId}:`, error);
     }
-  }, [firestore, user]);
+  }, [firestore, user, auth]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
