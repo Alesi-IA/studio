@@ -47,6 +47,20 @@ export interface UserGuide {
     comments: UserGuideComment[];
 }
 
+export interface CultivationTask {
+    id: string;
+    authorId: string;
+    label: string;
+    completed: boolean;
+    date: any; // Using `any` to match current usage, can be refined to `Timestamp` or `string`
+}
+
+export interface DictionaryTerm {
+    id: string;
+    term: string;
+    definition: string;
+}
+
 // Unified user type
 export interface CannaGrowUser {
     uid: string;
@@ -61,4 +75,5 @@ export interface CannaGrowUser {
     followerCount?: number;
     followingIds?: string[];
     followingCount?: number;
+    savedPostIds?: string[];
 }

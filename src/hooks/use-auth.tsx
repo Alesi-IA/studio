@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 followingIds: firestoreData.followingIds || [],
                 followerCount: firestoreData.followerCount || 0,
                 followingCount: firestoreData.followingCount || 0,
+                savedPostIds: firestoreData.savedPostIds || [],
             };
         } else {
             console.warn(`No profile found in Firestore for user ${firebaseUser.uid}. Attempting to create one.`);
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 followingIds: [],
                 followerCount: 0,
                 followingCount: 0,
+                savedPostIds: [],
             };
             await setDoc(userDocRef, newUserProfile);
             return newUserProfile;
@@ -152,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       followingIds: [],
       followerCount: 0,
       followingCount: 0,
+      savedPostIds: [],
     };
     
     await setDoc(userDocRef, newUserProfile);
@@ -168,6 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) return;
     await signOut(auth);
     setUser(null);
+    if(typeof window !== 'undefined') {
+      sessionStorage.clear();
+    }
     router.push('/login');
   }, [auth, router]);
 
@@ -196,7 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = await fetchUserProfile(auth.currentUser);
       setUser(updatedUser);
 
-      toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
+      if(!updates.savedPostIds){
+          toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
+      }
       return updatedUser;
 
     } catch (error) {
@@ -214,8 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         experiencePoints: increment(amount)
       });
       // If the updated user is the current user, refresh their data
-      if (user && user.uid === userId) {
-        const updatedUser = await fetchUserProfile(auth.currentUser!);
+      if (user && user.uid === userId && auth.currentUser) {
+        const updatedUser = await fetchUserProfile(auth.currentUser);
         setUser(updatedUser);
       }
     } catch (error) {
@@ -224,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [firestore, user, auth, fetchUserProfile]);
 
   const followUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !auth.currentUser) return;
     const currentUserRef = doc(firestore, 'users', user.uid);
     const targetUserRef = doc(firestore, 'users', targetUserId);
 
@@ -251,11 +259,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         });
 
-        // Re-fetch the user profile to get the most accurate state
-        if(auth.currentUser) {
-            const updatedUser = await fetchUserProfile(auth.currentUser);
-            setUser(updatedUser);
-        }
+        const updatedUser = await fetchUserProfile(auth.currentUser);
+        setUser(updatedUser);
 
     } catch (error) {
       console.error("Error following user:", error);
@@ -264,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, firestore, toast, auth, fetchUserProfile]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !auth.currentUser) return;
     const currentUserRef = doc(firestore, 'users', user.uid);
     const targetUserRef = doc(firestore, 'users', targetUserId);
     
@@ -291,11 +296,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         });
         
-        // Re-fetch the user profile to get the most accurate state
-        if(auth.currentUser) {
-            const updatedUser = await fetchUserProfile(auth.currentUser);
-            setUser(updatedUser);
-        }
+        const updatedUser = await fetchUserProfile(auth.currentUser);
+        setUser(updatedUser);
 
     } catch (error) {
       console.error("Error unfollowing user:", error);

@@ -24,14 +24,14 @@ import { addDays, format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
-import type { UserGuide } from '@/types';
+import type { UserGuide, CultivationTask, DictionaryTerm } from '@/types';
 import { Textarea } from '@/components/ui/textarea';
 import { UserGuideCard } from '@/components/user-guide-card';
 import { useFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, getDocs, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 
-const guides = [
+const officialGuides = [
   {
     title: 'Guía para Principiantes de Cultivo de Cannabis',
     content: 'Cultivar cannabis por primera vez puede parecer abrumador, pero con esta guía, tendrás una base sólida. 1. **Elección de la Semilla:** Comienza con semillas de buena calidad. Las "feminizadas" garantizan plantas hembra (las que producen cogollos), y las "autoflorecientes" tienen un ciclo de vida más corto y son más fáciles para empezar. 2. **Interior vs. Exterior:** El cultivo interior te da control total sobre el ambiente (luz, temperatura), pero requiere una inversión inicial (carpa, luces, ventilador). El exterior es más económico pero depende del clima. 3. **Iluminación (Interior):** Las luces LED son la opción más popular por su eficiencia y baja emisión de calor. Durante la fase vegetativa, las plantas necesitan 18 horas de luz y 6 de oscuridad. 4. **Sustrato:** Un buen sustrato (tierra) debe ser aireado y drenar bien. Las mezclas "light mix" son ideales para principiantes, ya que tienen pocos nutrientes y te permiten añadirlos tú mismo. 5. **Riego:** No riegues en exceso. La regla de oro es regar solo cuando los primeros 2-3 cm de tierra estén secos. El pH del agua es crucial; para tierra, debe estar entre 6.0 y 7.0.',
@@ -50,47 +50,19 @@ const guides = [
   },
 ];
 
-const dictionary = [
-    {
-      term: 'Cannabinoides',
-      definition: 'Compuestos químicos que se encuentran en la planta de cannabis, como el THC y el CBD, que interactúan con los receptores del cuerpo humano.',
-    },
-    {
-      term: 'Terpenos',
-      definition: 'Aceites aromáticos que dan a las variedades de cannabis sabores distintivos como cítricos, bayas, menta y pino. También juegan un papel en los efectos de la planta.',
-    },
-    {
-      term: 'Tricomas',
-      definition: 'Las glándulas cristalinas en la superficie de las flores de cannabis que producen y almacenan cannabinoides y terpenos. Parecen pequeños pelos o champiñones.',
-    },
-    {
-      term: 'Semillas Feminizadas',
-      definition: 'Semillas de cannabis que se crían específicamente para eliminar los cromosomas masculinos, asegurando que cada planta cultivada a partir de ellas sea hembra y produzca cogollos.',
-    },
-  ];
-
-const initialTasks = [
-    { id: 'task1', label: 'Regar plantas (pH 6.5)', completed: true, date: new Date() },
-    { id: 'task2', label: 'Revisar plagas/enfermedades', completed: false, date: new Date() },
-    { id: 'task3', label: 'Mezclar nutrientes (Etapa vegetativa)', completed: true, date: addDays(new Date(), 2) },
-    { id: 'task4', label: 'Podar hojas bajas', completed: false, date: addDays(new Date(), 3) },
-    { id: 'task5', label: 'Rotar macetas para luz uniforme', completed: false, date: addDays(new Date(), 3) },
-];
-
-
 export default function ToolsPage() {
     const { user, addExperience } = useAuth();
     const { firestore } = useFirebase();
 
-    const [tasks, setTasks] = useState(initialTasks);
+    const [tasks, setTasks] = useState<CultivationTask[]>([]);
+    const [isLoadingTasks, setIsLoadingTasks] = useState(true);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-    const [editingTask, setEditingTask] = useState<{id: string, label: string} | null>(null);
+    const [editingTask, setEditingTask] = useState<CultivationTask | null>(null);
     const [newTaskLabel, setNewTaskLabel] = useState('');
     const [cultivationStartDate, setCultivationStartDate] = useState<Date | undefined>(new Date());
     const [guideSearch, setGuideSearch] = useState('');
     const [dictSearch, setDictSearch] = useState('');
     
-    // State for user guides
     const [userGuides, setUserGuides] = useState<UserGuide[]>([]);
     const [isLoadingGuides, setIsLoadingGuides] = useState(true);
     const [isGuideDialogOpen, setIsGuideDialogOpen] = useState(false);
@@ -98,6 +70,47 @@ export default function ToolsPage() {
     const [newGuideTitle, setNewGuideTitle] = useState('');
     const [newGuideContent, setNewGuideContent] = useState('');
     const [userGuideSearch, setUserGuideSearch] = useState('');
+    
+    const [dictionary, setDictionary] = useState<DictionaryTerm[]>([]);
+    const [isLoadingDictionary, setIsLoadingDictionary] = useState(true);
+
+    const loadDictionary = useCallback(async () => {
+        if (!firestore) return;
+        setIsLoadingDictionary(true);
+        try {
+            const termsQuery = query(collection(firestore, 'dictionaryTerms'));
+            const querySnapshot = await getDocs(termsQuery);
+            const termsFromDb = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DictionaryTerm));
+            setDictionary(termsFromDb);
+        } catch (error) {
+            console.error("Error loading dictionary:", error);
+        } finally {
+            setIsLoadingDictionary(false);
+        }
+    }, [firestore]);
+
+
+    const loadTasks = useCallback(async () => {
+        if (!firestore || !user) return;
+        setIsLoadingTasks(true);
+        try {
+            const tasksQuery = query(collection(firestore, 'cultivationTasks'), where('authorId', '==', user.uid));
+            const querySnapshot = await getDocs(tasksQuery);
+            const tasksFromDb = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return { 
+                    id: doc.id, 
+                    ...data,
+                    date: data.date.toDate() // Convert Firestore Timestamp to Date
+                } as CultivationTask;
+            });
+            setTasks(tasksFromDb);
+        } catch (error) {
+            console.error("Error loading tasks:", error);
+        } finally {
+            setIsLoadingTasks(false);
+        }
+    }, [firestore, user]);
 
     const loadUserGuides = useCallback(async () => {
         if (!firestore) return;
@@ -112,7 +125,9 @@ export default function ToolsPage() {
 
     useEffect(() => {
         loadUserGuides();
-    }, [loadUserGuides]);
+        loadTasks();
+        loadDictionary();
+    }, [loadUserGuides, loadTasks, loadDictionary]);
 
     const filteredUserGuides = useMemo(() => {
         if (!userGuideSearch.trim()) {
@@ -140,7 +155,7 @@ export default function ToolsPage() {
                 title: newGuideTitle,
                 content: newGuideContent,
                 createdAt: new Date().toISOString(),
-                likes: 0,
+                likedBy: [],
                 comments: []
             });
 
@@ -157,11 +172,17 @@ export default function ToolsPage() {
         }
     };
 
-    const handleToggleTask = (taskId: string) => {
-        setTasks(tasks.map(task => task.id === taskId ? { ...task, completed: !task.completed } : task));
+    const handleToggleTask = async (taskId: string) => {
+        if (!firestore) return;
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const taskRef = doc(firestore, 'cultivationTasks', taskId);
+        await updateDoc(taskRef, { completed: !task.completed });
+        loadTasks(); // Reload tasks to reflect the change
     };
     
-    const handleOpenEditDialog = (task: {id: string, label: string}) => {
+    const handleOpenEditDialog = (task: CultivationTask) => {
         setEditingTask(task);
         setNewTaskLabel(task.label);
         setIsTaskDialogOpen(true);
@@ -173,28 +194,34 @@ export default function ToolsPage() {
         setIsTaskDialogOpen(true);
     }
     
-    const handleSaveTask = (e: React.FormEvent) => {
+    const handleSaveTask = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newTaskLabel.trim()) return;
+        if (!newTaskLabel.trim() || !user || !firestore) return;
 
         if (editingTask) {
-            setTasks(tasks.map(task => task.id === editingTask.id ? { ...task, label: newTaskLabel } : task));
+            const taskRef = doc(firestore, 'cultivationTasks', editingTask.id);
+            await updateDoc(taskRef, { label: newTaskLabel });
         } else {
-            const newTask = {
-                id: `task-${Date.now()}`,
+            const tasksCollectionRef = collection(firestore, 'cultivationTasks');
+            await addDoc(tasksCollectionRef, {
+                authorId: user.uid,
                 label: newTaskLabel,
                 completed: false,
-                date: new Date() // Por ahora, las nuevas tareas se añaden para hoy.
-            };
-            setTasks([...tasks, newTask]);
+                date: new Date() // New tasks are for today
+            });
         }
+        
+        await loadTasks();
         setIsTaskDialogOpen(false);
         setNewTaskLabel('');
         setEditingTask(null);
     };
 
-    const handleDeleteTask = (taskId: string) => {
-        setTasks(tasks.filter(task => task.id !== taskId));
+    const handleDeleteTask = async (taskId: string) => {
+        if (!firestore) return;
+        const taskRef = doc(firestore, 'cultivationTasks', taskId);
+        await deleteDoc(taskRef);
+        loadTasks(); // Reload tasks
     };
     
     const tasksToday = tasks.filter(task => format(task.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd'));
@@ -220,13 +247,13 @@ export default function ToolsPage() {
         };
     }, [cultivationStartDate, tasks]);
 
-    const filteredGuides = useMemo(() => 
-        guides.filter(g => g.title.toLowerCase().includes(guideSearch.toLowerCase()) || g.content.toLowerCase().includes(guideSearch.toLowerCase()))
+    const filteredOfficialGuides = useMemo(() => 
+        officialGuides.filter(g => g.title.toLowerCase().includes(guideSearch.toLowerCase()) || g.content.toLowerCase().includes(guideSearch.toLowerCase()))
     , [guideSearch]);
     
     const filteredDictionary = useMemo(() =>
         dictionary.filter(d => d.term.toLowerCase().includes(dictSearch.toLowerCase()) || d.definition.toLowerCase().includes(dictSearch.toLowerCase()))
-    , [dictSearch]);
+    , [dictSearch, dictionary]);
 
     return (
         <div className="w-full">
@@ -298,14 +325,18 @@ export default function ToolsPage() {
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between">
                                     <CardTitle>Tareas de Hoy</CardTitle>
-                                    <Button size="sm" onClick={handleOpenNewDialog}>
+                                    <Button size="sm" onClick={handleOpenNewDialog} disabled={!user}>
                                         <Plus className="-ml-1 h-4 w-4" />
                                         Nueva
                                     </Button>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
-                                        {tasksToday.length > 0 ? tasksToday.map((task) => (
+                                        {isLoadingTasks ? (
+                                            <div className="flex items-center justify-center p-4">
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                            </div>
+                                        ) : tasksToday.length > 0 ? tasksToday.map((task) => (
                                             <div key={task.id} className="flex items-center space-x-3 group">
                                                 <Checkbox id={task.id} checked={task.completed} onCheckedChange={() => handleToggleTask(task.id)} />
                                                 <label
@@ -370,14 +401,14 @@ export default function ToolsPage() {
                                 />
                             </div>
                             <Accordion type="single" collapsible className="w-full">
-                            {filteredGuides.map((guide, index) => (
+                            {filteredOfficialGuides.map((guide, index) => (
                                 <AccordionItem value={`item-${index}`} key={index}>
                                 <AccordionTrigger>{guide.title}</AccordionTrigger>
                                 <AccordionContent>{guide.content}</AccordionContent>
                                 </AccordionItem>
                             ))}
                             </Accordion>
-                             {filteredGuides.length === 0 && (
+                             {filteredOfficialGuides.length === 0 && (
                                 <div className="text-center text-muted-foreground p-8">
                                     <p>No se encontraron guías.</p>
                                 </div>
@@ -435,15 +466,21 @@ export default function ToolsPage() {
                                     onChange={(e) => setDictSearch(e.target.value)}
                                 />
                             </div>
-                            <Accordion type="multiple" className="w-full">
-                                {filteredDictionary.map((item, index) => (
-                                    <AccordionItem value={`item-${index}`} key={index}>
-                                    <AccordionTrigger>{item.term}</AccordionTrigger>
-                                    <AccordionContent>{item.definition}</AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </Accordion>
-                            {filteredDictionary.length === 0 && (
+                            {isLoadingDictionary ? (
+                                <div className="flex items-center justify-center p-12">
+                                    <Loader2 className="h-8 w-8 animate-spin" />
+                                </div>
+                            ) : (
+                                <Accordion type="multiple" className="w-full">
+                                    {filteredDictionary.map((item, index) => (
+                                        <AccordionItem value={`item-${index}`} key={item.id}>
+                                        <AccordionTrigger>{item.term}</AccordionTrigger>
+                                        <AccordionContent>{item.definition}</AccordionContent>
+                                        </AccordionItem>
+                                    ))}
+                                </Accordion>
+                            )}
+                            {!isLoadingDictionary && filteredDictionary.length === 0 && (
                                 <div className="text-center text-muted-foreground p-8">
                                     <p>No se encontraron términos.</p>
                                 </div>

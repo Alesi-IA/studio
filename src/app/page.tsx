@@ -39,23 +39,12 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StoryReel } from '@/components/story-reel';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, useCollection } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
-
-const getInitialState = (key: string): Set<string> => {
-    if (typeof window === 'undefined') return new Set();
-    try {
-        const item = window.sessionStorage.getItem(key);
-        return item ? new Set(JSON.parse(item)) : new Set();
-    } catch (error) {
-        console.warn(`Error reading sessionStorage key "${key}":`, error);
-        return new Set();
-    }
-};
+import { useFirebase } from '@/firebase';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 
 export default function FeedPage() {
   const { firestore } = useFirebase();
-  const { user, isModerator, addExperience } = useAuth();
+  const { user, isModerator, addExperience, updateUserProfile } = useAuth();
   const { toast } = useToast();
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -65,9 +54,20 @@ export default function FeedPage() {
   
   const [commentStates, setCommentStates] = useState<Record<string, string>>({});
 
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => getInitialState('likedPosts'));
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(() => getInitialState('savedPosts'));
-  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(() => getInitialState('awardedPosts'));
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Initialize state from sessionStorage on client mount
+    const savedLiked = sessionStorage.getItem('likedPosts');
+    if (savedLiked) {
+      setLikedPosts(new Set(JSON.parse(savedLiked)));
+    }
+    const savedAwarded = sessionStorage.getItem('awardedPosts');
+    if (savedAwarded) {
+      setAwardedPosts(new Set(JSON.parse(savedAwarded)));
+    }
+  }, []);
 
   const fetchPosts = useCallback(async () => {
     if (!firestore || !user) {
@@ -120,22 +120,26 @@ export default function FeedPage() {
     setCommentStates(prev => ({ ...prev, [postId]: text }));
   };
 
-  const persistInteractions = (key: 'likedPosts' | 'savedPosts' | 'awardedPosts', newSet: Set<string>) => {
+  const persistInteractions = (key: 'likedPosts' | 'awardedPosts', newSet: Set<string>) => {
     if (typeof window !== 'undefined') {
         sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
     }
   };
   
-  const handleToggleSave = (postId: string) => {
-    const newSavedPosts = new Set(savedPosts);
-    if (newSavedPosts.has(postId)) {
-      newSavedPosts.delete(postId);
+  const handleToggleSave = async (postId: string) => {
+    if (!user) return;
+    const isCurrentlySaved = user.savedPostIds?.includes(postId) ?? false;
+    let newSavedPostIds;
+    
+    if (isCurrentlySaved) {
+      newSavedPostIds = user.savedPostIds?.filter(id => id !== postId);
     } else {
-      newSavedPosts.add(postId);
+      newSavedPostIds = [...(user.savedPostIds || []), postId];
     }
-    setSavedPosts(newSavedPosts);
-    persistInteractions('savedPosts', newSavedPosts);
+    
+    await updateUserProfile({ savedPostIds: newSavedPostIds });
   };
+
 
   const handleToggleLike = async (post: Post) => {
     if (!firestore || !user) return;
@@ -280,7 +284,7 @@ export default function FeedPage() {
             {!loading && posts.map((post) => {
               const canManage = user?.uid === post.authorId || isModerator;
               const isLiked = likedPosts.has(post.id);
-              const isSaved = savedPosts.has(post.id);
+              const isSaved = user?.savedPostIds?.includes(post.id) ?? false;
               const isAwarded = awardedPosts.has(post.id);
               const canAward = user && user.uid !== post.authorId && !isAwarded;
 
@@ -349,7 +353,6 @@ export default function FeedPage() {
                         data-ai-hint={post.imageHint}
                         width={post.width || 800}
                         height={post.height || 1000}
-                        unoptimized
                       />
                   </CardContent>
                   <CardFooter className="flex-col items-start gap-4 p-4">
