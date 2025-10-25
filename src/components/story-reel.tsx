@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -8,10 +7,11 @@ import { Plus } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useFirebase } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, limit, Timestamp } from 'firebase/firestore';
 import type { CannaGrowUser } from '@/types';
 import Link from 'next/link';
 import { Skeleton } from './ui/skeleton';
+import { cn } from '@/lib/utils';
 
 function StoryCircle({ user, hasStory, isCurrentUser = false }: { user: CannaGrowUser | null; hasStory: boolean; isCurrentUser?: boolean }) {
     if (!user) return null;
@@ -19,7 +19,7 @@ function StoryCircle({ user, hasStory, isCurrentUser = false }: { user: CannaGro
 
   return (
     <Link href={`/profile/${user.uid}`} className="flex flex-col items-center gap-2 flex-shrink-0 w-20">
-        <div className={`relative rounded-full p-1 ${ringClasses}`}>
+        <div className={cn('relative rounded-full p-1', ringClasses)}>
             <div className="bg-background rounded-full p-0.5">
                  <Avatar className="w-16 h-16 border-2 border-background">
                     <AvatarImage src={user.photoURL} alt={user.displayName} />
@@ -49,7 +49,7 @@ function StorySkeleton() {
 export function StoryReel() {
   const { user } = useAuth();
   const { firestore } = useFirebase();
-  const [followingUsers, setFollowingUsers] = useState<CannaGrowUser[]>([]);
+  const [followingWithStories, setFollowingWithStories] = useState<Array<CannaGrowUser & { hasStory: boolean }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,10 +60,28 @@ export function StoryReel() {
       }
       setLoading(true);
       try {
-        const userPromises = user.followingIds.map(id => getDoc(doc(firestore, 'users', id)));
-        const userDocs = await Promise.all(userPromises);
-        const users = userDocs.map(doc => doc.data() as CannaGrowUser).filter(Boolean);
-        setFollowingUsers(users);
+        const twentyFourHoursAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+
+        const userPromises = user.followingIds.map(async (id) => {
+            const userDoc = await getDoc(doc(firestore, 'users', id));
+            if (!userDoc.exists()) return null;
+            
+            const userData = userDoc.data() as CannaGrowUser;
+
+            const storyQuery = query(
+                collection(firestore, "posts"), 
+                where("authorId", "==", id),
+                where("createdAt", ">=", twentyFourHoursAgo),
+                limit(1)
+            );
+            const storySnapshot = await getDocs(storyQuery);
+            
+            return { ...userData, hasStory: !storySnapshot.empty };
+        });
+
+        const users = (await Promise.all(userPromises)).filter(Boolean) as Array<CannaGrowUser & { hasStory: boolean }>;
+        setFollowingWithStories(users);
+
       } catch (error) {
         console.error("Error fetching following users for stories:", error);
       } finally {
@@ -81,16 +99,16 @@ export function StoryReel() {
                 {user && (
                     <StoryCircle 
                         user={user}
-                        hasStory={false}
+                        hasStory={false} // User's own story logic can be added here
                         isCurrentUser
                     />
                 )}
                 {loading && Array.from({length: 5}).map((_, i) => <StorySkeleton key={i} />)}
-                {!loading && followingUsers.map(followingUser => (
+                {!loading && followingWithStories.map(followingUser => (
                      <StoryCircle 
                         key={followingUser.uid}
                         user={followingUser}
-                        hasStory={true} // Placeholder, eventually check for recent posts
+                        hasStory={followingUser.hasStory}
                     />
                 ))}
             </div>
