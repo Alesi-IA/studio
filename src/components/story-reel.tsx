@@ -8,7 +8,7 @@ import { Plus } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useFirebase } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, limit, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
 import type { CannaGrowUser } from '@/types';
 import Link from 'next/link';
 import { Skeleton } from './ui/skeleton';
@@ -69,24 +69,24 @@ export function StoryReel() {
             
             const userData = userDoc.data() as CannaGrowUser;
 
-            // CORRECTED QUERY: Filter by author and get the latest post without complex ordering.
-            const latestPostQuery = query(
+            // CORRECTED, SIMPLIFIED QUERY: Fetch posts by author without ordering.
+            const postsQuery = query(
                 collection(firestore, "posts"), 
-                where("authorId", "==", id),
-                orderBy("createdAt", "desc"), // This is the problematic line. Let's fix it.
-                limit(1)
+                where("authorId", "==", id)
             );
-            const latestPostSnapshot = await getDocs(latestPostQuery);
+            const postsSnapshot = await getDocs(postsQuery);
             
             let hasRecentStory = false;
-            if (!latestPostSnapshot.empty) {
-                const latestPost = latestPostSnapshot.docs[0].data();
-                if (latestPost.createdAt) {
-                    const postTimestamp = latestPost.createdAt.toDate().getTime();
-                    if (postTimestamp > twentyFourHoursAgo) {
-                        hasRecentStory = true;
+            if (!postsSnapshot.empty) {
+                // Check on the client-side if any post is recent.
+                hasRecentStory = postsSnapshot.docs.some(doc => {
+                    const postData = doc.data();
+                    if (postData.createdAt) {
+                        const postTimestamp = postData.createdAt.toDate().getTime();
+                        return postTimestamp > twentyFourHoursAgo;
                     }
-                }
+                    return false;
+                });
             }
             
             return { ...userData, hasStory: hasRecentStory };
