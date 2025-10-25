@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Loader2, Search as SearchIcon, Sprout, Wheat, Grape, Award } from 'lucide-react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, startAt, endAt } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { useFirebase } from '@/firebase';
+import { collection, query, getDocs } from 'firebase/firestore';
 import Link from 'next/link';
-import { CannaGrowUser } from '@/types';
+import type { CannaGrowUser } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -72,15 +72,15 @@ export default function SearchPage() {
       try {
         const usersRef = collection(firestore, 'users');
         const searchTermLower = debouncedSearchTerm.toLowerCase();
-        // Since Firestore doesn't support case-insensitive search well without extra fields,
-        // we fetch all users and filter client-side.
-        // This is NOT scalable for large user bases, but works for this demo.
-        // A production app would use a search service like Algolia or store a lowercase name field.
+        
         const q = query(usersRef);
         const querySnapshot = await getDocs(q);
         const allUsers: CannaGrowUser[] = [];
         querySnapshot.forEach(doc => {
-            allUsers.push(doc.data() as CannaGrowUser);
+            // Ensure the document has a uid before pushing
+            if (doc.data().uid) {
+               allUsers.push({ ...doc.data(), uid: doc.id } as CannaGrowUser);
+            }
         });
 
         const filteredUsers = allUsers.filter(user =>
@@ -157,7 +157,7 @@ export default function SearchPage() {
                             </div>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                            <Link href="#">Ver Perfil</Link>
+                            <Link href={`/profile/${user.uid}`}>Ver Perfil</Link>
                         </Button>
                     </li>
                  )
@@ -169,5 +169,3 @@ export default function SearchPage() {
     </div>
   );
 }
-
-    
