@@ -71,21 +71,22 @@ export default function FeedPage() {
     setLoading(false);
   }, []);
 
+  const getInitialState = <T>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') return defaultValue;
+    try {
+        const item = window.sessionStorage.getItem(key);
+        return item ? JSON.parse(item) : defaultValue;
+    } catch (error) {
+        console.warn(`Error reading sessionStorage key "${key}":`, error);
+        return defaultValue;
+    }
+  };
 
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
-  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(new Set());
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => new Set(getInitialState<string[]>('likedPosts', [])));
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(() => new Set(getInitialState<string[]>('savedPosts', [])));
+  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(() => new Set(getInitialState<string[]>('awardedPosts', [])));
 
   useEffect(() => {
-    const storedLiked = sessionStorage.getItem('likedPosts');
-    if (storedLiked) setLikedPosts(new Set(JSON.parse(storedLiked)));
-    
-    const storedSaved = sessionStorage.getItem('savedPosts');
-    if (storedSaved) setSavedPosts(new Set(JSON.parse(storedSaved)));
-
-    const storedAwarded = sessionStorage.getItem('awardedPosts');
-    if (storedAwarded) setAwardedPosts(new Set(JSON.parse(storedAwarded)));
-
     loadPosts();
     window.addEventListener('storage', loadPosts);
 
@@ -416,3 +417,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    
