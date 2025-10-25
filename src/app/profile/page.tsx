@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Crown, UserIcon, ShieldHalf, Library } from 'lucide-react';
+import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Crown, UserIcon, ShieldHalf, Library, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
@@ -148,8 +148,12 @@ export default function ProfilePage() {
     window.dispatchEvent(new Event('storage'));
   };
 
-  if (loading || !user) {
-    return null; // Or a loading skeleton
+  if (loading) {
+    return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+  
+  if (!user) {
+    return null; // Should be redirected by AuthProvider
   }
 
   return (

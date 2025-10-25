@@ -10,7 +10,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
@@ -30,13 +30,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore, isUserLoading } = useFirebase();
+  const { auth, firestore, isUserLoading: firebaseUserLoading } = useFirebase();
   const [user, setUser] = useState<CannaGrowUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
 
   const fetchUserProfile = useCallback(async (firebaseUser: FirebaseUser): Promise<CannaGrowUser | null> => {
+    if (!firestore) return null;
     try {
         const userDocRef = doc(firestore, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
+    setLoading(firebaseUserLoading);
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         const userProfile = await fetchUserProfile(firebaseUser);
@@ -85,13 +88,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
       }
+      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [auth, fetchUserProfile]);
+    return () => {
+        unsubscribe();
+        setLoading(true);
+    }
+  }, [auth, fetchUserProfile, firebaseUserLoading]);
   
   useEffect(() => {
-    if (isUserLoading) return;
+    if (loading) return;
 
     const isPublicRoute = pathname === '/login' || pathname === '/register';
 
@@ -102,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user && !isPublicRoute) {
       router.push('/login');
     }
-  }, [user, isUserLoading, pathname, router]);
+  }, [user, loading, pathname, router]);
 
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
@@ -168,7 +175,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, updates);
       
-      // Force a re-fetch of the user profile to ensure all data is in sync
       const updatedUser = await fetchUserProfile(auth.currentUser);
       setUser(updatedUser);
 
@@ -190,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = {
     user,
-    loading: isUserLoading,
+    loading,
     isOwner: user?.role === 'owner',
     isModerator: user?.role === 'moderator' || user?.role === 'co-owner' || user?.role === 'owner',
     signUp,
