@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -58,8 +59,9 @@ interface ProfilePageProps {
 
 export default function ProfilePage({ params }: ProfilePageProps) {
   const resolvedParams = use(params);
-  const { user: currentUser, loading: authLoading, logOut, addExperience } = useAuth();
+  const { user: currentUser, loading: authLoading, logOut, addExperience, followUser, unfollowUser } = useAuth();
   const { firestore } = useFirebase();
+  const [isFollowHovered, setIsFollowHovered] = useState(false);
 
   const userDocRef = useMemo(() => firestore ? doc(firestore, 'users', resolvedParams.id) : null, [firestore, resolvedParams.id]);
   const { data: profileUser, isLoading: profileLoading } = useDoc<CannaGrowUser>(userDocRef);
@@ -74,6 +76,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const isOwnProfile = currentUser?.uid === resolvedParams.id; 
+  const isFollowing = useMemo(() => currentUser?.followingIds?.includes(resolvedParams.id) || false, [currentUser, resolvedParams.id]);
   
   const rank = useMemo(() => getRank(profileUser), [profileUser]);
 
@@ -82,10 +85,21 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const xpNeeded = 'minXP' in rank && 'maxXP' in rank && rank.maxXP !== Infinity ? Math.max(1, xpForNextRank - rank.minXP) : 1;
   const progressPercentage = (xpProgress / xpNeeded) * 100;
 
+  const handleFollowToggle = async () => {
+    if (!currentUser || !profileUser || isOwnProfile) return;
+
+    if (isFollowing) {
+      await unfollowUser(profileUser.uid);
+    } else {
+      await followUser(profileUser.uid);
+    }
+  };
+
 
   const loadPostsAndState = useCallback(() => {
     if (!profileUser?.uid) return;
     
+    // In a real app, this would be a firestore query.
     const allPostsJSON = sessionStorage.getItem('mockPosts');
     const allPosts = allPostsJSON ? JSON.parse(allPostsJSON) : [];
     const myPosts = allPosts.filter((p: Post) => p.authorId === profileUser.uid);
@@ -259,7 +273,15 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                   </>
                 ) : (
                     <>
-                        <Button>Seguir</Button>
+                        <Button
+                          variant={isFollowing ? 'outline' : 'default'}
+                          onClick={handleFollowToggle}
+                          onMouseEnter={() => setIsFollowHovered(true)}
+                          onMouseLeave={() => setIsFollowHovered(false)}
+                          className="w-28"
+                        >
+                          {isFollowing ? (isFollowHovered ? 'Dejar de seguir' : 'Siguiendo') : 'Seguir'}
+                        </Button>
                         <Link href="/messages">
                             <Button variant="outline">
                                 <MessageCircle className="mr-2 h-4 w-4" />
@@ -276,11 +298,11 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                 <p className="text-sm text-muted-foreground">Publicaciones</p>
               </div>
               <div className="text-center">
-                <p className="font-bold">0</p>
+                <p className="font-bold">{profileUser.followerCount || 0}</p>
                 <p className="text-sm text-muted-foreground">Seguidores</p>
               </div>
               <div className="text-center">
-                <p className="font-bold">0</p>
+                <p className="font-bold">{profileUser.followingCount || 0}</p>
                 <p className="text-sm text-muted-foreground">Siguiendo</p>
               </div>
             </div>

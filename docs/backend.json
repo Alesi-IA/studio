@@ -36,12 +36,20 @@
             "type": "string"
           }
         },
+        "followerCount": {
+            "type": "number",
+            "description": "The number of followers this user has."
+        },
         "followingIds": {
           "type": "array",
           "description": "References to UserProfiles that this user follows. (Relationship: UserProfile N:N UserProfile - Following)",
           "items": {
             "type": "string"
           }
+        },
+        "followingCount": {
+            "type": "number",
+            "description": "The number of users this user is following."
         },
         "role": {
           "type": "string",

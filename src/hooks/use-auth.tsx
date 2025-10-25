@@ -10,7 +10,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
@@ -24,6 +24,8 @@ interface AuthContextType {
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<CannaGrowUser | null>;
+  followUser: (targetUserId: string) => Promise<void>;
+  unfollowUser: (targetUserId: string) => Promise<void>;
   _injectUser: (user: CannaGrowUser) => void;
   addExperience: (userId: string, amount: number) => Promise<void>;
 }
@@ -54,6 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 bio: firestoreData.bio || '',
                 createdAt: firestoreData.createdAt,
                 experiencePoints: firestoreData.experiencePoints || 0,
+                followerIds: firestoreData.followerIds || [],
+                followingIds: firestoreData.followingIds || [],
+                followerCount: firestoreData.followerCount || 0,
+                followingCount: firestoreData.followingCount || 0,
             };
         } else {
             console.warn(`No profile found in Firestore for user ${firebaseUser.uid}. Attempting to create one.`);
@@ -66,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 bio: 'Entusiasta del cultivo.',
                 createdAt: new Date().toISOString(),
                 experiencePoints: 0,
+                followerIds: [],
+                followingIds: [],
+                followerCount: 0,
+                followingCount: 0,
             };
             await setDoc(userDocRef, newUserProfile);
             return newUserProfile;
@@ -138,6 +148,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       createdAt: new Date().toISOString(),
       experiencePoints: 0,
+      followerIds: [],
+      followingIds: [],
+      followerCount: 0,
+      followingCount: 0,
     };
     
     await setDoc(userDocRef, newUserProfile);
@@ -207,7 +221,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error(`Failed to add ${amount}XP to user ${userId}:`, error);
     }
-  }, [firestore, user, auth]);
+  }, [firestore, user, auth, fetchUserProfile]);
+
+  const followUser = useCallback(async (targetUserId: string) => {
+    if (!user || !firestore) return;
+    const currentUserRef = doc(firestore, 'users', user.uid);
+    const targetUserRef = doc(firestore, 'users', targetUserId);
+
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        // Add target to current user's following list
+        transaction.update(currentUserRef, {
+          followingIds: arrayUnion(targetUserId),
+          followingCount: increment(1)
+        });
+        // Add current user to target's followers list
+        transaction.update(targetUserRef, {
+          followerIds: arrayUnion(user.uid),
+          followerCount: increment(1)
+        });
+      });
+      // Optimistically update local state
+      setUser(prevUser => prevUser ? ({
+        ...prevUser,
+        followingIds: [...(prevUser.followingIds || []), targetUserId],
+        followingCount: (prevUser.followingCount || 0) + 1,
+      }) : null);
+    } catch (error) {
+      console.error("Error following user:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
+    }
+  }, [user, firestore, toast]);
+
+  const unfollowUser = useCallback(async (targetUserId: string) => {
+    if (!user || !firestore) return;
+    const currentUserRef = doc(firestore, 'users', user.uid);
+    const targetUserRef = doc(firestore, 'users', targetUserId);
+    
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        // Remove target from current user's following list
+        transaction.update(currentUserRef, {
+          followingIds: arrayRemove(targetUserId),
+          followingCount: increment(-1)
+        });
+        // Remove current user from target's followers list
+        transaction.update(targetUserRef, {
+          followerIds: arrayRemove(user.uid),
+          followerCount: increment(-1)
+        });
+      });
+      // Optimistically update local state
+      setUser(prevUser => prevUser ? ({
+        ...prevUser,
+        followingIds: (prevUser.followingIds || []).filter(id => id !== targetUserId),
+        followingCount: Math.max(0, (prevUser.followingCount || 0) - 1),
+      }) : null);
+    } catch (error) {
+      console.error("Error unfollowing user:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
+    }
+  }, [user, firestore, toast]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
@@ -226,6 +300,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logIn,
     logOut,
     updateUserProfile,
+    followUser,
+    unfollowUser,
     _injectUser,
     addExperience,
   };

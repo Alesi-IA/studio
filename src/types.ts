@@ -1,4 +1,5 @@
 
+
 export interface PostComment {
     id: string;
     authorName: string;
@@ -51,4 +52,8 @@ export interface CannaGrowUser {
     bio?: string;
     createdAt: string;
     experiencePoints?: number;
+    followerIds?: string[];
+    followerCount?: number;
+    followingIds?: string[];
+    followingCount?: number;
 }

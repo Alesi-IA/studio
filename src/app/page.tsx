@@ -40,36 +40,20 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StoryReel } from '@/components/story-reel';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/firebase';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 export default function FeedPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [editingDescription, setEditingDescription] = useState('');
+  const { firestore } = useFirebase();
   const { user, isModerator, addExperience } = useAuth();
   const { toast } = useToast();
+
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editingDescription, setEditingDescription] = useState('');
   
   const [commentStates, setCommentStates] = useState<Record<string, string>>({});
-
-  const handleCommentChange = (postId: string, text: string) => {
-    setCommentStates(prev => ({ ...prev, [postId]: text }));
-  };
-
-  const loadPosts = useCallback(() => {
-    setLoading(true);
-    // Simulating post loading from sessionStorage
-    try {
-      const storedPostsJSON = sessionStorage.getItem('mockPosts');
-      const storedPosts = storedPostsJSON ? JSON.parse(storedPostsJSON) : [];
-      const sortedPosts = storedPosts.sort((a:Post, b:Post) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setPosts(sortedPosts);
-    } catch(e) {
-      console.error("Failed to parse mock posts", e)
-      setPosts([]);
-    }
-    setLoading(false);
-  }, []);
 
   const getInitialState = <T,>(key: string, defaultValue: T): T => {
     if (typeof window === 'undefined') return defaultValue;
@@ -82,18 +66,62 @@ export default function FeedPage() {
     }
   };
 
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => new Set(getInitialState<string[]>('likedPosts', [])));
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(() => new Set(getInitialState<string[]>('savedPosts', [])));
-  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(() => new Set(getInitialState<string[]>('awardedPosts', [])));
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => getInitialState<string[]>('likedPosts', []));
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(() => getInitialState<string[]>('savedPosts', []));
+  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(() => getInitialState<string[]>('awardedPosts', []));
+
+  const loadPosts = useCallback(async () => {
+    if (!firestore || !user) {
+      setLoading(false);
+      return;
+    };
+    setLoading(true);
+
+    try {
+        // IDs to fetch: current user + people the user is following
+        const authorIdsToFetch = [...(user.followingIds || []), user.uid];
+        
+        if (authorIdsToFetch.length === 0) {
+            setPosts([]);
+            setLoading(false);
+            return;
+        }
+
+        const postsQuery = query(
+            collection(firestore, "posts"), 
+            where("authorId", "in", authorIdsToFetch),
+            orderBy("createdAt", "desc")
+        );
+
+        const querySnapshot = await getDocs(postsQuery);
+        const fetchedPosts: Post[] = [];
+        querySnapshot.forEach(doc => {
+            fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
+        });
+        
+        setPosts(fetchedPosts);
+
+    } catch(e) {
+      console.error("Failed to fetch posts", e)
+      toast({ variant: 'destructive', title: 'Error al cargar el feed', description: 'No se pudieron obtener las publicaciones.' })
+      setPosts([]);
+    }
+    setLoading(false);
+  }, [firestore, user, toast]);
 
   useEffect(() => {
     loadPosts();
+    // This is a placeholder for real-time updates.
+    // In a real app, you'd use onSnapshot here.
     window.addEventListener('storage', loadPosts);
-
     return () => {
       window.removeEventListener('storage', loadPosts);
     };
   }, [loadPosts]);
+
+  const handleCommentChange = (postId: string, text: string) => {
+    setCommentStates(prev => ({ ...prev, [postId]: text }));
+  };
 
   const persistInteractions = (key: 'likedPosts' | 'savedPosts' | 'awardedPosts', newSet: Set<string>) => {
     sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
@@ -124,7 +152,7 @@ export default function FeedPage() {
     } else {
       newLikedPosts.add(post.id);
       currentLikes++;
-      if (post.authorId !== user?.uid) {
+      if (user && post.authorId !== user.uid) {
         addExperience(post.authorId, 15); // +15 XP for a like
       }
     }
@@ -134,7 +162,8 @@ export default function FeedPage() {
     updatedPosts[postIndex] = { ...post, likes: Math.max(0, currentLikes) };
     setPosts(updatedPosts);
     
-    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
+    // In a real app, this would be a Firestore update
+    // setDoc(doc(firestore, 'posts', post.id), { likes: Math.max(0, currentLikes) }, { merge: true });
     persistInteractions('likedPosts', newLikedPosts);
   };
 
@@ -160,6 +189,7 @@ export default function FeedPage() {
       p.id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p
     );
     setPosts(updatedPosts);
+    // Persist to session storage for mock
     sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     handleCommentChange(postId, ''); // Clear input after submitting
   };
@@ -178,6 +208,7 @@ export default function FeedPage() {
         p.id === post.id ? { ...p, awards: (p.awards || 0) + 1 } : p
     );
     setPosts(updatedPosts);
+    // Persist to session storage for mock
     sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
 
     toast({
@@ -190,6 +221,7 @@ export default function FeedPage() {
     try {
         const updatedPosts = posts.filter(p => p.id !== postToDelete.id);
         setPosts(updatedPosts);
+        // Persist to session storage for mock
         sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     } catch (error) {
         console.error("Error al eliminar la publicación (simulado): ", error);
@@ -208,6 +240,7 @@ export default function FeedPage() {
         p.id === editingPost.id ? { ...p, description: editingDescription } : p
     );
     setPosts(updatedPosts);
+    // Persist to session storage for mock
     sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     
     setEditingPost(null);
@@ -241,7 +274,7 @@ export default function FeedPage() {
               <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg flex flex-col items-center gap-4">
                 <BookHeart className="h-16 w-16" />
                 <h3 className="font-headline text-2xl font-semibold">Tu feed está vacío</h3>
-                <p className="max-w-md">¡Parece que todavía no hay publicaciones! Sé el primero en compartir algo con la comunidad.</p>
+                <p className="max-w-md">Cuando sigas a otros cultivadores, sus publicaciones aparecerán aquí. ¡Usa la pestaña de búsqueda para encontrar gente!</p>
               </div>
             )}
 
@@ -264,7 +297,7 @@ export default function FeedPage() {
                     </Avatar>
                     <div className="grid flex-1 gap-0.5 text-sm">
                       <Link
-                        href="#"
+                        href={`/profile/${post.authorId}`}
                         className="font-headline font-semibold hover:underline"
                       >
                         {post.authorName}
@@ -356,7 +389,7 @@ export default function FeedPage() {
                        </div>
                       <p>
                         <Link
-                          href="#"
+                          href={`/profile/${post.authorId}`}
                           className="font-headline font-semibold hover:underline"
                         >
                           {post.authorName}
@@ -417,5 +450,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    
