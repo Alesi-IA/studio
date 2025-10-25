@@ -41,7 +41,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { StoryReel } from '@/components/story-reel';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 
 export default function FeedPage() {
   const { firestore } = useFirebase();
@@ -87,10 +87,11 @@ export default function FeedPage() {
             return;
         }
 
+        // The query is simplified to not require a composite index.
+        // We will sort the results on the client side.
         const postsQuery = query(
             collection(firestore, "posts"), 
-            where("authorId", "in", authorIdsToFetch),
-            orderBy("createdAt", "desc")
+            where("authorId", "in", authorIdsToFetch)
         );
 
         const querySnapshot = await getDocs(postsQuery);
@@ -99,6 +100,13 @@ export default function FeedPage() {
             fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
         });
         
+        // Sort posts on the client side by creation date (descending)
+        fetchedPosts.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime();
+        });
+
         setPosts(fetchedPosts);
 
     } catch(e) {
@@ -450,3 +458,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    
