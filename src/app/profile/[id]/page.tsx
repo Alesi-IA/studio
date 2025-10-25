@@ -73,6 +73,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const { user: currentUser, loading: authLoading, logOut, addExperience, followUser, unfollowUser } = useAuth();
   const { firestore } = useFirebase();
   const [isFollowHovered, setIsFollowHovered] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
   const userDocRef = useMemo(() => firestore ? doc(firestore, 'users', resolvedParams.id) : null, [firestore, resolvedParams.id]);
   const { data: profileUser, isLoading: profileLoading } = useDoc<CannaGrowUser>(userDocRef);
@@ -99,13 +100,15 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const progressPercentage = (xpProgress / xpNeeded) * 100;
 
   const handleFollowToggle = async () => {
-    if (!currentUser || !profileUser || isOwnProfile) return;
+    if (!currentUser || !profileUser || isOwnProfile || isFollowLoading) return;
 
+    setIsFollowLoading(true);
     if (isFollowing) {
       await unfollowUser(profileUser.uid);
     } else {
       await followUser(profileUser.uid);
     }
+    setIsFollowLoading(false);
   };
 
 
@@ -134,14 +137,19 @@ export default function ProfilePage({ params }: ProfilePageProps) {
 
     if (isOwnProfile) {
       const savedPostIds = getInitialState('savedPosts');
+      const fetchedSavedPosts: Post[] = [];
       if (savedPostIds.size > 0) {
-        const savedPostsQuery = query(collection(firestore, "posts"), where("id", "in", Array.from(savedPostIds)));
-        const savedPostsSnapshot = await getDocs(savedPostsQuery);
-        const userSavedPosts = savedPostsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
-        setSavedPostsState(userSavedPosts);
-      } else {
-        setSavedPostsState([]);
+        // Firestore 'in' query has a limit of 10 items.
+        // If you expect users to save more, this needs chunking.
+        const postPromises = Array.from(savedPostIds).map(id => getDoc(doc(firestore, "posts", id)));
+        const postDocs = await Promise.all(postPromises);
+        postDocs.forEach(doc => {
+          if (doc.exists()) {
+            fetchedSavedPosts.push({ id: doc.id, ...doc.data() } as Post);
+          }
+        });
       }
+      setSavedPostsState(fetchedSavedPosts);
     }
     
     setLikedPosts(getInitialState('likedPosts'));
@@ -223,12 +231,20 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   
   const handleToggleSave = (postId: string) => {
     const newSavedPosts = new Set(savedPosts);
+    let newSavedPostsState = [...savedPostsState];
+
     if (newSavedPosts.has(postId)) {
       newSavedPosts.delete(postId);
+      newSavedPostsState = newSavedPostsState.filter(p => p.id !== postId);
     } else {
       newSavedPosts.add(postId);
+      const postToAdd = userPosts.find(p => p.id === postId);
+      if (postToAdd) {
+        newSavedPostsState.push(postToAdd);
+      }
     }
     setSavedPosts(newSavedPosts);
+    setSavedPostsState(newSavedPostsState);
     
     if (typeof window !== 'undefined') {
         sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(newSavedPosts)));
@@ -306,9 +322,14 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                           onClick={handleFollowToggle}
                           onMouseEnter={() => setIsFollowHovered(true)}
                           onMouseLeave={() => setIsFollowHovered(false)}
-                          className="w-28"
+                          className="w-32"
+                          disabled={isFollowLoading}
                         >
-                          {isFollowing ? (isFollowHovered ? 'Dejar de seguir' : 'Siguiendo') : 'Seguir'}
+                          {isFollowLoading ? (
+                             <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : isFollowing ? (
+                            isFollowHovered ? 'Dejar de seguir' : 'Siguiendo'
+                          ) : 'Seguir'}
                         </Button>
                         <Link href="/messages">
                             <Button variant="outline">
@@ -533,3 +554,5 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     </div>
   );
 }
+
+    
