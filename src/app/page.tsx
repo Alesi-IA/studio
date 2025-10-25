@@ -332,8 +332,8 @@ export default function FeedPage() {
                         <Send className="h-5 w-5" />
                         <span className="sr-only">Compartir</span>
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleGiveAward(post)} disabled={!canAward} className={cn(isAwarded && 'text-yellow-400')}>
-                        <Award className={cn("h-5 w-5 transition-all", isAwarded && 'fill-yellow-400')} />
+                      <Button variant="ghost" size="icon" onClick={() => handleGiveAward(post)} disabled={!canAward}>
+                        <Award className={cn("h-5 w-5 transition-all", isAwarded && 'text-yellow-400 fill-yellow-400 animate-in zoom-in-125')} />
                         <span className="sr-only">Premiar</span>
                       </Button>
                        <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
