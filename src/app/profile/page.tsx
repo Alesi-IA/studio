@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Sprout, Wheat, Grape, Award, Library, Loader2 } from 'lucide-react';
+import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Sprout, Wheat, Grape, Award, Library, Loader2, Grid3x3, UserSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
@@ -31,7 +31,16 @@ const rankConfig = {
   4: { label: 'Maestro', icon: Award, color: 'text-orange-400', badgeClass: 'bg-orange-500/10 border-orange-500 text-orange-400', minXP: 1000, maxXP: Infinity },
 };
 
-const getRank = (xp: number) => {
+const ownerRank = {
+    label: 'Dueño',
+    icon: Award,
+    color: 'text-yellow-400',
+    badgeClass: 'bg-yellow-500/20 border-yellow-500 text-yellow-400',
+}
+
+const getRank = (user: CannaGrowUser | null) => {
+    if (user?.role === 'owner') return ownerRank;
+    const xp = user?.experiencePoints || 0;
     if (xp >= 1000) return rankConfig[4];
     if (xp >= 300) return rankConfig[3];
     if (xp >= 100) return rankConfig[2];
@@ -53,14 +62,13 @@ export default function ProfilePage() {
 
   const isOwnProfile = true; 
   
-  const rank = useMemo(() => {
-    return getRank(user?.experiencePoints || 0);
-  }, [user?.experiencePoints]);
+  const rank = useMemo(() => getRank(user), [user]);
 
-  const xpForNextRank = rank.maxXP === Infinity ? rank.minXP : rank.maxXP + 1;
-  const xpProgress = Math.max(0, (user?.experiencePoints || 0) - rank.minXP);
-  const xpNeeded = Math.max(1, xpForNextRank - rank.minXP);
+  const xpForNextRank = 'maxXP' in rank && rank.maxXP !== Infinity ? rank.maxXP + 1 : ('minXP' in rank ? rank.minXP : 0);
+  const xpProgress = 'minXP' in rank ? Math.max(0, (user?.experiencePoints || 0) - rank.minXP) : 0;
+  const xpNeeded = 'minXP' in rank && 'maxXP' in rank && rank.maxXP !== Infinity ? Math.max(1, xpForNextRank - rank.minXP) : 1;
   const progressPercentage = (xpProgress / xpNeeded) * 100;
+
 
   const loadPostsAndState = useCallback(() => {
     if (!user?.uid) return;
@@ -204,7 +212,7 @@ export default function ProfilePage() {
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <h2 className="font-headline text-2xl font-bold">{user.displayName}</h2>
-              <Badge variant="secondary" className={cn("gap-1.5", rank.badgeClass)}>
+               <Badge variant="secondary" className={cn("gap-1.5", rank.badgeClass)}>
                   <rank.icon className="h-3.5 w-3.5" />
                   {rank.label}
               </Badge>
@@ -257,12 +265,14 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="pt-2 max-w-prose mx-auto md:mx-0">
-                <p className="text-sm text-muted-foreground">
-                    Progreso al siguiente rango: {(user.experiencePoints || 0)} / {xpForNextRank} XP
-                </p>
-                <Progress value={progressPercentage} className="h-2 mt-1" />
-            </div>
+            {user.role !== 'owner' && (
+                 <div className="pt-2 max-w-prose mx-auto md:mx-0">
+                    <p className="text-sm text-muted-foreground">
+                        Progreso al siguiente rango: {(user.experiencePoints || 0)} / {xpForNextRank} XP
+                    </p>
+                    <Progress value={progressPercentage} className="h-2 mt-1" />
+                </div>
+            )}
 
             <p className="text-sm max-w-prose mx-auto md:mx-0">{user.bio}</p>
           </div>
@@ -278,10 +288,10 @@ export default function ProfilePage() {
 
         <Tabs defaultValue="posts" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="posts">Mis Publicaciones</TabsTrigger>
-            <TabsTrigger value="guides">Mis Guías</TabsTrigger>
-            <TabsTrigger value="saved">Guardados</TabsTrigger>
-            <TabsTrigger value="tagged">Etiquetados</TabsTrigger>
+            <TabsTrigger value="posts"><Grid3x3 className="h-5 w-5" /><span className="sr-only">Publicaciones</span></TabsTrigger>
+            <TabsTrigger value="guides"><Library className="h-5 w-5" /><span className="sr-only">Guías</span></TabsTrigger>
+            <TabsTrigger value="saved"><Bookmark className="h-5 w-5" /><span className="sr-only">Guardados</span></TabsTrigger>
+            <TabsTrigger value="tagged"><UserSquare className="h-5 w-5" /><span className="sr-only">Etiquetados</span></TabsTrigger>
           </TabsList>
           <TabsContent value="posts" className="mt-6">
             {userPosts.length > 0 ? (
@@ -450,5 +460,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
