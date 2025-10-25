@@ -30,9 +30,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore, isUserLoading: isFirebaseUserLoading } = useFirebase();
+  const { auth, firestore, isUserLoading } = useFirebase();
   const [user, setUser] = useState<CannaGrowUser | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -81,13 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        setAuthLoading(true);
         const userProfile = await fetchUserProfile(firebaseUser);
         setUser(userProfile);
-        setAuthLoading(false);
       } else {
         setUser(null);
-        setAuthLoading(false);
       }
     });
 
@@ -95,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [auth, fetchUserProfile]);
   
   useEffect(() => {
-    if (authLoading) return;
+    if (isUserLoading) return;
 
     const isPublicRoute = pathname === '/login' || pathname === '/register';
 
@@ -106,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user && !isPublicRoute) {
       router.push('/login');
     }
-  }, [user, authLoading, pathname, router]);
+  }, [user, isUserLoading, pathname, router]);
 
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
@@ -172,7 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, updates);
       
-      const updatedUser = { ...user, ...updates };
+      // Force a re-fetch of the user profile to ensure all data is in sync
+      const updatedUser = await fetchUserProfile(auth.currentUser);
       setUser(updatedUser);
 
       toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
@@ -181,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error updating profile:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
     }
-  }, [user, firestore, auth, toast, setUser]);
+  }, [user, firestore, auth, toast, fetchUserProfile]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
@@ -193,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = {
     user,
-    loading: authLoading,
+    loading: isUserLoading,
     isOwner: user?.role === 'owner',
     isModerator: user?.role === 'moderator' || user?.role === 'co-owner' || user?.role === 'owner',
     signUp,
