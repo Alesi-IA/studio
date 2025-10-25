@@ -6,32 +6,26 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil, Loader2, Library, Camera } from 'lucide-react';
+import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Crown, UserIcon, ShieldHalf, Library } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Post, UserGuide } from '@/types';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { useFirebase } from '@/firebase';
-import { CircularProgress } from '@/components/ui/circular-progress';
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { UserGuideCard } from '@/components/user-guide-card';
+import { EditProfileDialog } from '@/components/edit-profile-dialog';
 
 
 const rankConfig = {
   owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400' },
   'co-owner': { label: 'Co-Dueño', icon: ShieldHalf, color: 'text-orange-400', badgeClass: 'bg-orange-500/10 border-orange-500 text-orange-400' },
-  moderator: { label: 'Moderador', icon: ShieldCheck, color: 'text-blue-400', badgeClass: 'bg-blue-500/10 border-blue-500 text-blue-400' },
+  moderator: { label: 'Moderador', icon: ShieldHalf, color: 'text-blue-400', badgeClass: 'bg-blue-500/10 border-blue-500 text-blue-400' },
   user: { label: 'Miembro', icon: UserIcon, color: 'text-green-400', badgeClass: 'bg-green-500/10 border-green-500 text-green-400' },
 };
 
@@ -44,19 +38,9 @@ export default function ProfilePage() {
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
-  const { user, loading, logOut, updateUserProfile } = useAuth();
-  const { storage } = useFirebase(); // Use storage from useFirebase
-  const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const isUploading = uploadProgress !== null;
-
-  // State for Edit Profile Dialog
+  const { user, loading, logOut } = useAuth();
+  
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [editingDisplayName, setEditingDisplayName] = useState('');
-  const [editingBio, setEditingBio] = useState('');
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const isOwnProfile = true; 
   
@@ -78,34 +62,23 @@ export default function ProfilePage() {
       role: user?.role,
   }), [user]);
 
-   useEffect(() => {
-    if (isEditProfileOpen && user) {
-      setEditingDisplayName(user.displayName || '');
-      setEditingBio(user.bio || '');
-    }
-  }, [isEditProfileOpen, user]);
-
   const loadPostsAndState = useCallback(() => {
     if (!user?.uid) return;
     
-    // Load image posts
     const allPostsJSON = sessionStorage.getItem('mockPosts');
     const allPosts = allPostsJSON ? JSON.parse(allPostsJSON) : [];
     const myPosts = allPosts.filter((p: Post) => p.authorId === user.uid);
     setUserPosts(myPosts);
     
-    // Load user guides
     const allGuidesJSON = sessionStorage.getItem('userGuides');
     const allGuides = allGuidesJSON ? JSON.parse(allGuidesJSON) : [];
     const myGuides = allGuides.filter((g: UserGuide) => g.authorId === user.uid);
     setUserGuides(myGuides);
 
-    // Load saved posts
     const savedPostIds = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
     const userSavedPosts = allPosts.filter((p: Post) => savedPostIds.has(p.id));
     setSavedPostsState(userSavedPosts);
     
-    // Load liked posts
     const likedPostIds = new Set(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
     setLikedPosts(likedPostIds);
 
@@ -119,43 +92,6 @@ export default function ProfilePage() {
       window.removeEventListener('storage', loadPostsAndState);
     };
   }, [loadPostsAndState, user]);
-
-  const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user || !storage) return;
-
-    const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    setUploadProgress(0);
-
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload failed:", error);
-        setUploadProgress(null);
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        await updateUserProfile({ photoURL: downloadURL });
-        setUploadProgress(null);
-      }
-    );
-  };
-  
-  const handleSaveProfile = async () => {
-    setIsSavingProfile(true);
-    await updateUserProfile({
-        displayName: editingDisplayName,
-        bio: editingBio
-    });
-    setIsSavingProfile(false);
-    setIsEditProfileOpen(false);
-  }
-
 
   const handleLogout = async () => {
     await logOut();
@@ -209,7 +145,7 @@ export default function ProfilePage() {
         sessionStorage.setItem('mockPosts', JSON.stringify(allPosts));
     }
 
-    setCommentText(''); // Clear input
+    setCommentText('');
     window.dispatchEvent(new Event('storage'));
   };
   
@@ -227,7 +163,7 @@ export default function ProfilePage() {
   };
 
   if (loading || !user) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
@@ -319,60 +255,13 @@ export default function ProfilePage() {
           </div>
         </div>
         
-        <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Editar tu perfil</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="relative group">
-                            <Avatar className="h-24 w-24">
-                                <AvatarImage src={user?.photoURL} />
-                                <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            {isUploading && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-                                    <CircularProgress value={uploadProgress} />
-                                </div>
-                            )}
-                             <Button 
-                                size="icon" 
-                                variant="outline" 
-                                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full border-2 bg-background hover:bg-muted"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                >
-                                <Camera className="h-4 w-4" />
-                             </Button>
-                             <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                onChange={handleProfileImageChange}
-                                accept="image/*"
-                                className="hidden"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="displayName">Nombre de usuario</Label>
-                        <Input id="displayName" value={editingDisplayName} onChange={(e) => setEditingDisplayName(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="bio">Biografía</Label>
-                        <Textarea id="bio" value={editingBio} onChange={(e) => setEditingBio(e.target.value)} className="min-h-[100px]" />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
-                        {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Guardar cambios
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        {user && (
+          <EditProfileDialog
+            isOpen={isEditProfileOpen}
+            onOpenChange={setIsEditProfileOpen}
+            user={user}
+          />
+        )}
 
         <Tabs defaultValue="posts" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
