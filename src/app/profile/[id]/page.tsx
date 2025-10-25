@@ -22,7 +22,7 @@ import { UserGuideCard } from '@/components/user-guide-card';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { Progress } from '@/components/ui/progress';
 import { useFirebase, useDoc } from '@/firebase';
-import { doc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, orderBy, updateDoc, arrayUnion } from 'firebase/firestore';
 
 
 const rankConfig = {
@@ -71,7 +71,19 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const [savedPostsState, setSavedPostsState] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [commentText, setCommentText] = useState('');
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => new Set(JSON.parse(globalThis.sessionStorage?.getItem('likedPosts') || '[]')));
+  
+  const getInitialSet = (key: string): Set<string> => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const item = window.sessionStorage.getItem(key);
+      return item ? new Set(JSON.parse(item)) : new Set();
+    } catch (error) {
+      console.warn(`Error reading sessionStorage key "${key}":`, error);
+      return new Set();
+    }
+  };
+
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => getInitialSet('likedPosts'));
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
@@ -102,11 +114,15 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     // Fetch user posts
     const postsQuery = query(
       collection(firestore, "posts"),
-      where("authorId", "==", profileUser.uid),
-      orderBy("createdAt", "desc")
+      where("authorId", "==", profileUser.uid)
     );
     const postsSnapshot = await getDocs(postsQuery);
     const myPosts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+    myPosts.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+    });
     setUserPosts(myPosts);
     
     // Fetch user guides (still from session storage for now)
@@ -116,7 +132,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     setUserGuides(myGuides);
 
     if (isOwnProfile) {
-      const savedPostIds = new Set<string>(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
+      const savedPostIds = getInitialSet('savedPosts');
       if (savedPostIds.size > 0) {
         const savedPostsQuery = query(collection(firestore, "posts"), where("id", "in", Array.from(savedPostIds)));
         const savedPostsSnapshot = await getDocs(savedPostsQuery);
@@ -127,8 +143,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
       }
     }
     
-    const likedPostIds = new Set<string>(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
-    setLikedPosts(likedPostIds);
+    setLikedPosts(getInitialSet('likedPosts'));
 
   }, [profileUser?.uid, isOwnProfile, firestore]);
 
@@ -141,8 +156,8 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     await logOut();
   }
 
-  const handleToggleLike = (postId: string) => {
-    if (!selectedPost || !currentUser) return;
+  const handleToggleLike = async (postId: string) => {
+    if (!selectedPost || !currentUser || !firestore) return;
     
     const newLikedPosts = new Set(likedPosts);
     let updatedLikes = selectedPost.likes || 0;
@@ -162,15 +177,19 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     const updatedPost = { ...selectedPost, likes: updatedLikes };
     setSelectedPost(updatedPost);
 
+    const postRef = doc(firestore, 'posts', postId);
+    await updateDoc(postRef, { likes: updatedLikes });
+
+
     const updatePostInState = (p: Post) => p.id === postId ? updatedPost : p;
     setUserPosts(userPosts.map(updatePostInState));
     setSavedPostsState(savedPostsState.map(updatePostInState));
+    
     sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
-    window.dispatchEvent(new Event('storage'));
   };
   
-  const handleAddComment = (postId: string) => {
-    if (!commentText.trim() || !currentUser || !selectedPost) return;
+  const handleAddComment = async (postId: string) => {
+    if (!commentText.trim() || !currentUser || !selectedPost || !firestore) return;
     
     if(selectedPost.authorId !== currentUser.uid) {
         addExperience(selectedPost.authorId, 20);
@@ -179,8 +198,15 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     const newComment = {
       id: `comment-${postId}-${Date.now()}`,
       authorName: currentUser.displayName || 'Tú',
+      authorId: currentUser.uid,
       text: commentText,
+      createdAt: new Date().toISOString(),
     };
+
+    const postRef = doc(firestore, 'posts', postId);
+    await updateDoc(postRef, {
+        comments: arrayUnion(newComment)
+    });
 
     const updatedPost = { ...selectedPost, comments: [...(selectedPost.comments || []), newComment] };
     setSelectedPost(updatedPost);
@@ -190,21 +216,23 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     setSavedPostsState(savedPostsState.map(updatePostInState));
     
     setCommentText('');
-    window.dispatchEvent(new Event('storage'));
   };
   
   const handleToggleSave = (postId: string) => {
-    if (!isOwnProfile) return;
-    const currentSaved = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
+    const currentSaved = getInitialSet('savedPosts');
     
     if (currentSaved.has(postId)) {
       currentSaved.delete(postId);
+      setSavedPostsState(prev => prev.filter(p => p.id !== postId));
     } else {
       currentSaved.add(postId);
+      const postToAdd = userPosts.find(p => p.id === postId) || savedPostsState.find(p => p.id === postId);
+      if (postToAdd) {
+        setSavedPostsState(prev => [...prev, postToAdd]);
+      }
     }
 
     sessionStorage.setItem('savedPosts', JSON.stringify(Array.from(currentSaved)));
-    window.dispatchEvent(new Event('storage'));
   };
 
   if (authLoading || profileLoading) {
@@ -443,7 +471,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                      </Avatar>
                      <div className="grid flex-1 gap-0.5 text-sm">
                          <DialogTitle className="sr-only">Publicación de {selectedPost.authorName}</DialogTitle>
-                         <span className="font-headline font-semibold">{selectedPost.authorName}</span>
+                         <Link href={`/profile/${selectedPost.authorId}`} className="font-headline font-semibold hover:underline">{selectedPost.authorName}</Link>
                          {selectedPost.strain && <p className="text-xs text-muted-foreground">Cepa: {selectedPost.strain}</p>}
                      </div>
                 </DialogHeader>
@@ -463,11 +491,11 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                         {(selectedPost.comments || []).map(comment => (
                             <div key={comment.id} className="flex gap-4">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={`https://picsum.photos/seed/${comment.authorName}/32/32`} alt={comment.authorName} />
+                                    <AvatarImage src={`https://picsum.photos/seed/${comment.authorId}/32/32`} alt={comment.authorName} />
                                     <AvatarFallback>{comment.authorName.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <p className='text-sm'>
-                                    <span className="font-headline font-semibold">{comment.authorName}</span>
+                                    <Link href={`/profile/${comment.authorId}`} className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
                                     {' '}
                                     {comment.text}
                                 </p>
@@ -482,7 +510,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                         </Button>
                         <Button variant="ghost" size="icon"><MessageIcon className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon"><Send className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(selectedPost.id)} disabled={!isOwnProfile}>
+                        <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(selectedPost.id)}>
                             <Bookmark className={cn("h-5 w-5 transition-colors", savedPostsState.some(p => p.id === selectedPost.id) ? 'fill-current' : '')} />
                         </Button>
                     </div>
