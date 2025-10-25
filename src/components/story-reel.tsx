@@ -15,7 +15,7 @@ import { Skeleton } from './ui/skeleton';
 
 function StoryCircle({ user, hasStory, isCurrentUser = false }: { user: CannaGrowUser | null; hasStory: boolean; isCurrentUser?: boolean }) {
     if (!user) return null;
-    const ringClasses = hasStory ? 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500' : 'bg-border';
+    const ringClasses = hasStory ? 'bg-gradient-to-tr from-green-400 to-primary' : 'bg-border';
 
   return (
     <Link href={`/profile/${user.uid}`} className="flex flex-col items-center gap-2 flex-shrink-0 w-20">
