@@ -12,6 +12,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useFirebase } from '@/firebase';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
 
 type AnalysisResult = any;
 
@@ -44,8 +48,10 @@ function IdentificationResult({ result }: { result: any }) {
   const [isEditing, setIsEditing] = useState(false);
   const [sharing, setSharing] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, addExperience } = useAuth();
+  const { storage, firestore } = useFirebase();
   const router = useRouter();
+
 
   const handleSaveStrainName = () => {
     if (result) {
@@ -56,7 +62,7 @@ function IdentificationResult({ result }: { result: any }) {
   };
 
   const handleShareToFeed = async () => {
-    if (!result || !result.imageUrl || !user) {
+    if (!result || !result.imageUrl || !user || !storage || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -66,35 +72,44 @@ function IdentificationResult({ result }: { result: any }) {
     }
 
     setSharing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
-      const description = `¡Miren esta cepa que identifiqué con la IA! La IA dice que es una ${result.strainName}.`;
-      const newPost = {
-        id: `mock-post-${Date.now()}`,
-        authorId: user.uid,
-        authorName: user.displayName,
-        authorAvatar: user.photoURL,
-        description,
-        strain: result.strainName,
-        imageUrl: result.imageUrl,
-        createdAt: new Date().toISOString(),
-        likes: 0,
-        comments: [],
-      };
+        // 1. Convert Data URI to Blob for upload
+        const fetchRes = await fetch(result.imageUrl);
+        const blob = await fetchRes.blob();
+        const file = new File([blob], `ai-analysis-${Date.now()}.jpg`, { type: blob.type });
 
-      const existingPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
-      sessionStorage.setItem('mockPosts', JSON.stringify([newPost, ...existingPosts]));
-      window.dispatchEvent(new Event('storage'));
+        // 2. Upload image to Firebase Storage
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
+        const uploadResult = await uploadBytes(storageRef, file);
+        const permanentImageUrl = await getDownloadURL(uploadResult.ref);
+
+        // 3. Create post document in Firestore
+        const caption = `¡Miren esta cepa que identifiqué con la IA! La IA dice que es una ${result.strainName}.`;
+        const postsCollectionRef = collection(firestore, 'posts');
+        await addDoc(postsCollectionRef, {
+            authorId: user.uid,
+            authorName: user.displayName,
+            authorAvatar: user.photoURL,
+            description: caption,
+            imageUrl: permanentImageUrl,
+            strain: result.strainName,
+            createdAt: serverTimestamp(),
+            likes: 0,
+            awards: 0,
+            comments: [],
+        });
+      
+      addExperience(user.uid, 20);
 
       toast({
         title: '¡Compartido!',
-        description: 'Tu identificación ha sido publicada en el feed.',
+        description: 'Tu identificación ha sido publicada en el feed (+20 XP).',
       });
 
       router.push('/');
     } catch (error) {
-      console.error("Error al compartir la publicación (simulado):", error);
+      console.error("Error al compartir la publicación:", error);
       toast({
         variant: 'destructive',
         title: 'Error al compartir',
