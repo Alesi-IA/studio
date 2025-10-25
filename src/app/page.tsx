@@ -124,7 +124,7 @@ export default function FeedPage() {
       newLikedPosts.add(post.id);
       currentLikes++;
       if (post.authorId !== user?.uid) {
-        addExperience(post.authorId, 1); // +1 XP for a like
+        addExperience(post.authorId, 15); // +15 XP for a like
       }
     }
     setLikedPosts(newLikedPosts);
@@ -146,7 +146,7 @@ export default function FeedPage() {
     const post = posts[postIndex];
 
     if (post.authorId !== user.uid) {
-        addExperience(post.authorId, 2); // +2 XP for a comment
+        addExperience(post.authorId, 20); // +20 XP for a comment
     }
 
     const newComment = {
@@ -166,7 +166,7 @@ export default function FeedPage() {
   const handleGiveAward = (post: Post) => {
     if (!user || user.uid === post.authorId || awardedPosts.has(post.id)) return;
 
-    addExperience(post.authorId, 50); // +50 XP for an award
+    addExperience(post.authorId, 35); // +35 XP for an award
     
     const newAwardedPosts = new Set(awardedPosts);
     newAwardedPosts.add(post.id);
@@ -181,7 +181,7 @@ export default function FeedPage() {
 
     toast({
         title: '¡Premio Otorgado!',
-        description: `Has premiado la publicación de ${post.authorName}. ¡Ha ganado 50 XP!`,
+        description: `Has premiado la publicación de ${post.authorName}. ¡Ha ganado 35 XP!`,
     });
   };
 

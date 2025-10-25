@@ -164,7 +164,7 @@ export default function ToolsPage() {
             comments: []
         };
         
-        addExperience(user.uid, 25); // +25 XP for writing a guide
+        addExperience(user.uid, 20); // +20 XP for writing a guide
 
         const updatedGuides = [newGuide, ...userGuides];
         sessionStorage.setItem('userGuides', JSON.stringify(updatedGuides));

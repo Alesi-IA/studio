@@ -63,7 +63,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
             comments: 0,
         };
 
-        addExperience(user.uid, 5); // +5 XP for creating a post
+        addExperience(user.uid, 20); // +20 XP for creating a post
 
         const existingPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
         sessionStorage.setItem('mockPosts', JSON.stringify([newPost, ...existingPosts]));
@@ -72,7 +72,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
         toast({
             title: '¡Éxito!',
-            description: 'Tu publicación ha sido creada (+5 XP).',
+            description: 'Tu publicación ha sido creada (+20 XP).',
         });
         
         onPostCreated();

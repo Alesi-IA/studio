@@ -110,7 +110,7 @@ export default function ProfilePage() {
       newLikedPosts.add(postId);
       updatedLikes++;
       if (selectedPost.authorId !== user?.uid) {
-        addExperience(selectedPost.authorId, 1);
+        addExperience(selectedPost.authorId, 15);
       }
     }
 
@@ -129,7 +129,7 @@ export default function ProfilePage() {
     if (!commentText.trim() || !user || !selectedPost) return;
     
     if(selectedPost.authorId !== user.uid) {
-        addExperience(selectedPost.authorId, 2);
+        addExperience(selectedPost.authorId, 20);
     }
 
     const newComment = {

@@ -40,7 +40,7 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
         setLikes(newLikes);
         
         if (newIsLiked && guide.authorId !== currentUser?.uid) {
-            addExperience(guide.authorId, 1);
+            addExperience(guide.authorId, 15);
         }
 
         const likedGuides = JSON.parse(sessionStorage.getItem('likedUserGuides') || '{}');
@@ -64,7 +64,7 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
         if (!commentText.trim() || !currentUser) return;
         
         if (guide.authorId !== currentUser.uid) {
-            addExperience(guide.authorId, 2);
+            addExperience(guide.authorId, 20);
         }
 
         const newComment = {
