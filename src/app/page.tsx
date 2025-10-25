@@ -71,7 +71,7 @@ export default function FeedPage() {
     setLoading(false);
   }, []);
 
-  const getInitialState = <T>(key: string, defaultValue: T): T => {
+  const getInitialState = <T,>(key: string, defaultValue: T): T => {
     if (typeof window === 'undefined') return defaultValue;
     try {
         const item = window.sessionStorage.getItem(key);
