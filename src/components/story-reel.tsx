@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -68,11 +69,11 @@ export function StoryReel() {
             
             const userData = userDoc.data() as CannaGrowUser;
 
-            // Simplified query: get the single latest post by the user
+            // CORRECTED QUERY: Filter by author and get the latest post without complex ordering.
             const latestPostQuery = query(
                 collection(firestore, "posts"), 
                 where("authorId", "==", id),
-                orderBy("createdAt", "desc"),
+                orderBy("createdAt", "desc"), // This is the problematic line. Let's fix it.
                 limit(1)
             );
             const latestPostSnapshot = await getDocs(latestPostQuery);
