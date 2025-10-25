@@ -48,20 +48,6 @@ export default function ProfilePage() {
     return rankConfig[user?.role as keyof typeof rankConfig] || rankConfig.user;
   }, [user?.role]);
 
-  const profileData = useMemo(() => ({
-      displayName: user?.displayName || 'Usuario',
-      photoURL: user?.photoURL || `https://picsum.photos/seed/${user?.uid}/128/128`,
-      uid: user?.uid,
-      bio: user?.bio || (
-          user?.role === 'owner' ? 'Dueño y fundador de CannaGrow. ¡Cultivando la mejor comunidad!' :
-          user?.role === 'co-owner' ? 'Co-Dueño de CannaGrow. Ayudando a que todo funcione sin problemas.' :
-          user?.role === 'moderator' ? 'Moderador de CannaGrow. Aquí para ayudar y mantener el buen ambiente.' :
-          'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.'
-      ),
-      rank,
-      role: user?.role,
-  }), [user]);
-
   const loadPostsAndState = useCallback(() => {
     if (!user?.uid) return;
     
@@ -163,7 +149,7 @@ export default function ProfilePage() {
   };
 
   if (loading || !user) {
-    return null;
+    return null; // Or a loading skeleton
   }
 
   return (
@@ -172,7 +158,7 @@ export default function ProfilePage() {
         title="Perfil"
         description="Tu espacio personal en CannaGrow."
         actions={
-          profileData.role === 'owner' && isOwnProfile && (
+          user.role === 'owner' && isOwnProfile && (
               <Link href="/admin">
                 <Button variant="outline">
                   <UserCog className="mr-2" />
@@ -186,14 +172,14 @@ export default function ProfilePage() {
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <div className="relative group">
               <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-2 ring-offset-2 ring-offset-background ring-primary">
-                  <AvatarImage src={profileData.photoURL} />
-                  <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarImage src={user.photoURL} />
+                  <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
           </div>
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
-              <h2 className="font-headline text-2xl font-bold">{profileData.displayName}</h2>
-              {profileData.role && (
+              <h2 className="font-headline text-2xl font-bold">{user.displayName}</h2>
+              {user.role && (
                 <Badge variant="secondary" className={cn("gap-1", rank.badgeClass)}>
                     <rank.icon className="h-3 w-3" />
                     {rank.label}
@@ -251,7 +237,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">Siguiendo</p>
               </div>
             </div>
-            <p className="text-sm max-w-prose">{profileData.bio}</p>
+            <p className="text-sm max-w-prose">{user.bio}</p>
           </div>
         </div>
         

@@ -25,8 +25,9 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
   const { updateUserProfile } = useAuth();
   const { storage } = useFirebase();
 
-  const [displayName, setDisplayName] = useState('');
-  const [bio, setBio] = useState('');
+  const [displayName, setDisplayName] = useState(user.displayName);
+  const [bio, setBio] = useState(user.bio || '');
+  const [photoURL, setPhotoURL] = useState(user.photoURL);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const isUploading = uploadProgress !== null;
@@ -36,6 +37,7 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
     if (user) {
       setDisplayName(user.displayName || '');
       setBio(user.bio || '');
+      setPhotoURL(user.photoURL);
     }
   }, [user, isOpen]);
 
@@ -59,6 +61,9 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
       },
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        // We update the local state to show the new image immediately
+        setPhotoURL(downloadURL); 
+        // We update the backend and the global state
         await updateUserProfile({ photoURL: downloadURL });
         setUploadProgress(null);
       }
@@ -85,8 +90,8 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={user?.photoURL} />
-                <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={photoURL} />
+                <AvatarFallback>{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               {isUploading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">

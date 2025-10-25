@@ -42,13 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(firestore, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-            // Combine auth data and firestore data
             const firestoreData = userDoc.data();
             return {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email!,
-                displayName: firebaseUser.displayName || firestoreData.displayName,
-                photoURL: firebaseUser.photoURL || firestoreData.photoURL,
+                displayName: firestoreData.displayName || firebaseUser.displayName,
+                photoURL: firestoreData.photoURL || firebaseUser.photoURL,
                 role: firestoreData.role || 'user',
                 bio: firestoreData.bio || '',
                 createdAt: firestoreData.createdAt,
@@ -80,11 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    if (isFirebaseUserLoading) {
-      setAuthLoading(true);
-      return;
-    }
-
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         setAuthLoading(true);
@@ -98,9 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [auth, isFirebaseUserLoading, fetchUserProfile]);
+  }, [auth, fetchUserProfile]);
   
-  // Redirection logic
   useEffect(() => {
     if (authLoading) return;
 
@@ -164,12 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     try {
-      // 1. Update Firebase Auth profile if needed
       const authUpdates: { displayName?: string; photoURL?: string } = {};
-      if (updates.displayName && updates.displayName !== auth.currentUser.displayName) {
+      if (updates.displayName && updates.displayName !== user.displayName) {
         authUpdates.displayName = updates.displayName;
       }
-      if (updates.photoURL && updates.photoURL !== auth.currentUser.photoURL) {
+      if (updates.photoURL && updates.photoURL !== user.photoURL) {
         authUpdates.photoURL = updates.photoURL;
       }
 
@@ -177,12 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updateProfile(auth.currentUser, authUpdates);
       }
 
-      // 2. Update Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, updates);
       
-      // 3. Update the local user state
-      setUser(prevUser => prevUser ? { ...prevUser, ...updates } : null);
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
 
       toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
 
