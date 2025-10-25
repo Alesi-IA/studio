@@ -29,7 +29,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -43,6 +42,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 
+const getInitialState = (key: string): Set<string> => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+        const item = window.sessionStorage.getItem(key);
+        return item ? new Set(JSON.parse(item)) : new Set();
+    } catch (error) {
+        console.warn(`Error reading sessionStorage key "${key}":`, error);
+        return new Set();
+    }
+};
+
 export default function FeedPage() {
   const { firestore } = useFirebase();
   const { user, isModerator, addExperience } = useAuth();
@@ -54,17 +64,6 @@ export default function FeedPage() {
   const [editingDescription, setEditingDescription] = useState('');
   
   const [commentStates, setCommentStates] = useState<Record<string, string>>({});
-
-  const getInitialState = (key: string): Set<string> => {
-    if (typeof window === 'undefined') return new Set();
-    try {
-        const item = window.sessionStorage.getItem(key);
-        return item ? new Set(JSON.parse(item)) : new Set();
-    } catch (error) {
-        console.warn(`Error reading sessionStorage key "${key}":`, error);
-        return new Set();
-    }
-  };
 
   const [likedPosts, setLikedPosts] = useState<Set<string>>(() => getInitialState('likedPosts'));
   const [savedPosts, setSavedPosts] = useState<Set<string>>(() => getInitialState('savedPosts'));
@@ -172,6 +171,7 @@ export default function FeedPage() {
     const newComment = {
       id: `comment-${postId}-${Date.now()}`,
       authorName: user.displayName || 'Tú',
+      authorAvatar: user.photoURL,
       authorId: user.uid,
       text: commentText,
       createdAt: new Date().toISOString(),
