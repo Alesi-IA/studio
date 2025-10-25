@@ -229,29 +229,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const targetUserRef = doc(firestore, 'users', targetUserId);
 
     try {
-      await runTransaction(firestore, async (transaction) => {
-        // Add target to current user's following list
-        transaction.update(currentUserRef, {
-          followingIds: arrayUnion(targetUserId),
-          followingCount: increment(1)
+        await runTransaction(firestore, async (transaction) => {
+            const targetDoc = await transaction.get(targetUserRef);
+            if (!targetDoc.exists()) {
+                throw "Document does not exist!";
+            }
+            
+            const targetFollowers = targetDoc.data().followerIds || [];
+            // Only update if the user is not already following
+            if (!targetFollowers.includes(user.uid)) {
+                // Add target to current user's following list
+                transaction.update(currentUserRef, {
+                    followingIds: arrayUnion(targetUserId),
+                    followingCount: increment(1)
+                });
+                // Add current user to target's followers list
+                transaction.update(targetUserRef, {
+                    followerIds: arrayUnion(user.uid),
+                    followerCount: increment(1)
+                });
+            }
         });
-        // Add current user to target's followers list
-        transaction.update(targetUserRef, {
-          followerIds: arrayUnion(user.uid),
-          followerCount: increment(1)
-        });
-      });
-      // Optimistically update local state
-      setUser(prevUser => prevUser ? ({
-        ...prevUser,
-        followingIds: [...(prevUser.followingIds || []), targetUserId],
-        followingCount: (prevUser.followingCount || 0) + 1,
-      }) : null);
+
+        // Re-fetch the user profile to get the most accurate state
+        if(auth.currentUser) {
+            const updatedUser = await fetchUserProfile(auth.currentUser);
+            setUser(updatedUser);
+        }
+
     } catch (error) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user, firestore, toast, auth, fetchUserProfile]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -259,29 +269,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const targetUserRef = doc(firestore, 'users', targetUserId);
     
     try {
-      await runTransaction(firestore, async (transaction) => {
-        // Remove target from current user's following list
-        transaction.update(currentUserRef, {
-          followingIds: arrayRemove(targetUserId),
-          followingCount: increment(-1)
+        await runTransaction(firestore, async (transaction) => {
+            const targetDoc = await transaction.get(targetUserRef);
+            if (!targetDoc.exists()) {
+                throw "Document does not exist!";
+            }
+
+            const targetFollowers = targetDoc.data().followerIds || [];
+            // Only update if the user is currently following
+            if (targetFollowers.includes(user.uid)) {
+                // Remove target from current user's following list
+                transaction.update(currentUserRef, {
+                    followingIds: arrayRemove(targetUserId),
+                    followingCount: increment(-1)
+                });
+                // Remove current user from target's followers list
+                transaction.update(targetUserRef, {
+                    followerIds: arrayRemove(user.uid),
+                    followerCount: increment(-1)
+                });
+            }
         });
-        // Remove current user from target's followers list
-        transaction.update(targetUserRef, {
-          followerIds: arrayRemove(user.uid),
-          followerCount: increment(-1)
-        });
-      });
-      // Optimistically update local state
-      setUser(prevUser => prevUser ? ({
-        ...prevUser,
-        followingIds: (prevUser.followingIds || []).filter(id => id !== targetUserId),
-        followingCount: Math.max(0, (prevUser.followingCount || 0) - 1),
-      }) : null);
+        
+        // Re-fetch the user profile to get the most accurate state
+        if(auth.currentUser) {
+            const updatedUser = await fetchUserProfile(auth.currentUser);
+            setUser(updatedUser);
+        }
+
     } catch (error) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user, firestore, toast, auth, fetchUserProfile]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
