@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import type { Post, UserGuide, CannaGrowUser } from '@/types';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, use } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -57,10 +57,11 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ params }: ProfilePageProps) {
+  const resolvedParams = use(Promise.resolve(params));
   const { user: currentUser, loading: authLoading, logOut, addExperience } = useAuth();
   const { firestore } = useFirebase();
 
-  const userDocRef = useMemo(() => firestore ? doc(firestore, 'users', params.id) : null, [firestore, params.id]);
+  const userDocRef = useMemo(() => firestore ? doc(firestore, 'users', resolvedParams.id) : null, [firestore, resolvedParams.id]);
   const { data: profileUser, isLoading: profileLoading } = useDoc<CannaGrowUser>(userDocRef);
   
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -72,7 +73,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
-  const isOwnProfile = currentUser?.uid === params.id; 
+  const isOwnProfile = currentUser?.uid === resolvedParams.id; 
   
   const rank = useMemo(() => getRank(profileUser), [profileUser]);
 
