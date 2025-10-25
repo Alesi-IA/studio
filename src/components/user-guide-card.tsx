@@ -2,8 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { User } from 'firebase/auth';
-import type { UserGuide } from '@/types';
+import type { UserGuide, CannaGrowUser } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -14,13 +13,15 @@ import { Heart, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
+import { useAuth } from '@/hooks/use-auth';
 
 interface UserGuideCardProps {
     guide: UserGuide;
-    currentUser: User | null;
+    currentUser: CannaGrowUser | null;
 }
 
 export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
+    const { addExperience } = useAuth();
     const [isLiked, setIsLiked] = useState(false);
     const [likes, setLikes] = useState(guide.likes);
     const [comments, setComments] = useState(guide.comments || []);
@@ -37,6 +38,10 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
         
         setIsLiked(newIsLiked);
         setLikes(newLikes);
+        
+        if (newIsLiked && guide.authorId !== currentUser?.uid) {
+            addExperience(guide.authorId, 1);
+        }
 
         const likedGuides = JSON.parse(sessionStorage.getItem('likedUserGuides') || '{}');
         if (newIsLiked) {
@@ -46,7 +51,6 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
         }
         sessionStorage.setItem('likedUserGuides', JSON.stringify(likedGuides));
 
-        // Persist likes count change
         const allGuides = JSON.parse(sessionStorage.getItem('userGuides') || '[]');
         const guideIndex = allGuides.findIndex((g: UserGuide) => g.id === guide.id);
         if (guideIndex > -1) {
@@ -59,6 +63,10 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
         e.preventDefault();
         if (!commentText.trim() || !currentUser) return;
         
+        if (guide.authorId !== currentUser.uid) {
+            addExperience(guide.authorId, 2);
+        }
+
         const newComment = {
             id: `ugc-${guide.id}-${Date.now()}`,
             authorName: currentUser.displayName || 'Anónimo',
@@ -106,7 +114,7 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
             </CardContent>
             <CardFooter className="flex-col items-start gap-4">
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={handleToggleLike}>
+                    <Button variant="ghost" size="sm" onClick={handleToggleLike} disabled={!currentUser}>
                         <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
                         {likes} Me gusta
                     </Button>
@@ -133,18 +141,19 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
                             </div>
                         </ScrollArea>
                     )}
-                     <form onSubmit={handleAddComment} className="flex w-full items-center gap-2">
-                        <Input 
-                            placeholder="Añadir un comentario..." 
-                            value={commentText}
-                            onChange={e => setCommentText(e.target.value)}
-                            className="h-9"
-                        />
-                        <Button type="submit" size="sm" disabled={!commentText.trim()}>Publicar</Button>
-                    </form>
+                    {currentUser && (
+                        <form onSubmit={handleAddComment} className="flex w-full items-center gap-2">
+                            <Input 
+                                placeholder="Añadir un comentario..." 
+                                value={commentText}
+                                onChange={e => setCommentText(e.target.value)}
+                                className="h-9"
+                            />
+                            <Button type="submit" size="sm" disabled={!commentText.trim()}>Publicar</Button>
+                        </form>
+                    )}
                 </div>
             </CardFooter>
         </Card>
     );
 }
-

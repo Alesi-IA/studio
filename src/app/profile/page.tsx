@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Crown, UserIcon, ShieldHalf, Library, Loader2 } from 'lucide-react';
+import { Settings, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, UserCog, Sprout, Wheat, Grape, Award, Library, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
@@ -20,15 +20,24 @@ import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserGuideCard } from '@/components/user-guide-card';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
+import { Progress } from '@/components/ui/progress';
 
 
 const rankConfig = {
-  owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400' },
-  'co-owner': { label: 'Co-Dueño', icon: ShieldHalf, color: 'text-orange-400', badgeClass: 'bg-orange-500/10 border-orange-500 text-orange-400' },
-  moderator: { label: 'Moderador', icon: ShieldHalf, color: 'text-blue-400', badgeClass: 'bg-blue-500/10 border-blue-500 text-blue-400' },
-  user: { label: 'Miembro', icon: UserIcon, color: 'text-green-400', badgeClass: 'bg-green-500/10 border-green-500 text-green-400' },
+  0: { label: 'Brote', icon: Sprout, color: 'text-green-400', badgeClass: 'bg-green-500/10 border-green-500 text-green-400', minXP: 0, maxXP: 19 },
+  1: { label: 'Aprendiz', icon: Wheat, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400', minXP: 20, maxXP: 99 },
+  2: { label: 'Cultivador', icon: Grape, color: 'text-purple-400', badgeClass: 'bg-purple-500/10 border-purple-500 text-purple-400', minXP: 100, maxXP: 299 },
+  3: { label: 'Experto', icon: Award, color: 'text-blue-400', badgeClass: 'bg-blue-500/10 border-blue-500 text-blue-400', minXP: 300, maxXP: 999 },
+  4: { label: 'Maestro', icon: Award, color: 'text-orange-400', badgeClass: 'bg-orange-500/10 border-orange-500 text-orange-400', minXP: 1000, maxXP: Infinity },
 };
 
+const getRank = (xp: number) => {
+    if (xp >= 1000) return rankConfig[4];
+    if (xp >= 300) return rankConfig[3];
+    if (xp >= 100) return rankConfig[2];
+    if (xp >= 20) return rankConfig[1];
+    return rankConfig[0];
+};
 
 export default function ProfilePage() {
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -38,15 +47,20 @@ export default function ProfilePage() {
   const [commentText, setCommentText] = useState('');
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
-  const { user, loading, logOut } = useAuth();
+  const { user, loading, logOut, addExperience } = useAuth();
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const isOwnProfile = true; 
   
   const rank = useMemo(() => {
-    return rankConfig[user?.role as keyof typeof rankConfig] || rankConfig.user;
-  }, [user?.role]);
+    return getRank(user?.experiencePoints || 0);
+  }, [user?.experiencePoints]);
+
+  const xpForNextRank = rank.maxXP === Infinity ? rank.minXP : rank.maxXP + 1;
+  const xpProgress = Math.max(0, (user?.experiencePoints || 0) - rank.minXP);
+  const xpNeeded = Math.max(1, xpForNextRank - rank.minXP);
+  const progressPercentage = (xpProgress / xpNeeded) * 100;
 
   const loadPostsAndState = useCallback(() => {
     if (!user?.uid) return;
@@ -95,6 +109,9 @@ export default function ProfilePage() {
     } else {
       newLikedPosts.add(postId);
       updatedLikes++;
+      if (selectedPost.authorId !== user?.uid) {
+        addExperience(selectedPost.authorId, 1);
+      }
     }
 
     setLikedPosts(newLikedPosts);
@@ -110,6 +127,10 @@ export default function ProfilePage() {
   
   const handleAddComment = (postId: string) => {
     if (!commentText.trim() || !user || !selectedPost) return;
+    
+    if(selectedPost.authorId !== user.uid) {
+        addExperience(selectedPost.authorId, 2);
+    }
 
     const newComment = {
       id: `comment-${postId}-${Date.now()}`,
@@ -183,12 +204,10 @@ export default function ProfilePage() {
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
               <h2 className="font-headline text-2xl font-bold">{user.displayName}</h2>
-              {user.role && (
-                <Badge variant="secondary" className={cn("gap-1", rank.badgeClass)}>
-                    <rank.icon className="h-3 w-3" />
-                    {rank.label}
-                </Badge>
-              )}
+              <Badge variant="secondary" className={cn("gap-1.5", rank.badgeClass)}>
+                  <rank.icon className="h-3.5 w-3.5" />
+                  {rank.label}
+              </Badge>
             </div>
             
             <div className="flex justify-center md:justify-start gap-2">
@@ -222,8 +241,8 @@ export default function ProfilePage() {
                     </>
                 )}
             </div>
-
-            <div className="flex justify-center gap-6 md:justify-start">
+            
+            <div className="flex justify-center flex-wrap gap-x-6 gap-y-2 md:justify-start">
               <div className="text-center">
                 <p className="font-bold">{userPosts.length}</p>
                 <p className="text-sm text-muted-foreground">Publicaciones</p>
@@ -240,8 +259,20 @@ export default function ProfilePage() {
                 <p className="font-bold">0</p>
                 <p className="text-sm text-muted-foreground">Siguiendo</p>
               </div>
+               <div className="text-center">
+                <p className="font-bold">{user.experiencePoints || 0}</p>
+                <p className="text-sm text-muted-foreground">XP</p>
+              </div>
             </div>
-            <p className="text-sm max-w-prose">{user.bio}</p>
+
+            <div className="pt-2 max-w-prose mx-auto md:mx-0">
+                <p className="text-sm text-muted-foreground">
+                    Progreso al siguiente rango: {(user.experiencePoints || 0)} / {xpForNextRank} XP
+                </p>
+                <Progress value={progressPercentage} className="h-2 mt-1" />
+            </div>
+
+            <p className="text-sm max-w-prose mx-auto md:mx-0">{user.bio}</p>
           </div>
         </div>
         

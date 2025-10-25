@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -46,6 +47,10 @@
           "type": "string",
           "description": "The user's role.",
           "enum": ["owner", "co-owner", "moderator", "user"]
+        },
+        "experiencePoints": {
+          "type": "number",
+          "description": "Points earned by the user for community engagement."
         }
       },
       "required": [
@@ -95,6 +100,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "awards": {
+            "type": "number",
+            "description": "Number of awards given to this post."
         }
       },
       "required": [

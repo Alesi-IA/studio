@@ -1,3 +1,4 @@
+
 export interface PostComment {
     id: string;
     authorName: string;
@@ -19,6 +20,7 @@ export interface Post {
     createdAt: any;
     likes?: number;
     comments?: PostComment[];
+    awards?: number;
 }
 
 export interface UserGuideComment {
@@ -48,4 +50,5 @@ export interface CannaGrowUser {
     photoURL?: string;
     bio?: string;
     createdAt: string;
+    experiencePoints?: number;
 }

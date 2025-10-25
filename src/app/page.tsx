@@ -35,11 +35,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StoryReel } from '@/components/story-reel';
+import { useToast } from '@/hooks/use-toast';
 
 export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -47,7 +47,8 @@ export default function FeedPage() {
   
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingDescription, setEditingDescription] = useState('');
-  const { user, isModerator } = useAuth();
+  const { user, isModerator, addExperience } = useAuth();
+  const { toast } = useToast();
   
   const [commentStates, setCommentStates] = useState<Record<string, string>>({});
 
@@ -73,6 +74,7 @@ export default function FeedPage() {
 
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
+  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const storedLiked = sessionStorage.getItem('likedPosts');
@@ -80,6 +82,9 @@ export default function FeedPage() {
     
     const storedSaved = sessionStorage.getItem('savedPosts');
     if (storedSaved) setSavedPosts(new Set(JSON.parse(storedSaved)));
+
+    const storedAwarded = sessionStorage.getItem('awardedPosts');
+    if (storedAwarded) setAwardedPosts(new Set(JSON.parse(storedAwarded)));
 
     loadPosts();
     window.addEventListener('storage', loadPosts);
@@ -89,10 +94,8 @@ export default function FeedPage() {
     };
   }, [loadPosts]);
 
-  const persistInteractions = (key: 'likedPosts' | 'savedPosts', newSet: Set<string>) => {
+  const persistInteractions = (key: 'likedPosts' | 'savedPosts' | 'awardedPosts', newSet: Set<string>) => {
     sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
-    // No need to dispatch a storage event here as sessionStorage is tab-specific.
-    // The event listener is for changes from other tabs/windows which won't happen here.
   };
   
   const handleToggleSave = (postId: string) => {
@@ -106,20 +109,23 @@ export default function FeedPage() {
     persistInteractions('savedPosts', newSavedPosts);
   };
 
-  const handleToggleLike = (postId: string) => {
+  const handleToggleLike = (post: Post) => {
     const newLikedPosts = new Set(likedPosts);
-    const postIndex = posts.findIndex(p => p.id === postId);
+    const postIndex = posts.findIndex(p => p.id === post.id);
     if (postIndex === -1) return;
 
-    const post = posts[postIndex];
     let currentLikes = post.likes || 0;
+    const alreadyLiked = newLikedPosts.has(post.id);
 
-    if (newLikedPosts.has(postId)) {
-      newLikedPosts.delete(postId);
+    if (alreadyLiked) {
+      newLikedPosts.delete(post.id);
       currentLikes--;
     } else {
-      newLikedPosts.add(postId);
+      newLikedPosts.add(post.id);
       currentLikes++;
+      if (post.authorId !== user?.uid) {
+        addExperience(post.authorId, 1); // +1 XP for a like
+      }
     }
     setLikedPosts(newLikedPosts);
 
@@ -127,7 +133,6 @@ export default function FeedPage() {
     updatedPosts[postIndex] = { ...post, likes: Math.max(0, currentLikes) };
     setPosts(updatedPosts);
     
-    // Also update sessionStorage
     sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     persistInteractions('likedPosts', newLikedPosts);
   };
@@ -135,6 +140,14 @@ export default function FeedPage() {
   const handleAddComment = (postId: string) => {
     const commentText = commentStates[postId];
     if (!commentText?.trim() || !user) return;
+    
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+    const post = posts[postIndex];
+
+    if (post.authorId !== user.uid) {
+        addExperience(post.authorId, 2); // +2 XP for a comment
+    }
 
     const newComment = {
       id: `comment-${postId}-${Date.now()}`,
@@ -148,6 +161,28 @@ export default function FeedPage() {
     setPosts(updatedPosts);
     sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
     handleCommentChange(postId, ''); // Clear input after submitting
+  };
+
+  const handleGiveAward = (post: Post) => {
+    if (!user || user.uid === post.authorId || awardedPosts.has(post.id)) return;
+
+    addExperience(post.authorId, 50); // +50 XP for an award
+    
+    const newAwardedPosts = new Set(awardedPosts);
+    newAwardedPosts.add(post.id);
+    setAwardedPosts(newAwardedPosts);
+    persistInteractions('awardedPosts', newAwardedPosts);
+
+    const updatedPosts = posts.map(p =>
+        p.id === post.id ? { ...p, awards: (p.awards || 0) + 1 } : p
+    );
+    setPosts(updatedPosts);
+    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
+
+    toast({
+        title: '¡Premio Otorgado!',
+        description: `Has premiado la publicación de ${post.authorName}. ¡Ha ganado 50 XP!`,
+    });
   };
 
   const handleDelete = async (postToDelete: Post) => {
@@ -213,6 +248,8 @@ export default function FeedPage() {
               const canManage = user?.uid === post.authorId || isModerator;
               const isLiked = likedPosts.has(post.id);
               const isSaved = savedPosts.has(post.id);
+              const isAwarded = awardedPosts.has(post.id);
+              const canAward = user && user.uid !== post.authorId && !isAwarded;
 
               return (
                 <Card key={post.id} className="overflow-hidden">
@@ -283,7 +320,7 @@ export default function FeedPage() {
                   </CardContent>
                   <CardFooter className="flex-col items-start gap-4 p-4">
                     <div className="flex w-full items-center">
-                       <Button variant="ghost" size="icon" onClick={() => handleToggleLike(post.id)}>
+                       <Button variant="ghost" size="icon" onClick={() => handleToggleLike(post)}>
                         <Heart className={cn("h-5 w-5 transition-all", isLiked ? 'text-red-500 fill-red-500 animate-in zoom-in-125' : '')} />
                         <span className="sr-only">Me gusta</span>
                       </Button>
@@ -295,28 +332,27 @@ export default function FeedPage() {
                         <Send className="h-5 w-5" />
                         <span className="sr-only">Compartir</span>
                       </Button>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled>
-                                <Award className="h-5 w-5" />
-                                <span className="sr-only">Premiar</span>
-                              </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Premiar la mejor respuesta (próximamente)</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Button variant="ghost" size="icon" onClick={() => handleGiveAward(post)} disabled={!canAward} className={cn(isAwarded && 'text-yellow-400')}>
+                        <Award className={cn("h-5 w-5 transition-all", isAwarded && 'fill-yellow-400')} />
+                        <span className="sr-only">Premiar</span>
+                      </Button>
                        <Button variant="ghost" size="icon" className="ml-auto" onClick={() => handleToggleSave(post.id)}>
                           <Bookmark className={cn("h-5 w-5 transition-colors", isSaved ? 'fill-foreground' : '')} />
                           <span className="sr-only">Guardar</span>
                       </Button>
                     </div>
                     <div className="grid gap-1.5 text-sm w-full">
-                      <p className="font-semibold">
-                        {post.likes || 0} me gusta
-                      </p>
+                       <div className="flex items-center gap-4">
+                            <p className="font-semibold">
+                                {post.likes || 0} me gusta
+                            </p>
+                            {(post.awards || 0) > 0 && (
+                                <div className="flex items-center gap-1 font-semibold text-yellow-500 text-xs">
+                                    <Award className="h-4 w-4" />
+                                    <span>{post.awards} {post.awards === 1 ? 'Premio' : 'Premios'}</span>
+                                </div>
+                            )}
+                       </div>
                       <p>
                         <Link
                           href="#"
@@ -380,5 +416,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    

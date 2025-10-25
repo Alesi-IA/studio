@@ -104,7 +104,7 @@ const initialUserGuides: UserGuide[] = [
 ]
 
 export default function ToolsPage() {
-    const { user } = useAuth();
+    const { user, addExperience } = useAuth();
     const [tasks, setTasks] = useState(initialTasks);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<{id: string, label: string} | null>(null);
@@ -164,6 +164,8 @@ export default function ToolsPage() {
             comments: []
         };
         
+        addExperience(user.uid, 25); // +25 XP for writing a guide
+
         const updatedGuides = [newGuide, ...userGuides];
         sessionStorage.setItem('userGuides', JSON.stringify(updatedGuides));
         setUserGuides(updatedGuides);
@@ -412,7 +414,7 @@ export default function ToolsPage() {
                                         onChange={(e) => setUserGuideSearch(e.target.value)}
                                     />
                                 </div>
-                                <Button onClick={() => setIsGuideDialogOpen(true)} className="w-full sm:w-auto">
+                                <Button onClick={() => setIsGuideDialogOpen(true)} className="w-full sm:w-auto" disabled={!user}>
                                     <Plus className="mr-2 h-4 w-4" />
                                     Crear Nueva Guía
                                 </Button>
@@ -532,4 +534,3 @@ export default function ToolsPage() {
         </div>
     );
 }
-

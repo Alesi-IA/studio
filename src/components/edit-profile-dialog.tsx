@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,19 +25,19 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
   const { updateUserProfile } = useAuth();
   const { storage } = useFirebase();
 
-  const [displayName, setDisplayName] = useState('');
-  const [bio, setBio] = useState('');
+  const [displayName, setDisplayName] = useState(user.displayName);
+  const [bio, setBio] = useState(user.bio || '');
   const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
-    if (user && isOpen) {
-      setDisplayName(user.displayName || '');
+    if (user) {
+      setDisplayName(user.displayName);
       setBio(user.bio || '');
     }
-  }, [user, isOpen]);
+  }, [user]);
 
   const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -90,7 +90,7 @@ export function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDia
                 <AvatarImage src={user.photoURL} />
                 <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              {isUploading && (
+              {uploadProgress !== null && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
                   <CircularProgress value={uploadProgress} />
                 </div>
