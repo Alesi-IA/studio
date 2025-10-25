@@ -40,8 +40,8 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { StoryReel } from '@/components/story-reel';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 
 export default function FeedPage() {
   const { firestore } = useFirebase();
@@ -55,22 +55,22 @@ export default function FeedPage() {
   
   const [commentStates, setCommentStates] = useState<Record<string, string>>({});
 
-  const getInitialState = <T,>(key: string, defaultValue: T): T => {
-    if (typeof window === 'undefined') return defaultValue;
+  const getInitialState = (key: string): Set<string> => {
+    if (typeof window === 'undefined') return new Set();
     try {
         const item = window.sessionStorage.getItem(key);
-        return item ? JSON.parse(item) : defaultValue;
+        return item ? new Set(JSON.parse(item)) : new Set();
     } catch (error) {
         console.warn(`Error reading sessionStorage key "${key}":`, error);
-        return defaultValue;
+        return new Set();
     }
   };
 
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => getInitialState<string[]>('likedPosts', []));
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(() => getInitialState<string[]>('savedPosts', []));
-  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(() => getInitialState<string[]>('awardedPosts', []));
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(() => getInitialState('likedPosts'));
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(() => getInitialState('savedPosts'));
+  const [awardedPosts, setAwardedPosts] = useState<Set<string>>(() => getInitialState('awardedPosts'));
 
-  const loadPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async () => {
     if (!firestore || !user) {
       setLoading(false);
       return;
@@ -78,7 +78,6 @@ export default function FeedPage() {
     setLoading(true);
 
     try {
-        // IDs to fetch: current user + people the user is following
         const authorIdsToFetch = [...(user.followingIds || []), user.uid];
         
         if (authorIdsToFetch.length === 0) {
@@ -87,23 +86,20 @@ export default function FeedPage() {
             return;
         }
 
-        // The query is simplified to not require a composite index.
-        // We will sort the results on the client side.
         const postsQuery = query(
             collection(firestore, "posts"), 
             where("authorId", "in", authorIdsToFetch)
         );
 
         const querySnapshot = await getDocs(postsQuery);
-        const fetchedPosts: Post[] = [];
+        let fetchedPosts: Post[] = [];
         querySnapshot.forEach(doc => {
             fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
         });
         
-        // Sort posts on the client side by creation date (descending)
         fetchedPosts.sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
             return dateB.getTime() - dateA.getTime();
         });
 
@@ -118,21 +114,17 @@ export default function FeedPage() {
   }, [firestore, user, toast]);
 
   useEffect(() => {
-    loadPosts();
-    // This is a placeholder for real-time updates.
-    // In a real app, you'd use onSnapshot here.
-    window.addEventListener('storage', loadPosts);
-    return () => {
-      window.removeEventListener('storage', loadPosts);
-    };
-  }, [loadPosts]);
+    fetchPosts();
+  }, [fetchPosts]);
 
   const handleCommentChange = (postId: string, text: string) => {
     setCommentStates(prev => ({ ...prev, [postId]: text }));
   };
 
   const persistInteractions = (key: 'likedPosts' | 'savedPosts' | 'awardedPosts', newSet: Set<string>) => {
-    sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
+    if (typeof window !== 'undefined') {
+        sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
+    }
   };
   
   const handleToggleSave = (postId: string) => {
@@ -146,78 +138,75 @@ export default function FeedPage() {
     persistInteractions('savedPosts', newSavedPosts);
   };
 
-  const handleToggleLike = (post: Post) => {
+  const handleToggleLike = async (post: Post) => {
+    if (!firestore || !user) return;
     const newLikedPosts = new Set(likedPosts);
-    const postIndex = posts.findIndex(p => p.id === post.id);
-    if (postIndex === -1) return;
-
-    let currentLikes = post.likes || 0;
     const alreadyLiked = newLikedPosts.has(post.id);
 
     if (alreadyLiked) {
       newLikedPosts.delete(post.id);
-      currentLikes--;
     } else {
       newLikedPosts.add(post.id);
-      currentLikes++;
-      if (user && post.authorId !== user.uid) {
-        addExperience(post.authorId, 15); // +15 XP for a like
-      }
     }
     setLikedPosts(newLikedPosts);
-
-    const updatedPosts = [...posts];
-    updatedPosts[postIndex] = { ...post, likes: Math.max(0, currentLikes) };
-    setPosts(updatedPosts);
-    
-    // In a real app, this would be a Firestore update
-    // setDoc(doc(firestore, 'posts', post.id), { likes: Math.max(0, currentLikes) }, { merge: true });
     persistInteractions('likedPosts', newLikedPosts);
+
+    const postRef = doc(firestore, 'posts', post.id);
+    const currentLikes = post.likes || 0;
+    const newLikes = alreadyLiked ? currentLikes - 1 : currentLikes + 1;
+    await updateDoc(postRef, { likes: newLikes });
+
+    setPosts(prevPosts => prevPosts.map(p => p.id === post.id ? { ...p, likes: newLikes } : p));
+    
+    if (!alreadyLiked && user.uid !== post.authorId) {
+        addExperience(post.authorId, 15);
+    }
   };
 
-  const handleAddComment = (postId: string) => {
+  const handleAddComment = async (postId: string) => {
     const commentText = commentStates[postId];
-    if (!commentText?.trim() || !user) return;
+    if (!commentText?.trim() || !user || !firestore) return;
     
-    const postIndex = posts.findIndex(p => p.id === postId);
-    if (postIndex === -1) return;
-    const post = posts[postIndex];
-
-    if (post.authorId !== user.uid) {
-        addExperience(post.authorId, 20); // +20 XP for a comment
-    }
-
+    const postRef = doc(firestore, 'posts', postId);
+    
     const newComment = {
       id: `comment-${postId}-${Date.now()}`,
       authorName: user.displayName || 'Tú',
+      authorId: user.uid,
       text: commentText,
+      createdAt: new Date().toISOString(),
     };
 
-    const updatedPosts = posts.map(p =>
-      p.id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p
-    );
-    setPosts(updatedPosts);
-    // Persist to session storage for mock
-    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
-    handleCommentChange(postId, ''); // Clear input after submitting
+    await updateDoc(postRef, {
+        comments: arrayUnion(newComment)
+    });
+
+    const post = posts.find(p => p.id === postId);
+    if (post && post.authorId !== user.uid) {
+        addExperience(post.authorId, 20); // +20 XP for a comment
+    }
+
+    setPosts(prevPosts => prevPosts.map(p => 
+        p.id === postId ? { ...p, comments: [...(p.comments || []), newComment] } : p
+    ));
+    handleCommentChange(postId, '');
   };
 
-  const handleGiveAward = (post: Post) => {
-    if (!user || user.uid === post.authorId || awardedPosts.has(post.id)) return;
+  const handleGiveAward = async (post: Post) => {
+    if (!user || !firestore || user.uid === post.authorId || awardedPosts.has(post.id)) return;
 
-    addExperience(post.authorId, 35); // +35 XP for an award
-    
     const newAwardedPosts = new Set(awardedPosts);
     newAwardedPosts.add(post.id);
     setAwardedPosts(newAwardedPosts);
     persistInteractions('awardedPosts', newAwardedPosts);
 
-    const updatedPosts = posts.map(p =>
-        p.id === post.id ? { ...p, awards: (p.awards || 0) + 1 } : p
-    );
-    setPosts(updatedPosts);
-    // Persist to session storage for mock
-    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
+    const postRef = doc(firestore, 'posts', post.id);
+    const newAwards = (post.awards || 0) + 1;
+    await updateDoc(postRef, { awards: newAwards });
+
+    setPosts(prevPosts => prevPosts.map(p => p.id === post.id ? { ...p, awards: newAwards } : p));
+    
+    addExperience(post.authorId, 35); // +35 XP for an award
 
     toast({
         title: '¡Premio Otorgado!',
@@ -226,13 +215,15 @@ export default function FeedPage() {
   };
 
   const handleDelete = async (postToDelete: Post) => {
+    if (!firestore) return;
     try {
-        const updatedPosts = posts.filter(p => p.id !== postToDelete.id);
-        setPosts(updatedPosts);
-        // Persist to session storage for mock
-        sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
+        const postRef = doc(firestore, 'posts', postToDelete.id);
+        await deleteDoc(postRef);
+        setPosts(posts.filter(p => p.id !== postToDelete.id));
+        toast({ title: 'Publicación eliminada' });
     } catch (error) {
-        console.error("Error al eliminar la publicación (simulado): ", error);
+        console.error("Error al eliminar la publicación: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar la publicación.' });
     }
   };
 
@@ -242,16 +233,16 @@ export default function FeedPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingPost) return;
+    if (!editingPost || !firestore) return;
     
-    const updatedPosts = posts.map(p => 
+    const postRef = doc(firestore, 'posts', editingPost.id);
+    await updateDoc(postRef, { description: editingDescription });
+    
+    setPosts(posts.map(p => 
         p.id === editingPost.id ? { ...p, description: editingDescription } : p
-    );
-    setPosts(updatedPosts);
-    // Persist to session storage for mock
-    sessionStorage.setItem('mockPosts', JSON.stringify(updatedPosts));
-    
+    ));
     setEditingPost(null);
+    toast({ title: 'Publicación actualizada' });
   };
 
   return (
@@ -358,6 +349,7 @@ export default function FeedPage() {
                         data-ai-hint={post.imageHint}
                         width={post.width || 800}
                         height={post.height || 1000}
+                        unoptimized
                       />
                   </CardContent>
                   <CardFooter className="flex-col items-start gap-4 p-4">
@@ -409,7 +401,7 @@ export default function FeedPage() {
                           {(post.comments || []).map(comment => (
                               <div key={comment.id} className="mt-1 flex gap-2">
                                 <p>
-                                  <Link href="#" className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
+                                  <Link href={`/profile/${comment.authorId}`} className="font-headline font-semibold hover:underline">{comment.authorName}</Link>
                                   {' '}
                                   {comment.text}
                                 </p>
@@ -458,5 +450,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    

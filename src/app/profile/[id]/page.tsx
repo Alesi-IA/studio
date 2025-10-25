@@ -22,7 +22,7 @@ import { UserGuideCard } from '@/components/user-guide-card';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { Progress } from '@/components/ui/progress';
 import { useFirebase, useDoc } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 
 const rankConfig = {
@@ -96,39 +96,46 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   };
 
 
-  const loadPostsAndState = useCallback(() => {
-    if (!profileUser?.uid) return;
-    
-    // In a real app, this would be a firestore query.
-    const allPostsJSON = sessionStorage.getItem('mockPosts');
-    const allPosts = allPostsJSON ? JSON.parse(allPostsJSON) : [];
-    const myPosts = allPosts.filter((p: Post) => p.authorId === profileUser.uid);
+  const loadPostsAndState = useCallback(async () => {
+    if (!profileUser?.uid || !firestore) return;
+
+    // Fetch user posts
+    const postsQuery = query(
+      collection(firestore, "posts"),
+      where("authorId", "==", profileUser.uid),
+      orderBy("createdAt", "desc")
+    );
+    const postsSnapshot = await getDocs(postsQuery);
+    const myPosts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
     setUserPosts(myPosts);
     
+    // Fetch user guides (still from session storage for now)
     const allGuidesJSON = sessionStorage.getItem('userGuides');
     const allGuides = allGuidesJSON ? JSON.parse(allGuidesJSON) : [];
     const myGuides = allGuides.filter((g: UserGuide) => g.authorId === profileUser.uid);
     setUserGuides(myGuides);
 
     if (isOwnProfile) {
-      const savedPostIds = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
-      const userSavedPosts = allPosts.filter((p: Post) => savedPostIds.has(p.id));
-      setSavedPostsState(userSavedPosts);
+      const savedPostIds = new Set<string>(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
+      if (savedPostIds.size > 0) {
+        const savedPostsQuery = query(collection(firestore, "posts"), where("id", "in", Array.from(savedPostIds)));
+        const savedPostsSnapshot = await getDocs(savedPostsQuery);
+        const userSavedPosts = savedPostsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+        setSavedPostsState(userSavedPosts);
+      } else {
+        setSavedPostsState([]);
+      }
     }
     
-    const likedPostIds = new Set(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
+    const likedPostIds = new Set<string>(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
     setLikedPosts(likedPostIds);
 
-  }, [profileUser?.uid, isOwnProfile]);
+  }, [profileUser?.uid, isOwnProfile, firestore]);
 
   useEffect(() => {
     if (!profileUser) return;
     loadPostsAndState();
-    window.addEventListener('storage', loadPostsAndState);
-    return () => {
-      window.removeEventListener('storage', loadPostsAndState);
-    };
-  }, [loadPostsAndState, profileUser]);
+  }, [profileUser, loadPostsAndState]);
 
   const handleLogout = async () => {
     await logOut();
@@ -182,13 +189,6 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     setUserPosts(userPosts.map(updatePostInState));
     setSavedPostsState(savedPostsState.map(updatePostInState));
     
-    const allPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
-    const postIndex = allPosts.findIndex((p: Post) => p.id === postId);
-    if (postIndex > -1) {
-        allPosts[postIndex] = updatedPost;
-        sessionStorage.setItem('mockPosts', JSON.stringify(allPosts));
-    }
-
     setCommentText('');
     window.dispatchEvent(new Event('storage'));
   };
@@ -350,6 +350,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
                         data-ai-hint={post.imageHint}
+                        unoptimized
                     />
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-4 opacity-0 transition-opacity group-hover:opacity-100">
                         <div className="flex items-center gap-1 text-white font-bold"><Heart className='h-5 w-5' /> {post.likes || 0}</div>
@@ -400,6 +401,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
                         data-ai-hint={post.imageHint}
+                        unoptimized
                     />
                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-4 opacity-0 transition-opacity group-hover:opacity-100">
                         <div className="flex items-center gap-1 text-white font-bold"><Heart className='h-5 w-5' /> {post.likes || 0}</div>
@@ -431,7 +433,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
           {selectedPost && (
             <div className="flex flex-col md:flex-row md:max-h-[90vh]">
               <div className="relative w-full md:w-1/2 aspect-square md:aspect-auto">
-                <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" />
+                <Image src={selectedPost.imageUrl} alt={selectedPost.description} fill className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none" unoptimized />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
                  <DialogHeader className="flex flex-row items-center gap-3 p-4 border-b">
@@ -503,5 +505,3 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     </div>
   );
 }
-
-    

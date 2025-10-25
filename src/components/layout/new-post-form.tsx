@@ -9,6 +9,9 @@ import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/firebase';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 
 interface NewPostFormProps {
@@ -22,6 +25,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
   const [loading, setLoading] = useState(false);
   
   const { user, addExperience } = useAuth();
+  const { storage, firestore } = useFirebase();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +42,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!previewUrl || !user) {
+    if (!file || !user || !storage || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -48,27 +52,27 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
     }
     setLoading(true);
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     try {
-        const newPost = {
-            id: `mock-post-${Date.now()}`,
+        // 1. Upload image to Firebase Storage
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
+        const uploadResult = await uploadBytes(storageRef, file);
+        const imageUrl = await getDownloadURL(uploadResult.ref);
+
+        // 2. Create post document in Firestore
+        const postsCollectionRef = collection(firestore, 'posts');
+        await addDoc(postsCollectionRef, {
             authorId: user.uid,
             authorName: user.displayName,
             authorAvatar: user.photoURL,
-            description,
-            imageUrl: previewUrl,
-            createdAt: new Date().toISOString(),
+            description: description,
+            imageUrl: imageUrl,
+            createdAt: serverTimestamp(),
             likes: 0,
-            comments: 0,
-        };
+            awards: 0,
+            comments: [],
+        });
 
         addExperience(user.uid, 20); // +20 XP for creating a post
-
-        const existingPosts = JSON.parse(sessionStorage.getItem('mockPosts') || '[]');
-        sessionStorage.setItem('mockPosts', JSON.stringify([newPost, ...existingPosts]));
-
-        window.dispatchEvent(new Event('storage'));
 
         toast({
             title: '¡Éxito!',
@@ -78,7 +82,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
         onPostCreated();
 
     } catch (error) {
-        console.error("Error al crear la publicación (simulado):", error);
+        console.error("Error creating post:", error);
         toast({
             variant: 'destructive',
             title: 'Error al crear la publicación',
@@ -114,7 +118,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
           className="min-h-[100px] resize-none"
         />
       </div>
-      <Button type="submit" disabled={!previewUrl || loading}>
+      <Button type="submit" disabled={!file || loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {loading ? 'Publicando...' : 'Publicar'}
       </Button>
