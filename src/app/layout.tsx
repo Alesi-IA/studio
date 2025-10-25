@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
@@ -9,7 +9,10 @@ export const metadata: Metadata = {
   title: 'CannaConnect',
   description: 'Tu compañero de cultivo de cannabis.',
   manifest: '/manifest.json',
-  themeColor: '#386641'
+};
+
+export const viewport: Viewport = {
+  themeColor: '#386641',
 };
 
 export default function RootLayout({
