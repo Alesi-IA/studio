@@ -118,6 +118,7 @@ export default function ToolsPage() {
     const [isGuideDialogOpen, setIsGuideDialogOpen] = useState(false);
     const [newGuideTitle, setNewGuideTitle] = useState('');
     const [newGuideContent, setNewGuideContent] = useState('');
+    const [userGuideSearch, setUserGuideSearch] = useState('');
 
     const loadUserGuides = useCallback(() => {
         const storedGuidesJSON = sessionStorage.getItem('userGuides');
@@ -135,6 +136,16 @@ export default function ToolsPage() {
         window.addEventListener('storage:userGuides', loadUserGuides);
         return () => window.removeEventListener('storage:userGuides', loadUserGuides);
     }, [loadUserGuides]);
+
+    const filteredUserGuides = useMemo(() => {
+        if (!userGuideSearch.trim()) {
+            return userGuides;
+        }
+        return userGuides.filter(guide => 
+            guide.title.toLowerCase().includes(userGuideSearch.toLowerCase()) ||
+            guide.content.toLowerCase().includes(userGuideSearch.toLowerCase())
+        );
+    }, [userGuides, userGuideSearch]);
 
 
     const handleSaveGuide = (e: React.FormEvent) => {
@@ -391,15 +402,24 @@ export default function ToolsPage() {
                     </TabsContent>
                     <TabsContent value="user-guides" className="mt-6">
                         <div className="max-w-4xl mx-auto">
-                            <div className="flex justify-end mb-6">
-                                <Button onClick={() => setIsGuideDialogOpen(true)}>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center mb-6">
+                               <div className="relative w-full sm:max-w-xs">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Buscar en guías de usuarios..." 
+                                        className="pl-9" 
+                                        value={userGuideSearch}
+                                        onChange={(e) => setUserGuideSearch(e.target.value)}
+                                    />
+                                </div>
+                                <Button onClick={() => setIsGuideDialogOpen(true)} className="w-full sm:w-auto">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Crear Nueva Guía
                                 </Button>
                             </div>
                              <div className="space-y-6">
-                                {userGuides.length > 0 ? (
-                                    userGuides.map(guide => (
+                                {filteredUserGuides.length > 0 ? (
+                                    filteredUserGuides.map(guide => (
                                         <UserGuideCard 
                                             key={guide.id}
                                             guide={guide}
@@ -408,8 +428,8 @@ export default function ToolsPage() {
                                     ))
                                 ) : (
                                     <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
-                                        <p className="font-semibold">¡Sé el primero en compartir tu sabiduría!</p>
-                                        <p className="text-sm">Todavía no hay guías de usuarios. Crea una para ayudar a la comunidad.</p>
+                                        <p className="font-semibold">{userGuideSearch ? 'No se encontraron guías' : '¡Sé el primero en compartir tu sabiduría!'}</p>
+                                        <p className="text-sm">{userGuideSearch ? 'Intenta con otra búsqueda.' : 'Todavía no hay guías de usuarios. Crea una para ayudar a la comunidad.'}</p>
                                     </div>
                                 )}
                             </div>
