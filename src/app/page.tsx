@@ -298,7 +298,7 @@ export default function FeedPage() {
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" >
+                              <Button variant="ghost" size="icon" disabled>
                                 <Award className="h-5 w-5" />
                                 <span className="sr-only">Premiar</span>
                               </Button>
