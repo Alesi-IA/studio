@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil, Loader2, Library } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil, Loader2, Library, Camera } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -252,46 +252,10 @@ export default function ProfilePage() {
       <div className="container mx-auto p-4 md:p-8">
         <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <div className="relative group">
-            <div className="relative rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-full p-1 bg-background">
-                    <Avatar className="h-full w-full">
-                        <AvatarImage src={profileData.photoURL} />
-                        <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                </div>
-            </div>
-             {isUploading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-                <CircularProgress value={uploadProgress} />
-              </div>
-            )}
-            {isOwnProfile && !isUploading && (
-              <>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleProfileImageChange}
-                  accept="image/*"
-                  className="hidden"
-                />
-                 <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button 
-                              size="icon" 
-                              className="absolute bottom-1 right-1 h-8 w-8 rounded-full"
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Cambiar foto de perfil</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-              </>
-            )}
+              <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-2 ring-offset-2 ring-offset-background ring-primary">
+                  <AvatarImage src={profileData.photoURL} />
+                  <AvatarFallback>{profileData.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
           </div>
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col items-center gap-4 md:flex-row">
@@ -364,6 +328,36 @@ export default function ProfilePage() {
                     <DialogTitle>Editar tu perfil</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative group">
+                            <Avatar className="h-24 w-24">
+                                <AvatarImage src={user?.photoURL} />
+                                <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            {isUploading && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                                    <CircularProgress value={uploadProgress} />
+                                </div>
+                            )}
+                             <Button 
+                                size="icon" 
+                                variant="outline" 
+                                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full border-2 bg-background hover:bg-muted"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                >
+                                <Camera className="h-4 w-4" />
+                             </Button>
+                             <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleProfileImageChange}
+                                accept="image/*"
+                                className="hidden"
+                            />
+                        </div>
+                    </div>
+
                     <div className="grid gap-2">
                         <Label htmlFor="displayName">Nombre de usuario</Label>
                         <Input id="displayName" value={editingDisplayName} onChange={(e) => setEditingDisplayName(e.target.value)} />
