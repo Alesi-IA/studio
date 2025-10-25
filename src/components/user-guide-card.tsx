@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { UserGuide, CannaGrowUser } from '@/types';
+import type { UserGuide, CannaGrowUser, UserGuideComment } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
@@ -14,75 +14,66 @@ import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { useAuth } from '@/hooks/use-auth';
+import { useFirebase } from '@/firebase';
+import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 interface UserGuideCardProps {
     guide: UserGuide;
     currentUser: CannaGrowUser | null;
+    onUpdate: () => void;
 }
 
-export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
+export function UserGuideCard({ guide, currentUser, onUpdate }: UserGuideCardProps) {
     const { addExperience } = useAuth();
-    const [isLiked, setIsLiked] = useState(false);
-    const [likes, setLikes] = useState(guide.likes);
-    const [comments, setComments] = useState(guide.comments || []);
+    const { firestore } = useFirebase();
     const [commentText, setCommentText] = useState('');
 
-    useEffect(() => {
-        const likedGuides = JSON.parse(sessionStorage.getItem('likedUserGuides') || '{}');
-        setIsLiked(!!likedGuides[guide.id]);
-    }, [guide.id]);
+    const isLiked = currentUser && guide.likedBy?.includes(currentUser.uid);
 
-    const handleToggleLike = () => {
-        const newIsLiked = !isLiked;
-        const newLikes = newIsLiked ? likes + 1 : likes - 1;
-        
-        setIsLiked(newIsLiked);
-        setLikes(newLikes);
-        
-        if (newIsLiked && guide.authorId !== currentUser?.uid) {
-            addExperience(guide.authorId, 15);
-        }
+    const handleToggleLike = async () => {
+        if (!currentUser || !firestore) return;
 
-        const likedGuides = JSON.parse(sessionStorage.getItem('likedUserGuides') || '{}');
-        if (newIsLiked) {
-            likedGuides[guide.id] = true;
+        const guideRef = doc(firestore, 'userGuides', guide.id);
+        
+        if (isLiked) {
+             await updateDoc(guideRef, {
+                likedBy: arrayRemove(currentUser.uid),
+            });
         } else {
-            delete likedGuides[guide.id];
+            await updateDoc(guideRef, {
+                likedBy: arrayUnion(currentUser.uid),
+            });
+            if (guide.authorId !== currentUser.uid) {
+                addExperience(guide.authorId, 15);
+            }
         }
-        sessionStorage.setItem('likedUserGuides', JSON.stringify(likedGuides));
-
-        const allGuides = JSON.parse(sessionStorage.getItem('userGuides') || '[]');
-        const guideIndex = allGuides.findIndex((g: UserGuide) => g.id === guide.id);
-        if (guideIndex > -1) {
-            allGuides[guideIndex].likes = newLikes;
-            sessionStorage.setItem('userGuides', JSON.stringify(allGuides));
-        }
+        onUpdate();
     };
     
-    const handleAddComment = (e: React.FormEvent) => {
+    const handleAddComment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!commentText.trim() || !currentUser) return;
+        if (!commentText.trim() || !currentUser || !firestore) return;
         
         if (guide.authorId !== currentUser.uid) {
             addExperience(guide.authorId, 20);
         }
 
-        const newComment = {
+        const newComment: UserGuideComment = {
             id: `ugc-${guide.id}-${Date.now()}`,
+            authorId: currentUser.uid,
             authorName: currentUser.displayName || 'Anónimo',
+            authorAvatar: currentUser.photoURL,
             text: commentText,
+            createdAt: new Date().toISOString()
         };
         
-        const newComments = [...comments, newComment];
-        setComments(newComments);
+        const guideRef = doc(firestore, 'userGuides', guide.id);
+        await updateDoc(guideRef, {
+            comments: arrayUnion(newComment),
+        });
+        
         setCommentText('');
-
-        const allGuides = JSON.parse(sessionStorage.getItem('userGuides') || '[]');
-        const guideIndex = allGuides.findIndex((g: UserGuide) => g.id === guide.id);
-        if (guideIndex > -1) {
-            allGuides[guideIndex].comments = newComments;
-            sessionStorage.setItem('userGuides', JSON.stringify(allGuides));
-        }
+        onUpdate();
     };
 
 
@@ -98,7 +89,7 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
                         <CardTitle>{guide.title}</CardTitle>
                         <CardDescription>
                             Por{' '}
-                            <Link href="#" className="font-medium hover:underline">
+                            <Link href={`/profile/${guide.authorId}`} className="font-medium hover:underline">
                                 {guide.authorName}
                             </Link>
                             {' \u00B7 '}
@@ -116,25 +107,30 @@ export function UserGuideCard({ guide, currentUser }: UserGuideCardProps) {
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={handleToggleLike} disabled={!currentUser}>
                         <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
-                        {likes} Me gusta
+                        {guide.likedBy?.length || 0} Me gusta
                     </Button>
                     <Button variant="ghost" size="sm">
                         <MessageCircle className="mr-2 h-4 w-4" />
-                        {comments.length} Comentarios
+                        {guide.comments?.length || 0} Comentarios
                     </Button>
                 </div>
 
                 <div className="w-full space-y-4">
-                    {comments.length > 0 && (
+                    {guide.comments && guide.comments.length > 0 && (
                          <ScrollArea className="max-h-40 w-full pr-4">
                             <div className="space-y-3">
-                                {comments.map(comment => (
-                                    <div key={comment.id} className="text-sm flex gap-2">
-                                        <p>
-                                            <Link href="#" className="font-semibold hover:underline">
+                                {guide.comments.map(comment => (
+                                    <div key={comment.id} className="text-sm flex items-start gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage src={comment.authorAvatar} />
+                                            <AvatarFallback>{comment.authorName.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <p className="bg-muted px-3 py-2 rounded-lg">
+                                            <Link href={`/profile/${comment.authorId}`} className="font-semibold hover:underline">
                                                 {comment.authorName}
                                             </Link>
-                                            : {comment.text}
+                                            {' '}
+                                            {comment.text}
                                         </p>
                                     </div>
                                 ))}

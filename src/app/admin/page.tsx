@@ -26,8 +26,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, getCountFromServer, Timestamp } from 'firebase/firestore';
-import { subMonths, format } from 'date-fns';
+import { collection, query, getCountFromServer, Timestamp, where, startAt } from 'firebase/firestore';
+import { subMonths, format, startOfToday, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const roleIcons = {
@@ -44,6 +44,13 @@ const roleVariants = {
   user: 'outline' as const,
 };
 
+const roleNames: Record<string, string> = {
+  owner: 'Dueño',
+  'co-owner': 'Co-Dueño',
+  moderator: 'Moderador',
+  user: 'Usuario',
+};
+
 
 export default function AdminPage() {
   const { _injectUser, user: currentUser, isOwner } = useAuth();
@@ -53,10 +60,28 @@ export default function AdminPage() {
 
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPosts, setTotalPosts] = useState(0);
+  const [activeUsersToday, setActiveUsersToday] = useState(0);
+  const [roleFilters, setRoleFilters] = useState<Record<string, boolean>>({
+    owner: false,
+    'co-owner': false,
+    moderator: false,
+    user: false,
+  });
 
   const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users')) : null, [firestore]);
   
   const { data: usersData, isLoading: isLoadingUsers } = useCollection(usersQuery);
+
+  const filteredUsers = useMemo(() => {
+    if (!usersData) return [];
+    const activeFilters = Object.keys(roleFilters).filter(key => roleFilters[key]);
+    if (activeFilters.length === 0) return usersData;
+    return usersData.filter(user => activeFilters.includes(user.role));
+  }, [usersData, roleFilters]);
+
+  const handleRoleFilterChange = (role: string, checked: boolean) => {
+    setRoleFilters(prev => ({ ...prev, [role]: checked }));
+  };
 
   useEffect(() => {
     if (!isOwner) {
@@ -94,6 +119,18 @@ export default function AdminPage() {
             });
             errorEmitter.emit('permission-error', contextualError);
         }
+      }
+
+      try {
+        const twentyFourHoursAgo = subDays(new Date(), 1);
+        const activeUsersQuery = query(
+          usersColl,
+          where('createdAt', '>', twentyFourHoursAgo.toISOString())
+        );
+        const activeUsersSnapshot = await getCountFromServer(activeUsersQuery);
+        setActiveUsersToday(activeUsersSnapshot.data().count);
+      } catch (error) {
+        console.error("Error fetching active users:", error);
       }
     };
     fetchCounts();
@@ -181,12 +218,12 @@ export default function AdminPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Usuarios Activos Hoy</CardTitle>
+              <CardTitle className="text-sm font-medium">Usuarios Nuevos (24h)</CardTitle>
               <AreaChart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">(Funcionalidad Próximamente)</p>
+              <div className="text-2xl font-bold">{activeUsersToday}</div>
+              <p className="text-xs text-muted-foreground">Nuevos registros en las últimas 24h</p>
             </CardContent>
           </Card>
           <Card>
@@ -255,10 +292,15 @@ export default function AdminPage() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Filtrar por rol</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuCheckboxItem>Dueño</DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem>Co-Dueño</DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem>Moderador</DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem>Usuario</DropdownMenuCheckboxItem>
+                    {Object.keys(roleNames).map(role => (
+                       <DropdownMenuCheckboxItem 
+                         key={role}
+                         checked={roleFilters[role]}
+                         onCheckedChange={(checked) => handleRoleFilterChange(role, !!checked)}
+                       >
+                         {roleNames[role]}
+                       </DropdownMenuCheckboxItem>
+                    ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -279,7 +321,7 @@ export default function AdminPage() {
                             Cargando usuarios...
                         </TableCell>
                     </TableRow>
-                  ) : usersData && usersData.length > 0 ? usersData.map((user: any) => (
+                  ) : filteredUsers && filteredUsers.length > 0 ? filteredUsers.map((user: any) => (
                     <TableRow key={user.uid}>
                       <TableCell>
                         <div className="font-medium">{user.displayName}</div>
@@ -290,7 +332,7 @@ export default function AdminPage() {
                       <TableCell className="hidden sm:table-cell">
                         <Badge variant={roleVariants[user.role as keyof typeof roleVariants] || 'outline'}>
                             {roleIcons[user.role as keyof typeof roleIcons]}
-                            {user.role}
+                            {roleNames[user.role as keyof typeof roleNames] || user.role}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

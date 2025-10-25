@@ -28,8 +28,11 @@ export interface Post {
 
 export interface UserGuideComment {
     id: string;
+    authorId: string;
     authorName: string;
+    authorAvatar?: string;
     text: string;
+    createdAt: string;
 }
 
 export interface UserGuide {
@@ -40,7 +43,7 @@ export interface UserGuide {
     title: string;
     content: string;
     createdAt: string;
-    likes: number;
+    likedBy: string[]; // Array of user UIDs
     comments: UserGuideComment[];
 }
 

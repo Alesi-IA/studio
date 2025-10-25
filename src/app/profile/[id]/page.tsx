@@ -22,7 +22,7 @@ import { UserGuideCard } from '@/components/user-guide-card';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { Progress } from '@/components/ui/progress';
 import { useFirebase, useDoc } from '@/firebase';
-import { doc, collection, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 
 
 const rankConfig = {
@@ -129,11 +129,15 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     });
     setUserPosts(myPosts);
     
-    // Fetch user guides (still from session storage for now)
-    const allGuidesJSON = sessionStorage.getItem('userGuides');
-    const allGuides = allGuidesJSON ? JSON.parse(allGuidesJSON) : [];
-    const myGuides = allGuides.filter((g: UserGuide) => g.authorId === profileUser.uid);
+    // Fetch user guides from Firestore
+    const guidesQuery = query(
+      collection(firestore, 'userGuides'),
+      where('authorId', '==', profileUser.uid)
+    );
+    const guidesSnapshot = await getDocs(guidesQuery);
+    const myGuides = guidesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserGuide));
     setUserGuides(myGuides);
+
 
     if (isOwnProfile) {
       const savedPostIds = getInitialState('savedPosts');
@@ -554,5 +558,3 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     </div>
   );
 }
-
-    

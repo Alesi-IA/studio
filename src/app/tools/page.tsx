@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Plus, Search, Trash2, SquarePen, Calendar as CalendarIcon } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, Trash2, SquarePen, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -27,6 +27,8 @@ import { useAuth } from '@/hooks/use-auth';
 import type { UserGuide } from '@/types';
 import { Textarea } from '@/components/ui/textarea';
 import { UserGuideCard } from '@/components/user-guide-card';
+import { useFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp, query, getDocs } from 'firebase/firestore';
 
 
 const guides = [
@@ -75,36 +77,11 @@ const initialTasks = [
     { id: 'task5', label: 'Rotar macetas para luz uniforme', completed: false, date: addDays(new Date(), 3) },
 ];
 
-const initialUserGuides: UserGuide[] = [
-    {
-        id: 'user-guide-1',
-        authorId: 'user-uid-2',
-        authorName: 'YerbaBuena',
-        authorAvatar: 'https://picsum.photos/seed/user-uid-2/128/128',
-        title: 'Mi método infalible para el secado lento',
-        content: 'El secreto para un buen curado empieza con un secado lento. Cuelgo las ramas enteras en un cuarto oscuro con un pequeño ventilador que NO apunte directamente a las plantas. Intento mantener la humedad alrededor del 60% y la temperatura sobre los 18°C. Tarda entre 10 y 14 días, pero la diferencia en el sabor es abismal. ¡Paciencia, cultivadores!',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        likes: 28,
-        comments: [
-            { id: 'ugc-1-1', authorName: 'Sativus', text: '¡Totalmente de acuerdo! El secado lento es la clave.' },
-            { id: 'ugc-1-2', authorName: 'Cultivador1', text: 'Gracias por el consejo, voy a probarlo en mi próxima cosecha.' },
-        ]
-    },
-    {
-        id: 'user-guide-2',
-        authorId: 'admin-uid',
-        authorName: 'Admin Canna',
-        authorAvatar: 'https://picsum.photos/seed/admin-uid/128/128',
-        title: 'Guía Rápida: Cómo hacer un Té de Compost',
-        content: 'Un té de compost es un fertilizante líquido y orgánico increíble para tus plantas. Necesitarás: un cubo de 20L, una bomba de aire de acuario, una bolsa de malla, compost de buena calidad y melaza no sulfurada. 1. Llena el cubo con agua sin cloro. 2. Pon 2 tazas de compost en la bolsa de malla y ciérrala. 3. Mete la bolsa en el agua y añade la bomba de aire para oxigenar. 4. Añade 2 cucharadas de melaza al agua. 5. Déjalo burbujear durante 24-36 horas. ¡Listo! Dilúyelo 1:10 con agua y riega tus plantas.',
-        createdAt: new Date().toISOString(),
-        likes: 55,
-        comments: []
-    }
-]
 
 export default function ToolsPage() {
     const { user, addExperience } = useAuth();
+    const { firestore } = useFirebase();
+
     const [tasks, setTasks] = useState(initialTasks);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<{id: string, label: string} | null>(null);
@@ -115,26 +92,26 @@ export default function ToolsPage() {
     
     // State for user guides
     const [userGuides, setUserGuides] = useState<UserGuide[]>([]);
+    const [isLoadingGuides, setIsLoadingGuides] = useState(true);
     const [isGuideDialogOpen, setIsGuideDialogOpen] = useState(false);
+    const [isSubmittingGuide, setIsSubmittingGuide] = useState(false);
     const [newGuideTitle, setNewGuideTitle] = useState('');
     const [newGuideContent, setNewGuideContent] = useState('');
     const [userGuideSearch, setUserGuideSearch] = useState('');
 
-    const loadUserGuides = useCallback(() => {
-        const storedGuidesJSON = sessionStorage.getItem('userGuides');
-        const storedGuides = storedGuidesJSON ? JSON.parse(storedGuidesJSON) : [];
-        const allGuides = [...storedGuides, ...initialUserGuides];
-        const uniqueGuides = allGuides.filter((guide, index, self) =>
-            index === self.findIndex((g) => g.id === guide.id)
-        );
-        const sortedGuides = uniqueGuides.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setUserGuides(sortedGuides);
-    }, []);
+    const loadUserGuides = useCallback(async () => {
+        if (!firestore) return;
+        setIsLoadingGuides(true);
+        const guidesQuery = query(collection(firestore, 'userGuides'));
+        const querySnapshot = await getDocs(guidesQuery);
+        const guidesFromDb = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserGuide));
+        guidesFromDb.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setUserGuides(guidesFromDb);
+        setIsLoadingGuides(false);
+    }, [firestore]);
 
     useEffect(() => {
         loadUserGuides();
-        window.addEventListener('storage:userGuides', loadUserGuides);
-        return () => window.removeEventListener('storage:userGuides', loadUserGuides);
     }, [loadUserGuides]);
 
     const filteredUserGuides = useMemo(() => {
@@ -148,31 +125,36 @@ export default function ToolsPage() {
     }, [userGuides, userGuideSearch]);
 
 
-    const handleSaveGuide = (e: React.FormEvent) => {
+    const handleSaveGuide = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newGuideTitle.trim() || !newGuideContent.trim() || !user) return;
+        if (!newGuideTitle.trim() || !newGuideContent.trim() || !user || !firestore) return;
 
-        const newGuide: UserGuide = {
-            id: `user-guide-${Date.now()}`,
-            authorId: user.uid,
-            authorName: user.displayName || 'Anónimo',
-            authorAvatar: user.photoURL,
-            title: newGuideTitle,
-            content: newGuideContent,
-            createdAt: new Date().toISOString(),
-            likes: 0,
-            comments: []
-        };
+        setIsSubmittingGuide(true);
         
-        addExperience(user.uid, 20); // +20 XP for writing a guide
+        try {
+            const guidesCollectionRef = collection(firestore, 'userGuides');
+            await addDoc(guidesCollectionRef, {
+                authorId: user.uid,
+                authorName: user.displayName || 'Anónimo',
+                authorAvatar: user.photoURL,
+                title: newGuideTitle,
+                content: newGuideContent,
+                createdAt: new Date().toISOString(),
+                likes: 0,
+                comments: []
+            });
 
-        const updatedGuides = [newGuide, ...userGuides];
-        sessionStorage.setItem('userGuides', JSON.stringify(updatedGuides));
-        setUserGuides(updatedGuides);
-        
-        setIsGuideDialogOpen(false);
-        setNewGuideTitle('');
-        setNewGuideContent('');
+            addExperience(user.uid, 20); // +20 XP for writing a guide
+            await loadUserGuides();
+            
+            setIsGuideDialogOpen(false);
+            setNewGuideTitle('');
+            setNewGuideContent('');
+        } catch (error) {
+            console.error("Error creating guide:", error);
+        } finally {
+            setIsSubmittingGuide(false);
+        }
     };
 
     const handleToggleTask = (taskId: string) => {
@@ -420,12 +402,17 @@ export default function ToolsPage() {
                                 </Button>
                             </div>
                              <div className="space-y-6">
-                                {filteredUserGuides.length > 0 ? (
+                                {isLoadingGuides ? (
+                                     <div className="flex items-center justify-center p-12">
+                                        <Loader2 className="h-8 w-8 animate-spin" />
+                                     </div>
+                                ) : filteredUserGuides.length > 0 ? (
                                     filteredUserGuides.map(guide => (
                                         <UserGuideCard 
                                             key={guide.id}
                                             guide={guide}
                                             currentUser={user}
+                                            onUpdate={loadUserGuides}
                                         />
                                     ))
                                 ) : (
@@ -524,9 +511,12 @@ export default function ToolsPage() {
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
-                               <Button type="button" variant="ghost">Cancelar</Button>
+                               <Button type="button" variant="ghost" disabled={isSubmittingGuide}>Cancelar</Button>
                             </DialogClose>
-                            <Button type="submit">Publicar Guía</Button>
+                            <Button type="submit" disabled={isSubmittingGuide}>
+                                {isSubmittingGuide && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Publicar Guía
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
