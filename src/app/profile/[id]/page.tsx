@@ -57,7 +57,7 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ params }: ProfilePageProps) {
-  const resolvedParams = use(Promise.resolve(params));
+  const resolvedParams = use(params);
   const { user: currentUser, loading: authLoading, logOut, addExperience } = useAuth();
   const { firestore } = useFirebase();
 
