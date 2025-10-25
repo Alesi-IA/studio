@@ -6,12 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil, Loader2 } from 'lucide-react';
+import { Settings, ShieldCheck, LogOut, MessageCircle, Heart, MessageCircle as MessageIcon, Bookmark, Send, Crown, UserCog, UserCheck, User as UserIcon, ShieldHalf, Pencil, Loader2, Library } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Post } from '@/types';
+import type { Post, UserGuide } from '@/types';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -25,6 +25,8 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { UserGuideCard } from '@/components/user-guide-card';
+
 
 const rankConfig = {
   owner: { label: 'Dueño', icon: Crown, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400' },
@@ -36,6 +38,7 @@ const rankConfig = {
 
 export default function ProfilePage() {
   const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [userGuides, setUserGuides] = useState<UserGuide[]>([]);
   const [savedPostsState, setSavedPostsState] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -84,18 +87,27 @@ export default function ProfilePage() {
 
   const loadPostsAndState = useCallback(() => {
     if (!user?.uid) return;
+    
+    // Load image posts
     const allPostsJSON = sessionStorage.getItem('mockPosts');
     const allPosts = allPostsJSON ? JSON.parse(allPostsJSON) : [];
+    const myPosts = allPosts.filter((p: Post) => p.authorId === user.uid);
+    setUserPosts(myPosts);
     
+    // Load user guides
+    const allGuidesJSON = sessionStorage.getItem('userGuides');
+    const allGuides = allGuidesJSON ? JSON.parse(allGuidesJSON) : [];
+    const myGuides = allGuides.filter((g: UserGuide) => g.authorId === user.uid);
+    setUserGuides(myGuides);
+
+    // Load saved posts
     const savedPostIds = new Set(JSON.parse(sessionStorage.getItem('savedPosts') || '[]'));
     const userSavedPosts = allPosts.filter((p: Post) => savedPostIds.has(p.id));
     setSavedPostsState(userSavedPosts);
-
+    
+    // Load liked posts
     const likedPostIds = new Set(JSON.parse(sessionStorage.getItem('likedPosts') || '[]'));
     setLikedPosts(likedPostIds);
-
-    const myPosts = allPosts.filter((p: Post) => p.authorId === user.uid);
-    setUserPosts(myPosts);
 
   }, [user?.uid]);
 
@@ -329,6 +341,10 @@ export default function ProfilePage() {
                 <p className="font-bold">{userPosts.length}</p>
                 <p className="text-sm text-muted-foreground">Publicaciones</p>
               </div>
+               <div className="text-center">
+                <p className="font-bold">{userGuides.length}</p>
+                <p className="text-sm text-muted-foreground">Guías</p>
+              </div>
               <div className="text-center">
                 <p className="font-bold">0</p>
                 <p className="text-sm text-muted-foreground">Seguidores</p>
@@ -368,8 +384,9 @@ export default function ProfilePage() {
           </Dialog>
 
         <Tabs defaultValue="posts" className="w-full">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="posts">Mis Publicaciones</TabsTrigger>
+            <TabsTrigger value="guides">Mis Guías</TabsTrigger>
             <TabsTrigger value="saved">Guardados</TabsTrigger>
             <TabsTrigger value="tagged">Etiquetados</TabsTrigger>
           </TabsList>
@@ -403,6 +420,25 @@ export default function ProfilePage() {
                     <p className="text-sm">¡Crea tu primera publicación para compartirla con la comunidad!</p>
                 </div>
             )}
+          </TabsContent>
+           <TabsContent value="guides" className="mt-6">
+              {userGuides.length > 0 ? (
+                <div className="space-y-6">
+                  {userGuides.map((guide) => (
+                    <UserGuideCard 
+                      key={guide.id}
+                      guide={guide}
+                      currentUser={user}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
+                    <Library className="h-12 w-12 mx-auto mb-4" />
+                    <p className="font-semibold">No has escrito ninguna guía</p>
+                    <p className="text-sm">¡Comparte tu conocimiento creando tu primera guía desde la pestaña de Herramientas!</p>
+                </div>
+              )}
           </TabsContent>
           <TabsContent value="saved" className="mt-6">
             {savedPostsState.length > 0 ? (
@@ -521,3 +557,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
