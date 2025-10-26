@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import type { Post } from '@/types';
 import {
   AlertDialog,
@@ -40,7 +40,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { StoryReel } from '@/components/story-reel';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 
 export default function FeedPage() {
   const { firestore } = useFirebase();
@@ -110,8 +110,9 @@ export default function FeedPage() {
         console.error("Failed to fetch posts", e)
         toast({ variant: 'destructive', title: 'Error al cargar el feed', description: 'No se pudieron obtener las publicaciones.' })
         setPosts([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchPosts();
