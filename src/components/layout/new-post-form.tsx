@@ -11,8 +11,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-
 
 interface NewPostFormProps {
   onPostCreated: () => void;
@@ -24,8 +22,8 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { user } = useAuth();
-  const { storage, firestore } = useFirebase();
+  const { user, createPost } = useAuth();
+  const { storage } = useFirebase();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +40,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !user || !storage || !firestore) {
+    if (!file || !user || !storage) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -58,27 +56,15 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
         const uploadResult = await uploadBytes(storageRef, file);
         const imageUrl = await getDownloadURL(uploadResult.ref);
 
-        // 2. Create post document in Firestore
-        const postsCollectionRef = collection(firestore, 'posts');
-        await addDoc(postsCollectionRef, {
-            authorId: user.uid,
-            authorName: user.displayName,
-            authorAvatar: user.photoURL,
-            description: description,
-            imageUrl: imageUrl,
-            createdAt: serverTimestamp(),
-            likes: 0,
-            awards: 0,
-            comments: [],
+        // 2. Create post document via AuthProvider
+        await createPost({
+            description,
+            imageUrl,
         });
-
-        // The AuthProvider will handle the XP addition via a listener or another mechanism if needed
-        // For now, we assume the action of creating a post should grant XP via a centralized logic.
-        // This decouples the component from the XP logic.
 
         toast({
             title: '¡Éxito!',
-            description: 'Tu publicación ha sido creada.',
+            description: 'Tu publicación ha sido creada (+10 XP).',
         });
         
         onPostCreated();

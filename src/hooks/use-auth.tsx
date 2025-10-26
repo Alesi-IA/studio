@@ -10,7 +10,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirebase, useDoc } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
@@ -23,6 +23,7 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
+  createPost: (postData: { description: string, imageUrl: string, width?: number, height?: number, imageHint?: string, strain?: string }) => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<CannaGrowUser | null>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
@@ -35,7 +36,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { auth, firestore, isUserLoading: isAuthServiceLoading } = useFirebase();
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
-
+  
   const userDocRef = useMemo(() => {
     if (!firestore || !firebaseUser?.uid) return null;
     return doc(firestore, 'users', firebaseUser.uid);
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname, router]);
 
-  const addExperience = useCallback(async (userId: string, amount: number) => {
+  const addExperience = useCallback(async (userId: string, amount: number): Promise<void> => {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', userId);
     try {
@@ -130,6 +131,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     router.push('/login');
   }, [auth, router]);
+
+  const createPost = useCallback(async (postData: { description: string, imageUrl: string }) => {
+    if (!user || !firestore) {
+      throw new Error('User not authenticated or Firestore not available');
+    }
+    const postsCollectionRef = collection(firestore, 'posts');
+    await addDoc(postsCollectionRef, {
+        authorId: user.uid,
+        authorName: user.displayName,
+        authorAvatar: user.photoURL,
+        ...postData,
+        createdAt: serverTimestamp(),
+        likes: 0,
+        awards: 0,
+        comments: [],
+    });
+    
+    await addExperience(user.uid, 10); // +10 XP for creating a post
+
+  }, [user, firestore, addExperience]);
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<CannaGrowUser | null> => {
     if (!user || !firestore || !firebaseUser) {
@@ -253,6 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     logIn,
     logOut,
+    createPost,
     updateUserProfile,
     followUser,
     unfollowUser,
