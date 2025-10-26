@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode, useMemo } from 'react';
 import { useToast } from './use-toast';
 import {
   type User as FirebaseUser,
@@ -36,7 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { auth, firestore, isUserLoading: isAuthServiceLoading } = useFirebase();
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
 
-  const userDocRef = firebaseUser ? doc(firestore, 'users', firebaseUser.uid) : null;
+  const userDocRef = useMemo(() => {
+    if (!firestore || !firebaseUser?.uid) return null;
+    return doc(firestore, 'users', firebaseUser.uid);
+  }, [firestore, firebaseUser?.uid]);
+  
   const { data: user, isLoading: isProfileLoading } = useDoc<CannaGrowUser>(userDocRef);
   
   const [loading, setLoading] = useState(true);
@@ -107,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     await setDoc(userDocRef, newUserProfile);
-    addExperience(createdFbUser.uid, 5); // Grant initial XP
+    await addExperience(createdFbUser.uid, 5); // Grant initial XP
     setFirebaseUser(createdFbUser); // Trigger profile fetch via useDoc
 
   }, [auth, firestore, addExperience]);
@@ -149,12 +153,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, updates);
       
-      // No need to manually refetch, useDoc will handle it.
-
       if(!updates.savedPostIds){
           toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
       }
-      return { ...user, ...updates }; // Optimistic update for immediate UI feedback
+      return { ...user, ...updates }; 
 
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -225,14 +227,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
-      // This is a temporary client-side impersonation.
-      // To make it persist across reloads would be more complex.
-      // For now, we don't update firebaseUser, just the user profile data.
-      // This is a hacky way to achieve impersonation without full auth changes.
-      // A more robust solution would use custom tokens.
       const tempUser = { ...injectedUser, uid: injectedUser.uid } as CannaGrowUser;
       
-      // Simulate a different user by creating a mock firebase user object
       const mockFirebaseUser = { 
         ...auth.currentUser, 
         uid: tempUser.uid,
