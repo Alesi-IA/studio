@@ -88,19 +88,14 @@ export default function FeedPage() {
 
           const postsQuery = query(
               collection(firestore, "posts"), 
-              where("authorId", "in", authorIdsToFetch)
+              where("authorId", "in", authorIdsToFetch),
+              orderBy("createdAt", "desc")
           );
 
           const querySnapshot = await getDocs(postsQuery);
           let fetchedPosts: Post[] = [];
           querySnapshot.forEach(doc => {
               fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
-          });
-          
-          fetchedPosts.sort((a, b) => {
-              const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-              const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-              return dateB.getTime() - dateA.getTime();
           });
 
           setPosts(fetchedPosts);
@@ -114,7 +109,7 @@ export default function FeedPage() {
     };
 
     fetchPosts();
-  }, [firestore, user?.uid, user?.followingIds, toast]);
+  }, [firestore, user?.uid, user?.followingIds]);
 
   const handleCommentChange = (postId: string, text: string) => {
     setCommentStates(prev => ({ ...prev, [postId]: text }));
