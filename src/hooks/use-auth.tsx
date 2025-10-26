@@ -40,6 +40,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { toast } = useToast();
 
+  const addExperience = useCallback(async (userId: string, amount: number) => {
+    if (!firestore) return;
+    const userDocRef = doc(firestore, 'users', userId);
+    try {
+      await updateDoc(userDocRef, {
+        experiencePoints: increment(amount)
+      });
+      // If the updated user is the current user, we need to refresh their data
+      // This is now handled centrally where user state is managed.
+      if (user && user.uid === userId && auth.currentUser) {
+        const updatedProfile = await fetchUserProfile(auth.currentUser);
+        setUser(updatedProfile);
+      }
+    } catch (error) {
+      console.error(`Failed to add ${amount}XP to user ${userId}:`, error);
+    }
+  }, [firestore, user, auth]);
+
   const fetchUserProfile = useCallback(async (firebaseUser: FirebaseUser): Promise<CannaGrowUser | null> => {
     if (!firestore) return null;
     try {
@@ -80,7 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 savedPostIds: [],
             };
             await setDoc(userDocRef, newUserProfile);
-            return newUserProfile;
+            addExperience(firebaseUser.uid, 5); // Initial XP for joining
+            return { ...newUserProfile, experiencePoints: 5 };
         }
     } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -91,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         return null;
     }
-  }, [firestore, toast]);
+  }, [firestore, toast, addExperience]);
 
 
   useEffect(() => {
@@ -158,9 +177,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     await setDoc(userDocRef, newUserProfile);
-    setUser(newUserProfile);
+    const finalProfile = await fetchUserProfile(firebaseUser); // fetches and sets the user state
+    setUser(finalProfile);
 
-  }, [auth, firestore]);
+  }, [auth, firestore, fetchUserProfile]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
     if (!auth) throw new Error("Auth service not available");
@@ -213,26 +233,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
   }, [user, firestore, auth, toast, fetchUserProfile]);
-  
-  const addExperience = useCallback(async (userId: string, amount: number) => {
-    if (!firestore) return;
-    const userDocRef = doc(firestore, 'users', userId);
-    try {
-      await updateDoc(userDocRef, {
-        experiencePoints: increment(amount)
-      });
-      // If the updated user is the current user, refresh their data
-      if (user && user.uid === userId && auth.currentUser) {
-        const updatedUser = await fetchUserProfile(auth.currentUser);
-        setUser(updatedUser);
-      }
-    } catch (error) {
-      console.error(`Failed to add ${amount}XP to user ${userId}:`, error);
-    }
-  }, [firestore, user, auth, fetchUserProfile]);
 
   const followUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore || !auth.currentUser) return;
+    if (!user || !firestore || !auth.currentUser || isFollowLoading) return;
+    setIsFollowLoading(true);
     const currentUserRef = doc(firestore, 'users', user.uid);
     const targetUserRef = doc(firestore, 'users', targetUserId);
 
@@ -243,9 +247,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw "Document does not exist!";
             }
             
-            const targetFollowers = targetDoc.data().followerIds || [];
+            const targetData = targetDoc.data();
             // Only update if the user is not already following
-            if (!targetFollowers.includes(user.uid)) {
+            if (!targetData.followerIds?.includes(user.uid)) {
                 // Add target to current user's following list
                 transaction.update(currentUserRef, {
                     followingIds: arrayUnion(targetUserId),
@@ -265,11 +269,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
+    } finally {
+        setIsFollowLoading(false);
     }
   }, [user, firestore, toast, auth, fetchUserProfile]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore || !auth.currentUser) return;
+    if (!user || !firestore || !auth.currentUser || isFollowLoading) return;
+    setIsFollowLoading(true);
     const currentUserRef = doc(firestore, 'users', user.uid);
     const targetUserRef = doc(firestore, 'users', targetUserId);
     
@@ -280,9 +287,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw "Document does not exist!";
             }
 
-            const targetFollowers = targetDoc.data().followerIds || [];
+            const targetData = targetDoc.data();
             // Only update if the user is currently following
-            if (targetFollowers.includes(user.uid)) {
+            if (targetData.followerIds?.includes(user.uid)) {
                 // Remove target from current user's following list
                 transaction.update(currentUserRef, {
                     followingIds: arrayRemove(targetUserId),
@@ -302,6 +309,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
+    } finally {
+        setIsFollowLoading(false);
     }
   }, [user, firestore, toast, auth, fetchUserProfile]);
 
@@ -312,6 +321,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
        toast({ variant: 'destructive', title: 'No autorizado', description: 'Solo los dueños pueden suplantar a otros usuarios.' });
     }
   }, [user, toast]);
+  
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
   const value = {
     user,

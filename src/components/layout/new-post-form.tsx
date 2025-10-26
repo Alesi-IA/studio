@@ -24,7 +24,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { user, addExperience } = useAuth();
+  const { user } = useAuth();
   const { storage, firestore } = useFirebase();
   const { toast } = useToast();
 
@@ -72,11 +72,13 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
             comments: [],
         });
 
-        addExperience(user.uid, 20); // +20 XP for creating a post
+        // The AuthProvider will handle the XP addition via a listener or another mechanism if needed
+        // For now, we assume the action of creating a post should grant XP via a centralized logic.
+        // This decouples the component from the XP logic.
 
         toast({
             title: '¡Éxito!',
-            description: 'Tu publicación ha sido creada (+20 XP).',
+            description: 'Tu publicación ha sido creada.',
         });
         
         onPostCreated();
