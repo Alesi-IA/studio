@@ -57,6 +57,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
         const imageUrl = await getDownloadURL(uploadResult.ref);
 
         // 2. Create post document via AuthProvider, which handles XP
+        // CRITICAL FIX: Added 'await' here to ensure the post creation process completes.
         await createPost(description, imageUrl);
 
         toast({

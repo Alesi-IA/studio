@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await addExperience(user.uid, 10);
 
-  }, [user?.uid, user?.displayName, user?.photoURL, firestore, addExperience]);
+  }, [user, firestore, addExperience]);
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<CannaGrowUser | null> => {
     if (!user || !firestore || !firebaseUser) {
@@ -219,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
     }
-  }, [user?.uid, firestore, toast]);
+  }, [user, firestore, toast]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
     }
-  }, [user?.uid, firestore, toast]);
+  }, [user, firestore, toast]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
