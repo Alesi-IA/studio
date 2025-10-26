@@ -57,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [auth]);
 
   useEffect(() => {
-    // Determine final loading state only after both auth and profile are resolved
     const finalLoadingState = isAuthServiceLoading || isProfileLoading;
     setLoading(finalLoadingState);
 
@@ -115,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     await setDoc(userDocRef, newUserProfile);
-    await addExperience(createdFbUser.uid, 5); // Grant initial XP
+    await addExperience(createdFbUser.uid, 5);
     setFirebaseUser(createdFbUser);
 
   }, [auth, firestore, addExperience]);
@@ -155,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await addExperience(user.uid, 10);
 
-  }, [user, firestore, addExperience]);
+  }, [user?.uid, user?.displayName, user?.photoURL, firestore, addExperience]);
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<CannaGrowUser | null> => {
     if (!user || !firestore || !firebaseUser) {
@@ -220,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user?.uid, firestore, toast]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -249,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user?.uid, firestore, toast]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
@@ -268,7 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
        toast({ variant: 'destructive', title: 'No autorizado', description: 'Solo los dueños pueden suplantar a otros usuarios.' });
     }
-  }, [user, toast, auth]);
+  }, [user?.role, toast, auth]);
   
 
   const value = {
