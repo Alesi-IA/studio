@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirebase, useDoc } from '@/firebase';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { auth, firestore, isUserLoading: isAuthServiceLoading } = useFirebase();
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
   
-  const userDocRef = useMemo(() => {
+  const userDocRef = useMemoFirebase(() => {
     if (!firestore || !firebaseUser?.uid) return null;
     return doc(firestore, 'users', firebaseUser.uid);
   }, [firestore, firebaseUser?.uid]);
@@ -142,8 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await addDoc(postsCollectionRef, {
         authorId: user.uid,
-        authorName: user.displayName,
-        authorAvatar: user.photoURL,
+        authorName: user.displayName, // Use user from state, which is guaranteed to be loaded here
+        authorAvatar: user.photoURL, // Same as above
         description,
         imageUrl,
         createdAt: serverTimestamp(),
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await addExperience(user.uid, 10);
 
-  }, [user, firestore, addExperience]);
+  }, [firestore, addExperience, user]);
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<CannaGrowUser | null> => {
     if (!user || !firestore || !firebaseUser) {
