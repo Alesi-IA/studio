@@ -10,7 +10,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
@@ -23,7 +23,6 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  createPost: (description: string, imageUrl: string) => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<CannaGrowUser | null>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
@@ -134,28 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   }, [auth, router]);
 
-  const createPost = useCallback(async (description: string, imageUrl: string) => {
-    if (!user || !firestore) {
-      throw new Error('User not authenticated or Firestore not available');
-    }
-    const postsCollectionRef = collection(firestore, 'posts');
-    
-    await addDoc(postsCollectionRef, {
-        authorId: user.uid,
-        authorName: user.displayName,
-        authorAvatar: user.photoURL,
-        description,
-        imageUrl,
-        createdAt: serverTimestamp(),
-        likes: 0,
-        awards: 0,
-        comments: [],
-    });
-    
-    await addExperience(user.uid, 10);
-
-  }, [firestore, addExperience, user?.uid, user?.displayName, user?.photoURL]);
-
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<CannaGrowUser | null> => {
     if (!firebaseUser || !firestore) {
        toast({ variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión para actualizar tu perfil.' });
@@ -189,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
       return null;
     }
-  }, [firebaseUser, firestore, toast]);
+  }, [firebaseUser, firestore, toast, user]);
 
   const followUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -279,7 +256,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     logIn,
     logOut,
-    createPost,
     updateUserProfile,
     followUser,
     unfollowUser,

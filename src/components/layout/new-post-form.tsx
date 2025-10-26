@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface NewPostFormProps {
   onPostCreated: () => void;
@@ -22,8 +23,8 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { user, createPost } = useAuth();
-  const { storage } = useFirebase();
+  const { user, addExperience } = useAuth();
+  const { storage, firestore } = useFirebase();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,7 +41,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !user || !storage) {
+    if (!file || !user || !storage || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -51,18 +52,34 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
     setLoading(true);
     
     try {
-        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
-        const uploadResult = await uploadBytes(storageRef, file);
-        const imageUrl = await getDownloadURL(uploadResult.ref);
+      // 1. Upload image to Firebase Storage
+      const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
+      const uploadResult = await uploadBytes(storageRef, file);
+      const imageUrl = await getDownloadURL(uploadResult.ref);
 
-        await createPost(description, imageUrl);
+      // 2. Create post document in Firestore
+      const postsCollectionRef = collection(firestore, 'posts');
+      await addDoc(postsCollectionRef, {
+          authorId: user.uid,
+          authorName: user.displayName,
+          authorAvatar: user.photoURL,
+          description: description,
+          imageUrl: imageUrl,
+          createdAt: serverTimestamp(),
+          likes: 0,
+          awards: 0,
+          comments: [],
+      });
+      
+      // 3. Add experience points
+      await addExperience(user.uid, 10);
 
-        toast({
-            title: '¡Éxito!',
-            description: 'Tu publicación ha sido creada (+10 XP).',
-        });
-        
-        onPostCreated();
+      toast({
+          title: '¡Éxito!',
+          description: 'Tu publicación ha sido creada (+10 XP).',
+      });
+      
+      onPostCreated();
 
     } catch (error) {
         console.error("Error creating post:", error);
