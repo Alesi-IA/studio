@@ -10,7 +10,8 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
@@ -26,14 +27,15 @@ interface AuthContextType {
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<CannaGrowUser | null>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
-  _injectUser: (user: CannaGrowUser) => void;
+  createPost: (description: string, imageAsDataUrl: string) => Promise<void>;
   addExperience: (userId: string, amount: number) => Promise<void>;
+  _injectUser: (user: CannaGrowUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore, isUserLoading: isAuthServiceLoading } = useFirebase();
+  const { auth, firestore, storage, isUserLoading: isAuthServiceLoading } = useFirebase();
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
   
   const userDocRef = useMemoFirebase(() => {
@@ -228,6 +230,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, firestore, toast]);
 
+   const createPost = useCallback(async (description: string, imageAsDataUrl: string) => {
+    if (!user || !storage || !firestore) {
+      throw new Error('User not authenticated or services not available');
+    }
+
+    // 1. Upload image to Firebase Storage from data URL
+    const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}`);
+    const uploadResult = await uploadString(storageRef, imageAsDataUrl, 'data_url');
+    const imageUrl = await getDownloadURL(uploadResult.ref);
+    
+    // 2. Create post document in Firestore
+    const postsCollectionRef = collection(firestore, 'posts');
+    await addDoc(postsCollectionRef, {
+        authorId: user.uid,
+        authorName: user.displayName, // Use the fresh user data from the hook's state
+        authorAvatar: user.photoURL,  // Use the fresh user data from the hook's state
+        description: description,
+        imageUrl: imageUrl,
+        createdAt: serverTimestamp(),
+        likes: 0,
+        awards: 0,
+        comments: [],
+    });
+    
+    // 3. Add experience points
+    await addExperience(user.uid, 10);
+  }, [user, storage, firestore, addExperience]);
+
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
     if (user?.role === 'owner') {
       const tempUser = { ...injectedUser, uid: injectedUser.uid } as CannaGrowUser;
@@ -259,8 +289,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUserProfile,
     followUser,
     unfollowUser,
-    _injectUser,
+    createPost,
     addExperience,
+    _injectUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -9,28 +9,22 @@ import { Loader2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase } from '@/firebase';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface NewPostFormProps {
   onPostCreated: () => void;
 }
 
 export function NewPostForm({ onPostCreated }: NewPostFormProps) {
-  const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { user, addExperience } = useAuth();
-  const { storage, firestore } = useFirebase();
+  const { user, createPost } = useAuth();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      setFile(selectedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
@@ -41,7 +35,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !user || !storage || !firestore) {
+    if (!previewUrl || !user) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -52,28 +46,9 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
     setLoading(true);
     
     try {
-      // 1. Upload image to Firebase Storage
-      const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
-      const uploadResult = await uploadBytes(storageRef, file);
-      const imageUrl = await getDownloadURL(uploadResult.ref);
-
-      // 2. Create post document in Firestore
-      const postsCollectionRef = collection(firestore, 'posts');
-      await addDoc(postsCollectionRef, {
-          authorId: user.uid,
-          authorName: user.displayName,
-          authorAvatar: user.photoURL,
-          description: description,
-          imageUrl: imageUrl,
-          createdAt: serverTimestamp(),
-          likes: 0,
-          awards: 0,
-          comments: [],
-      });
+      // The createPost function now handles the entire upload and db write process
+      await createPost(description, previewUrl);
       
-      // 3. Add experience points
-      await addExperience(user.uid, 10);
-
       toast({
           title: '¡Éxito!',
           description: 'Tu publicación ha sido creada (+10 XP).',
@@ -118,7 +93,7 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
           className="min-h-[100px] resize-none"
         />
       </div>
-      <Button type="submit" disabled={!file || loading}>
+      <Button type="submit" disabled={!previewUrl || loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {loading ? 'Publicando...' : 'Publicar'}
       </Button>
