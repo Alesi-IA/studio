@@ -20,24 +20,26 @@ import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserGuideCard } from '@/components/user-guide-card';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
-import { Progress } from '@/components/ui/progress';
+import { XpRankDisplay } from '@/components/xp-rank-display';
 import { useFirebase, useDoc } from '@/firebase';
 import { doc, collection, query, where, getDocs, updateDoc, arrayUnion, getDoc, runTransaction, increment } from 'firebase/firestore';
 
 
-const rankConfig = {
-  0: { label: 'Brote', icon: Sprout, color: 'text-green-400', badgeClass: 'bg-green-500/10 border-green-500 text-green-400', minXP: 0, maxXP: 19 },
-  1: { label: 'Aprendiz', icon: Wheat, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400', minXP: 20, maxXP: 99 },
-  2: { label: 'Cultivador', icon: Grape, color: 'text-purple-400', badgeClass: 'bg-purple-500/10 border-purple-500 text-purple-400', minXP: 100, maxXP: 299 },
-  3: { label: 'Experto', icon: Award, color: 'text-blue-400', badgeClass: 'bg-blue-500/10 border-blue-500 text-blue-400', minXP: 300, maxXP: 999 },
-  4: { label: 'Maestro', icon: Award, color: 'text-orange-400', badgeClass: 'bg-orange-500/10 border-orange-500 text-orange-400', minXP: 1000, maxXP: Infinity },
+export const rankConfig = {
+  0: { rankId: 0, label: 'Brote', icon: Sprout, color: 'text-green-400', badgeClass: 'bg-green-500/10 border-green-500 text-green-400', minXP: 0, maxXP: 19, leafColor: 'fill-green-500' },
+  1: { rankId: 1, label: 'Aprendiz', icon: Wheat, color: 'text-yellow-400', badgeClass: 'bg-yellow-500/10 border-yellow-500 text-yellow-400', minXP: 20, maxXP: 99, leafColor: 'fill-yellow-500' },
+  2: { rankId: 2, label: 'Cultivador', icon: Grape, color: 'text-purple-400', badgeClass: 'bg-purple-500/10 border-purple-500 text-purple-400', minXP: 100, maxXP: 299, leafColor: 'fill-orange-500' },
+  3: { rankId: 3, label: 'Experto', icon: Award, color: 'text-blue-400', badgeClass: 'bg-blue-500/10 border-blue-500 text-blue-400', minXP: 300, maxXP: 999, leafColor: 'fill-red-500' },
+  4: { rankId: 4, label: 'Maestro', icon: Award, color: 'text-orange-400', badgeClass: 'bg-orange-500/10 border-orange-500 text-orange-400', minXP: 1000, maxXP: Infinity, leafColor: 'fill-purple-500' },
 };
 
 const ownerRank = {
+    rankId: 5,
     label: 'Dueño',
     icon: Crown,
     color: 'text-yellow-400',
     badgeClass: 'bg-yellow-500/20 border-yellow-500 text-yellow-400',
+    leafColor: 'fill-yellow-400'
 }
 
 const getRank = (user: CannaGrowUser | null) => {
@@ -81,11 +83,6 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const isFollowing = useMemo(() => currentUser?.followingIds?.includes(resolvedParams.id) || false, [currentUser, resolvedParams.id]);
   
   const rank = useMemo(() => getRank(profileUser), [profileUser]);
-
-  const xpForNextRank = 'maxXP' in rank && rank.maxXP !== Infinity ? rank.maxXP + 1 : ('minXP' in rank ? rank.minXP : 0);
-  const xpProgress = 'minXP' in rank ? Math.max(0, (profileUser?.experiencePoints || 0) - rank.minXP) : 0;
-  const xpNeeded = 'minXP' in rank && 'maxXP' in rank && rank.maxXP !== Infinity ? Math.max(1, xpForNextRank - rank.minXP) : 1;
-  const progressPercentage = (xpProgress / xpNeeded) * 100;
 
   useEffect(() => {
     // Initialize liked posts from sessionStorage on client mount
@@ -263,6 +260,9 @@ export default function ProfilePage({ params }: ProfilePageProps) {
         </div>
     );
   }
+  
+  const currentRank = getRank(profileUser);
+  const xpForNextRank = 'maxXP' in currentRank && currentRank.maxXP !== Infinity ? currentRank.maxXP + 1 : ('minXP' in currentRank ? currentRank.minXP : 0);
 
   return (
     <div className="w-full">
@@ -358,11 +358,14 @@ export default function ProfilePage({ params }: ProfilePageProps) {
             </div>
 
             {profileUser.role !== 'owner' && (
-                 <div className="pt-2 max-w-prose mx-auto md:mx-0">
-                    <p className="text-sm text-muted-foreground">
+                <div className="pt-2 max-w-xs mx-auto md:mx-0">
+                    <p className="text-sm text-muted-foreground text-center md:text-left mb-2">
                         Progreso al siguiente rango: {(profileUser.experiencePoints || 0)} / {xpForNextRank} XP
                     </p>
-                    <Progress value={progressPercentage} className="h-2 mt-1" />
+                    <XpRankDisplay
+                        currentXp={profileUser.experiencePoints || 0}
+                        rankId={currentRank.rankId}
+                    />
                 </div>
             )}
 
