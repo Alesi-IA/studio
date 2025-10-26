@@ -69,52 +69,52 @@ export default function FeedPage() {
     }
   }, []);
 
-  const fetchPosts = useCallback(async () => {
-    if (!firestore || !user) {
-      setLoading(false);
-      return;
-    };
-    setLoading(true);
-
-    try {
-        const authorIdsToFetch = [...(user.followingIds || []), user.uid];
-        
-        if (authorIdsToFetch.length === 0) {
-            setPosts([]);
-            setLoading(false);
-            return;
-        }
-
-        const postsQuery = query(
-            collection(firestore, "posts"), 
-            where("authorId", "in", authorIdsToFetch)
-        );
-
-        const querySnapshot = await getDocs(postsQuery);
-        let fetchedPosts: Post[] = [];
-        querySnapshot.forEach(doc => {
-            fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
-        });
-        
-        fetchedPosts.sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-            return dateB.getTime() - dateA.getTime();
-        });
-
-        setPosts(fetchedPosts);
-
-    } catch(e) {
-      console.error("Failed to fetch posts", e)
-      toast({ variant: 'destructive', title: 'Error al cargar el feed', description: 'No se pudieron obtener las publicaciones.' })
-      setPosts([]);
-    }
-    setLoading(false);
-  }, [firestore, user, toast]);
-
   useEffect(() => {
+    const fetchPosts = async () => {
+      if (!firestore || !user) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+
+      try {
+          const authorIdsToFetch = [...(user.followingIds || []), user.uid];
+          
+          if (authorIdsToFetch.length === 0) {
+              setPosts([]);
+              setLoading(false);
+              return;
+          }
+
+          const postsQuery = query(
+              collection(firestore, "posts"), 
+              where("authorId", "in", authorIdsToFetch)
+          );
+
+          const querySnapshot = await getDocs(postsQuery);
+          let fetchedPosts: Post[] = [];
+          querySnapshot.forEach(doc => {
+              fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
+          });
+          
+          fetchedPosts.sort((a, b) => {
+              const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+              const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+              return dateB.getTime() - dateA.getTime();
+          });
+
+          setPosts(fetchedPosts);
+
+      } catch(e) {
+        console.error("Failed to fetch posts", e)
+        toast({ variant: 'destructive', title: 'Error al cargar el feed', description: 'No se pudieron obtener las publicaciones.' })
+        setPosts([]);
+      }
+      setLoading(false);
+    };
+
     fetchPosts();
-  }, [fetchPosts]);
+  }, [firestore, user?.uid, user?.followingIds, toast]);
 
   const handleCommentChange = (postId: string, text: string) => {
     setCommentStates(prev => ({ ...prev, [postId]: text }));
