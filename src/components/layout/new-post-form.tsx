@@ -51,12 +51,10 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
     setLoading(true);
     
     try {
-        // 1. Upload image to Firebase Storage
         const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
         const uploadResult = await uploadBytes(storageRef, file);
         const imageUrl = await getDownloadURL(uploadResult.ref);
 
-        // 2. Create post document via AuthProvider, which handles XP
         await createPost(description, imageUrl);
 
         toast({

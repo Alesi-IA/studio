@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [auth]);
 
   useEffect(() => {
-    const finalLoadingState = isAuthServiceLoading || isProfileLoading;
+    const finalLoadingState = isAuthServiceLoading || (auth.currentUser != null && isProfileLoading);
     setLoading(finalLoadingState);
 
     if (finalLoadingState) return;
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (!user && !isPublicRoute) {
       router.push('/login');
     }
-  }, [user, isAuthServiceLoading, isProfileLoading, pathname, router]);
+  }, [user, isAuthServiceLoading, isProfileLoading, pathname, router, auth.currentUser]);
 
   const addExperience = useCallback(async (userId: string, amount: number): Promise<void> => {
     if (!firestore) return;
@@ -142,8 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await addDoc(postsCollectionRef, {
         authorId: user.uid,
-        authorName: user.displayName, // Use user from state, which is guaranteed to be loaded here
-        authorAvatar: user.photoURL, // Same as above
+        authorName: user.displayName,
+        authorAvatar: user.photoURL,
         description,
         imageUrl,
         createdAt: serverTimestamp(),
@@ -154,20 +154,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await addExperience(user.uid, 10);
 
-  }, [firestore, addExperience, user]);
+  }, [firestore, addExperience, user?.uid, user?.displayName, user?.photoURL]);
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<CannaGrowUser | null> => {
-    if (!user || !firestore || !firebaseUser) {
+    if (!firebaseUser || !firestore) {
        toast({ variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión para actualizar tu perfil.' });
        return null;
     };
     
     try {
       const authUpdates: { displayName?: string; photoURL?: string } = {};
-      if (updates.displayName && updates.displayName !== user.displayName) {
+      if (updates.displayName) {
         authUpdates.displayName = updates.displayName;
       }
-      if (updates.photoURL && updates.photoURL !== user.photoURL) {
+      if (updates.photoURL) {
         authUpdates.photoURL = updates.photoURL;
       }
 
@@ -175,20 +175,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updateProfile(firebaseUser, authUpdates);
       }
 
-      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDocRef = doc(firestore, 'users', firebaseUser.uid);
       await updateDoc(userDocRef, updates);
       
       if(!updates.savedPostIds){
           toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
       }
-      return { ...user, ...updates }; 
+      // The useDoc hook will automatically update the local 'user' state
+      return user; 
 
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
       return null;
     }
-  }, [user, firestore, firebaseUser, toast]);
+  }, [firebaseUser, firestore, toast]);
 
   const followUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
