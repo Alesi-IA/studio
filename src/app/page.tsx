@@ -71,7 +71,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     const fetchPosts = async () => {
-      if (!firestore || !user) {
+      if (!firestore || !user?.uid) {
         setLoading(false);
         return;
       }
@@ -88,14 +88,20 @@ export default function FeedPage() {
 
           const postsQuery = query(
               collection(firestore, "posts"), 
-              where("authorId", "in", authorIdsToFetch),
-              orderBy("createdAt", "desc")
+              where("authorId", "in", authorIdsToFetch)
           );
 
           const querySnapshot = await getDocs(postsQuery);
           let fetchedPosts: Post[] = [];
           querySnapshot.forEach(doc => {
               fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
+          });
+          
+          // Sort posts on the client-side
+          fetchedPosts.sort((a, b) => {
+              const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+              const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+              return dateB - dateA;
           });
 
           setPosts(fetchedPosts);
@@ -344,10 +350,10 @@ export default function FeedPage() {
                       <Image
                         src={post.imageUrl}
                         alt={post.description}
-                        className="w-full h-auto object-cover"
-                        data-ai-hint={post.imageHint}
                         width={post.width || 800}
                         height={post.height || 1000}
+                        className="w-full h-auto object-cover"
+                        data-ai-hint={post.imageHint}
                       />
                   </CardContent>
                   <CardFooter className="flex-col items-start gap-4 p-4">
