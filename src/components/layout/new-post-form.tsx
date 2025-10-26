@@ -56,11 +56,8 @@ export function NewPostForm({ onPostCreated }: NewPostFormProps) {
         const uploadResult = await uploadBytes(storageRef, file);
         const imageUrl = await getDownloadURL(uploadResult.ref);
 
-        // 2. Create post document via AuthProvider
-        await createPost({
-            description,
-            imageUrl,
-        });
+        // 2. Create post document via AuthProvider, which handles XP
+        await createPost(description, imageUrl);
 
         toast({
             title: '¡Éxito!',
