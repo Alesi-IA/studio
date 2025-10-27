@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
@@ -9,7 +10,8 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
@@ -22,6 +24,7 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
+  createPost: (description: string, imageUri: string) => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
@@ -120,27 +123,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     router.push('/login');
   }, [auth, router]);
+  
+  const createPost = useCallback(async (description: string, imageUri: string) => {
+    if (!user || !storage || !firestore) {
+      throw new Error('User not authenticated or Firebase services not available.');
+    }
+  
+    // 1. Convert Data URI to Blob for upload
+    const fetchRes = await fetch(imageUri);
+    const blob = await fetchRes.blob();
+    const file = new File([blob], `post-${Date.now()}.jpg`, { type: blob.type });
+
+    // 2. Upload image to Firebase Storage
+    const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
+    const uploadResult = await uploadBytesResumable(storageRef, file);
+    const permanentImageUrl = await getDownloadURL(uploadResult.ref);
+
+    // 3. Create post document in Firestore
+    const postsCollectionRef = collection(firestore, 'posts');
+    await addDoc(postsCollectionRef, {
+        authorId: user.uid,
+        authorName: user.displayName,
+        authorAvatar: user.photoURL,
+        description: description,
+        imageUrl: permanentImageUrl,
+        createdAt: serverTimestamp(),
+        likes: 0,
+        awards: 0,
+        comments: [],
+    });
+
+    // 4. Add experience points
+    await addExperience(user.uid, 10);
+      
+  }, [user, storage, firestore, addExperience]);
+
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<void> => {
-    if (!firebaseUser || !firestore) {
+    if (!user || !firestore || !auth.currentUser) {
        toast({ variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión para actualizar tu perfil.' });
        return;
     };
     
     try {
       const authUpdates: { displayName?: string; photoURL?: string } = {};
-      if (updates.displayName && updates.displayName !== firebaseUser.displayName) {
+      if (updates.displayName && updates.displayName !== auth.currentUser.displayName) {
         authUpdates.displayName = updates.displayName;
       }
-      if (updates.photoURL && updates.photoURL !== firebaseUser.photoURL) {
+      if (updates.photoURL && updates.photoURL !== auth.currentUser.photoURL) {
         authUpdates.photoURL = updates.photoURL;
       }
 
       if (Object.keys(authUpdates).length > 0) {
-        await updateProfile(firebaseUser, authUpdates);
+        await updateProfile(auth.currentUser, authUpdates);
       }
 
-      const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+      const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, updates);
       
       // Do not toast for silent updates like saving a post
@@ -151,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error updating profile:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
     }
-  }, [firebaseUser, firestore, toast]);
+  }, [user, firestore, auth, toast]);
 
   const followUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -179,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
     }
-  }, [user?.uid, firestore, toast]);
+  }, [user, firestore, toast]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -202,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
     }
-  }, [user?.uid, firestore, toast]);
+  }, [user, firestore, toast]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
       // This is a mock implementation for admin impersonation.
@@ -220,6 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     logIn,
     logOut,
+    createPost,
     updateUserProfile,
     followUser,
     unfollowUser,
