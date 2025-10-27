@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
@@ -217,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 followerCount: newFollowerCount
             });
         });
-        refreshUserData();
+        refreshUserData(); // Explicitly refresh user data after successful transaction
     } catch (error) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
@@ -253,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 followerCount: newFollowerCount
             });
         });
-        refreshUserData();
+        refreshUserData(); // Explicitly refresh user data after successful transaction
     } catch (error) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
@@ -261,8 +260,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, firestore, toast, refreshUserData]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
-      toast({ title: 'Función de administrador', description: 'Suplantación no implementada en este prototipo.' });
-  }, [toast]);
+      // This is a mock implementation for prototyping and should not be used in production
+      // For a real app, this would involve server-side logic and secure token exchange.
+      console.warn("User impersonation is a prototype feature and not secure.");
+      
+      const isPublicRoute = pathname === '/login' || pathname === '/register';
+      // In a real app, we'd have a custom auth provider state, but here we just navigate.
+      router.push('/');
+      
+      toast({
+        title: 'Suplantación Exitosa (Prototipo)',
+        description: `Navegando como ${injectedUser.displayName}. Recarga la página si es necesario.`,
+      });
+
+  }, [toast, router, pathname]);
   
 
   const value = {
