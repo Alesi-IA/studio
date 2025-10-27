@@ -5,19 +5,25 @@ import { googleAI } from '@genkit-ai/google-genai';
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Load environment variables from .env file
+// Load environment variables from .env file BEFORE initializing Genkit.
+// This is critical for the googleAI() plugin to pick up the GEMINI_API_KEY.
 config();
 
 // In Genkit v1, you configure plugins when you call `genkit()`.
-// For server-side usage in Next.js, we only need the model provider.
+// This is the simplest, most robust configuration for server-side Next.js usage.
 export const ai = genkit({
   plugins: [googleAI()],
-  enableTracingAndMetrics: true,
 });
 
-function isApiKeyConfigured() {
+/**
+ * Checks if the Gemini API key is configured correctly in the environment variables.
+ * It verifies that the key exists and is not the placeholder value.
+ * @returns {boolean} True if the API key is configured, false otherwise.
+ */
+function isApiKeyConfigured(): boolean {
     const key = process.env.GEMINI_API_KEY;
-    return !!key && key.length > 0 && key !== 'AIzaSyC0s9umzyIGVi3yCPpaKCM7stWyQW3McZM';
+    // Check if the key exists, is not empty, and is not the default placeholder key.
+    return !!key && key.length > 0 && !key.startsWith('AIzaSyC');
 }
 
 export { isApiKeyConfigured };
