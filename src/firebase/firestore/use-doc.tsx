@@ -1,13 +1,12 @@
-
 'use client';
     
 import { useState, useEffect, useCallback } from 'react';
 import {
-  DocumentReference,
+  type DocumentReference,
   onSnapshot,
-  DocumentData,
-  FirestoreError,
-  DocumentSnapshot,
+  type DocumentData,
+  type FirestoreError,
+  type DocumentSnapshot,
   getDoc,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
