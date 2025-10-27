@@ -13,7 +13,6 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
     return { data: null, error: NO_API_KEY_ERROR };
   }
   
-  // We only validate that we receive a string.
   const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
   
   if (!validatedInput.success) {
@@ -23,6 +22,7 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
 
   try {
     const { output } = await ai.generate({
+      model: 'googleai/gemini-1.5-flash',
       prompt: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
 
 TODA tu respuesta debe ser en español.
@@ -30,7 +30,6 @@ TODA tu respuesta debe ser en español.
 Responde en formato JSON.
 
 {{media url=photoDataUri}}`,
-      model: 'googleai/gemini-1.5-flash',
       output: {
         schema: AnalyzePlantOutputSchema,
       },

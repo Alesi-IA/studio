@@ -25,9 +25,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
-import { useFirebase, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, getCountFromServer, Timestamp, where, startAt } from 'firebase/firestore';
-import { subMonths, format, startOfToday, subDays } from 'date-fns';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, getCountFromServer, Timestamp, where } from 'firebase/firestore';
+import { subMonths, format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const roleIcons = {
@@ -99,26 +99,14 @@ export default function AdminPage() {
         const userSnapshot = await getCountFromServer(usersColl);
         setTotalUsers(userSnapshot.data().count);
       } catch (error: any) {
-        if (error.code === 'permission-denied') {
-          const contextualError = new FirestorePermissionError({
-            operation: 'list', // getCountFromServer is a 'list' like operation for rules
-            path: usersColl.path,
-          });
-          errorEmitter.emit('permission-error', contextualError);
-        }
+        console.error("Error fetching total users:", error);
       }
       
       try {
         const postSnapshot = await getCountFromServer(postsColl);
         setTotalPosts(postSnapshot.data().count);
       } catch (error: any) {
-        if (error.code === 'permission-denied') {
-            const contextualError = new FirestorePermissionError({
-                operation: 'list',
-                path: postsColl.path,
-            });
-            errorEmitter.emit('permission-error', contextualError);
-        }
+        console.error("Error fetching total posts:", error);
       }
 
       try {
@@ -148,13 +136,13 @@ export default function AdminPage() {
     if (usersData) {
         usersData.forEach(user => {
             if (user.createdAt) {
-                let userDate;
+                let userDate: Date;
                 if (user.createdAt instanceof Timestamp) {
                   userDate = user.createdAt.toDate();
                 } else if (typeof user.createdAt === 'string') {
                   userDate = new Date(user.createdAt);
                 } else {
-                  return;
+                  return; // Skip if createdAt is not a recognizable format
                 }
                 const monthName = format(userDate, 'MMM', { locale: es });
                 const monthIndex = months.findIndex(m => m.name.toLowerCase() === monthName.toLowerCase());

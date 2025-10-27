@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -8,7 +7,7 @@ import { Plus } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useFirebase } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import type { CannaGrowUser } from '@/types';
 import Link from 'next/link';
 import { Skeleton } from './ui/skeleton';
@@ -61,7 +60,7 @@ export function StoryReel() {
       }
       setLoading(true);
       try {
-        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+        const twentyFourHoursAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
 
         const userPromises = user.followingIds.map(async (id) => {
             const userDoc = await getDoc(doc(firestore, 'users', id));
@@ -69,31 +68,22 @@ export function StoryReel() {
             
             const userData = userDoc.data() as CannaGrowUser;
 
-            // CORRECTED, SIMPLIFIED QUERY: Fetch posts by author without ordering.
             const postsQuery = query(
                 collection(firestore, "posts"), 
-                where("authorId", "==", id)
+                where("authorId", "==", id),
+                where("createdAt", ">", twentyFourHoursAgo),
+                orderBy("createdAt", "desc"),
+                limit(1)
             );
             const postsSnapshot = await getDocs(postsQuery);
             
-            let hasRecentStory = false;
-            if (!postsSnapshot.empty) {
-                // Check on the client-side if any post is recent.
-                hasRecentStory = postsSnapshot.docs.some(doc => {
-                    const postData = doc.data();
-                    if (postData.createdAt) {
-                        const postTimestamp = postData.createdAt.toDate().getTime();
-                        return postTimestamp > twentyFourHoursAgo;
-                    }
-                    return false;
-                });
-            }
+            const hasRecentStory = !postsSnapshot.empty;
             
             return { ...userData, hasStory: hasRecentStory };
         });
 
         const users = (await Promise.all(userPromises)).filter(Boolean) as Array<CannaGrowUser & { hasStory: boolean }>;
-        // Sort to show users with stories first
+        
         users.sort((a, b) => (b.hasStory ? 1 : 0) - (a.hasStory ? 1 : 0));
         setFollowingWithStories(users);
 

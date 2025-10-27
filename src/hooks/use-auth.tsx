@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useToast } from './use-toast';
 import {
   type User as FirebaseUser,
@@ -10,7 +9,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
@@ -24,7 +23,7 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<CannaGrowUser | null>;
+  updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
   createPost: (description: string, imageAsDataUrl: string) => Promise<void>;
@@ -35,8 +34,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, firestore, storage, isUserLoading: isAuthServiceLoading } = useFirebase();
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
+  const { auth, firestore, storage, user: firebaseUser, isUserLoading: isAuthServiceLoading } = useFirebase();
   
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !firebaseUser?.uid) return null;
@@ -50,15 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { toast } = useToast();
 
-   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((fbUser) => {
-      setFirebaseUser(fbUser);
-    });
-    return () => unsubscribe();
-  }, [auth]);
-
   useEffect(() => {
-    const finalLoadingState = isAuthServiceLoading || (auth.currentUser != null && isProfileLoading);
+    const finalLoadingState = isAuthServiceLoading || (firebaseUser != null && isProfileLoading);
     setLoading(finalLoadingState);
 
     if (finalLoadingState) return;
@@ -70,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (!user && !isPublicRoute) {
       router.push('/login');
     }
-  }, [user, isAuthServiceLoading, isProfileLoading, pathname, router, auth.currentUser]);
+  }, [user, isAuthServiceLoading, isProfileLoading, pathname, router, firebaseUser]);
 
   const addExperience = useCallback(async (userId: string, amount: number): Promise<void> => {
     if (!firestore) return;
@@ -116,8 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await setDoc(userDocRef, newUserProfile);
     await addExperience(createdFbUser.uid, 5);
-    setFirebaseUser(createdFbUser);
-
   }, [auth, firestore, addExperience]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
@@ -128,17 +117,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logOut = useCallback(async () => {
     if (!auth) return;
     await signOut(auth);
-    setFirebaseUser(null);
     if(typeof window !== 'undefined') {
       sessionStorage.clear();
     }
     router.push('/login');
   }, [auth, router]);
 
-  const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<CannaGrowUser | null> => {
+  const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<void> => {
     if (!firebaseUser || !firestore) {
        toast({ variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión para actualizar tu perfil.' });
-       return null;
+       return;
     };
     
     try {
@@ -160,15 +148,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if(!updates.savedPostIds){
           toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
       }
-      // The useDoc hook will automatically update the local 'user' state
-      return user; 
-
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
-      return null;
     }
-  }, [firebaseUser, firestore, toast, user]);
+  }, [firebaseUser, firestore, toast]);
 
   const followUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -183,23 +167,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw "Document does not exist!";
             }
             
-            const targetData = targetDoc.data();
-            if (!targetData.followerIds?.includes(user.uid)) {
-                transaction.update(currentUserRef, {
-                    followingIds: arrayUnion(targetUserId),
-                    followingCount: increment(1)
-                });
-                transaction.update(targetUserRef, {
-                    followerIds: arrayUnion(user.uid),
-                    followerCount: increment(1)
-                });
-            }
+            transaction.update(currentUserRef, {
+                followingIds: arrayUnion(targetUserId),
+                followingCount: increment(1)
+            });
+            transaction.update(targetUserRef, {
+                followerIds: arrayUnion(user.uid),
+                followerCount: increment(1)
+            });
         });
     } catch (error) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user?.uid, firestore, toast]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -209,26 +190,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
         await runTransaction(firestore, async (transaction) => {
-            const targetDoc = await transaction.get(targetUserRef);
-            if (!targetDoc.exists()) throw "Document does not exist!";
-
-            const targetData = targetDoc.data();
-            if (targetData.followerIds?.includes(user.uid)) {
-                transaction.update(currentUserRef, {
-                    followingIds: arrayRemove(targetUserId),
-                    followingCount: increment(-1)
-                });
-                transaction.update(targetUserRef, {
-                    followerIds: arrayRemove(user.uid),
-                    followerCount: increment(-1)
-                });
-            }
+            transaction.update(currentUserRef, {
+                followingIds: arrayRemove(targetUserId),
+                followingCount: increment(-1)
+            });
+            transaction.update(targetUserRef, {
+                followerIds: arrayRemove(user.uid),
+                followerCount: increment(-1)
+            });
         });
     } catch (error) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user?.uid, firestore, toast]);
 
    const createPost = useCallback(async (description: string, imageAsDataUrl: string) => {
     if (!user || !storage || !firestore) {
@@ -244,8 +219,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const postsCollectionRef = collection(firestore, 'posts');
     await addDoc(postsCollectionRef, {
         authorId: user.uid,
-        authorName: user.displayName, // Use the fresh user data from the hook's state
-        authorAvatar: user.photoURL,  // Use the fresh user data from the hook's state
+        authorName: user.displayName,
+        authorAvatar: user.photoURL,
         description: description,
         imageUrl: imageUrl,
         createdAt: serverTimestamp(),
@@ -256,26 +231,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // 3. Add experience points
     await addExperience(user.uid, 10);
-  }, [user, storage, firestore, addExperience]);
+  }, [user?.uid, user?.displayName, user?.photoURL, storage, firestore, addExperience]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
-    if (user?.role === 'owner') {
-      const tempUser = { ...injectedUser, uid: injectedUser.uid } as CannaGrowUser;
-      
-      const mockFirebaseUser = { 
-        ...auth.currentUser, 
-        uid: tempUser.uid,
-        email: tempUser.email,
-        displayName: tempUser.displayName,
-        photoURL: tempUser.photoURL,
-      } as FirebaseUser;
-      
-      setFirebaseUser(mockFirebaseUser);
-
-    } else {
-       toast({ variant: 'destructive', title: 'No autorizado', description: 'Solo los dueños pueden suplantar a otros usuarios.' });
-    }
-  }, [user?.role, toast, auth]);
+      // This is a mock implementation for admin impersonation.
+      // It will not persist across page reloads.
+      // A more robust solution would involve custom tokens.
+      toast({ title: 'Función de administrador', description: 'Suplantación no implementada en este prototipo.' });
+  }, [toast]);
   
 
   const value = {
