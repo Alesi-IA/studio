@@ -43,6 +43,6 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
       return 'Hubo un problema con el formato del historial de chat.';
     }
     // Generic error for any other issue (e.g., AI model failure).
-    return 'Vaya, parece que se me cruzaron los cables. No pude procesar esa pregunta.';
+    throw new Error('Vaya, parece que se me cruzaron los cables. No pude procesar esa pregunta.');
   }
 }
