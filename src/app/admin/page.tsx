@@ -26,8 +26,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, getCountFromServer, Timestamp, where } from 'firebase/firestore';
-import { subMonths, format, subDays } from 'date-fns';
+import { collection, query, Timestamp } from 'firebase/firestore';
+import { subMonths, format, isAfter, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const roleIcons = {
@@ -58,9 +58,6 @@ export default function AdminPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [totalPosts, setTotalPosts] = useState(0);
-  const [activeUsersToday, setActiveUsersToday] = useState(0);
   const [roleFilters, setRoleFilters] = useState<Record<string, boolean>>({
     owner: false,
     'co-owner': false,
@@ -69,8 +66,24 @@ export default function AdminPage() {
   });
 
   const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users')) : null, [firestore]);
+  const postsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'posts')) : null, [firestore]);
   
   const { data: usersData, isLoading: isLoadingUsers } = useCollection(usersQuery);
+  const { data: postsData, isLoading: isLoadingPosts } = useCollection(postsQuery);
+
+  const totalUsers = useMemo(() => usersData?.length || 0, [usersData]);
+  const totalPosts = useMemo(() => postsData?.length || 0, [postsData]);
+
+  const activeUsersToday = useMemo(() => {
+    if (!usersData) return 0;
+    const twentyFourHoursAgo = subDays(new Date(), 1);
+    return usersData.filter(user => {
+      if (!user.createdAt) return false;
+      const userDate = user.createdAt instanceof Timestamp ? user.createdAt.toDate() : new Date(user.createdAt);
+      return isAfter(userDate, twentyFourHoursAgo);
+    }).length;
+  }, [usersData]);
+
 
   const filteredUsers = useMemo(() => {
     if (!usersData) return [];
@@ -88,42 +101,6 @@ export default function AdminPage() {
       router.push('/');
     }
   }, [isOwner, router]);
-
-  useEffect(() => {
-    const fetchCounts = async () => {
-      if (!firestore) return;
-      const usersColl = collection(firestore, 'users');
-      const postsColl = collection(firestore, 'posts');
-
-      try {
-        const userSnapshot = await getCountFromServer(usersColl);
-        setTotalUsers(userSnapshot.data().count);
-      } catch (error: any) {
-        console.error("Error fetching total users:", error);
-      }
-      
-      try {
-        const postSnapshot = await getCountFromServer(postsColl);
-        setTotalPosts(postSnapshot.data().count);
-      } catch (error: any) {
-        console.error("Error fetching total posts:", error);
-      }
-
-      try {
-        const twentyFourHoursAgo = subDays(new Date(), 1);
-        const activeUsersQuery = query(
-          usersColl,
-          where('createdAt', '>', twentyFourHoursAgo.toISOString())
-        );
-        const activeUsersSnapshot = await getCountFromServer(activeUsersQuery);
-        setActiveUsersToday(activeUsersSnapshot.data().count);
-      } catch (error) {
-        console.error("Error fetching active users:", error);
-      }
-    };
-    fetchCounts();
-  }, [firestore]);
-
 
   const chartData = useMemo(() => {
     const months: { name: string, total: number }[] = [];
@@ -200,7 +177,7 @@ export default function AdminPage() {
               <File className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalPosts}</div>
+              <div className="text-2xl font-bold">{isLoadingPosts ? '...' : totalPosts}</div>
               <p className="text-xs text-muted-foreground">Contenido generado por usuarios</p>
             </CardContent>
           </Card>
@@ -210,7 +187,7 @@ export default function AdminPage() {
               <AreaChart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeUsersToday}</div>
+              <div className="text-2xl font-bold">{isLoadingUsers ? '...' : activeUsersToday}</div>
               <p className="text-xs text-muted-foreground">Nuevos registros en las últimas 24h</p>
             </CardContent>
           </Card>
@@ -348,3 +325,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
