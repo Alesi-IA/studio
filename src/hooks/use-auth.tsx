@@ -25,6 +25,7 @@ interface AuthContextType {
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
+  createPost: (description: string, imageUrl: string) => Promise<void>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
   addExperience: (userId: string, amount: number) => Promise<void>;
@@ -158,6 +159,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, firestore, auth, toast, refreshUserData]);
 
+  const createPost = useCallback(async (description: string, imageUri: string) => {
+    if (!user || !storage || !firestore) {
+      throw new Error("User not logged in or Firebase services unavailable.");
+    }
+    
+    const fetchRes = await fetch(imageUri);
+    const blob = await fetchRes.blob();
+    const file = new File([blob], `post-${Date.now()}.jpg`, { type: blob.type });
+
+    const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
+    const uploadResult = await uploadBytesResumable(storageRef, file);
+    const permanentImageUrl = await getDownloadURL(uploadResult.ref);
+
+    const postsCollectionRef = collection(firestore, 'posts');
+    await addDoc(postsCollectionRef, {
+      authorId: user.uid,
+      authorName: user.displayName,
+      authorAvatar: user.photoURL,
+      description: description,
+      imageUrl: permanentImageUrl,
+      createdAt: serverTimestamp(),
+      likes: 0,
+      awards: 0,
+      comments: [],
+    });
+
+    await addExperience(user.uid, 10);
+  }, [user, storage, firestore, addExperience]);
+
   const followUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
 
@@ -175,7 +205,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw "User document does not exist!";
             }
             
-            // Explicitly calculate new counts
             const newFollowingCount = (currentUserDoc.data().followingCount || 0) + 1;
             const newFollowerCount = (targetUserDoc.data().followerCount || 0) + 1;
 
@@ -188,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 followerCount: newFollowerCount
             });
         });
-        refreshUserData(); // Refresh local user state after successful transaction
+        refreshUserData();
     } catch (error) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
@@ -224,7 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 followerCount: newFollowerCount
             });
         });
-        refreshUserData(); // Refresh local user state after successful transaction
+        refreshUserData();
     } catch (error) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
@@ -232,9 +261,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, firestore, toast, refreshUserData]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
-      // This is a mock implementation for admin impersonation.
-      // It will not persist across page reloads.
-      // A more robust solution would involve custom tokens.
       toast({ title: 'Función de administrador', description: 'Suplantación no implementada en este prototipo.' });
   }, [toast]);
   
@@ -248,6 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logIn,
     logOut,
     updateUserProfile,
+    createPost,
     followUser,
     unfollowUser,
     addExperience,
