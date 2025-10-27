@@ -24,7 +24,6 @@ interface AuthContextType {
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  createPost: (description: string, imageUri: string) => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
@@ -42,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return doc(firestore, 'users', firebaseUser.uid);
   }, [firestore, firebaseUser?.uid]);
   
-  const { data: user, isLoading: isProfileLoading } = useDoc<CannaGrowUser>(userDocRef);
+  const { data: user, isLoading: isProfileLoading, mutate: refreshUserData } = useDoc<CannaGrowUser>(userDocRef);
   
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -124,41 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   }, [auth, router]);
   
-  const createPost = useCallback(async (description: string, imageUri: string) => {
-    if (!user || !storage || !firestore) {
-      throw new Error('User not authenticated or Firebase services not available.');
-    }
-  
-    // 1. Convert Data URI to Blob for upload
-    const fetchRes = await fetch(imageUri);
-    const blob = await fetchRes.blob();
-    const file = new File([blob], `post-${Date.now()}.jpg`, { type: blob.type });
-
-    // 2. Upload image to Firebase Storage
-    const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
-    const uploadResult = await uploadBytesResumable(storageRef, file);
-    const permanentImageUrl = await getDownloadURL(uploadResult.ref);
-
-    // 3. Create post document in Firestore
-    const postsCollectionRef = collection(firestore, 'posts');
-    await addDoc(postsCollectionRef, {
-        authorId: user.uid,
-        authorName: user.displayName,
-        authorAvatar: user.photoURL,
-        description: description,
-        imageUrl: permanentImageUrl,
-        createdAt: serverTimestamp(),
-        likes: 0,
-        awards: 0,
-        comments: [],
-    });
-
-    // 4. Add experience points
-    await addExperience(user.uid, 10);
-      
-  }, [user, storage, firestore, addExperience]);
-
-
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<void> => {
     if (!user || !firestore || !auth.currentUser) {
        toast({ variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión para actualizar tu perfil.' });
@@ -185,39 +149,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if(!updates.savedPostIds){
           toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
       }
+      // Force a refresh of user data after update
+      refreshUserData();
+
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
     }
-  }, [user, firestore, auth, toast]);
+  }, [user, firestore, auth, toast, refreshUserData]);
 
   const followUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
-    
+
     const currentUserRef = doc(firestore, 'users', user.uid);
     const targetUserRef = doc(firestore, 'users', targetUserId);
 
     try {
         await runTransaction(firestore, async (transaction) => {
-            const targetDoc = await transaction.get(targetUserRef);
-            if (!targetDoc.exists()) {
-                throw "Document does not exist!";
+            const [currentUserDoc, targetUserDoc] = await Promise.all([
+                transaction.get(currentUserRef),
+                transaction.get(targetUserRef)
+            ]);
+
+            if (!currentUserDoc.exists() || !targetUserDoc.exists()) {
+                throw "User document does not exist!";
             }
             
+            // Explicitly calculate new counts
+            const newFollowingCount = (currentUserDoc.data().followingCount || 0) + 1;
+            const newFollowerCount = (targetUserDoc.data().followerCount || 0) + 1;
+
             transaction.update(currentUserRef, {
                 followingIds: arrayUnion(targetUserId),
-                followingCount: increment(1)
+                followingCount: newFollowingCount
             });
             transaction.update(targetUserRef, {
                 followerIds: arrayUnion(user.uid),
-                followerCount: increment(1)
+                followerCount: newFollowerCount
             });
         });
+        refreshUserData(); // Refresh local user state after successful transaction
     } catch (error) {
       console.error("Error following user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user, firestore, toast, refreshUserData]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
     if (!user || !firestore) return;
@@ -227,20 +203,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
         await runTransaction(firestore, async (transaction) => {
+             const [currentUserDoc, targetUserDoc] = await Promise.all([
+                transaction.get(currentUserRef),
+                transaction.get(targetUserRef)
+            ]);
+
+            if (!currentUserDoc.exists() || !targetUserDoc.exists()) {
+                throw "User document does not exist!";
+            }
+
+            const newFollowingCount = Math.max(0, (currentUserDoc.data().followingCount || 0) - 1);
+            const newFollowerCount = Math.max(0, (targetUserDoc.data().followerCount || 0) - 1);
+
             transaction.update(currentUserRef, {
                 followingIds: arrayRemove(targetUserId),
-                followingCount: increment(-1)
+                followingCount: newFollowingCount
             });
             transaction.update(targetUserRef, {
                 followerIds: arrayRemove(user.uid),
-                followerCount: increment(-1)
+                followerCount: newFollowerCount
             });
         });
+        refreshUserData(); // Refresh local user state after successful transaction
     } catch (error) {
       console.error("Error unfollowing user:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
     }
-  }, [user, firestore, toast]);
+  }, [user, firestore, toast, refreshUserData]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
       // This is a mock implementation for admin impersonation.
@@ -258,7 +247,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     logIn,
     logOut,
-    createPost,
     updateUserProfile,
     followUser,
     unfollowUser,
