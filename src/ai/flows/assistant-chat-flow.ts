@@ -38,6 +38,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     }
 
     // 2. Generate the response using the validated history with the configured 'ai' instance.
+    // CORRECTED: Pass 'system' and 'prompt' as separate parameters.
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
