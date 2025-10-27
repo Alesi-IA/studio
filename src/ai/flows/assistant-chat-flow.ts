@@ -28,14 +28,20 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
 Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.`;
 
   try {
-    // 1. Validate the incoming history array using the Zod schema.
-    const validatedHistory = HistorySchema.parse(history);
+    // 1. Validate the incoming history array using Zod's safeParse.
+    const validationResult = HistorySchema.safeParse(history);
+    
+    if (!validationResult.success) {
+      console.error('Zod validation error details:', validationResult.error.errors);
+      // Return a specific error if validation fails instead of crashing.
+      return 'Hubo un problema con el formato del historial de chat.';
+    }
 
     // 2. Generate the response using the validated history with the configured 'ai' instance.
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
-      prompt: validatedHistory,
+      prompt: validationResult.data, // Use the validated data
     });
 
     // In Genkit v1.x, the response text is accessed via the `text` property.
@@ -43,10 +49,6 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     return response.text ?? 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
   } catch (error) {
     console.error('[AssistantChatError] Details:', error);
-    if (error instanceof z.ZodError) {
-      console.error('Zod validation error details:', error.errors);
-      return 'Hubo un problema con el formato del historial de chat.';
-    }
     // Propagate the actual error message for better debugging on the server action side.
     if (error instanceof Error) {
         throw new Error(error.message);
