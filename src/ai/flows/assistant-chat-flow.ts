@@ -26,7 +26,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     const validatedHistory = HistorySchema.parse(history);
 
     // 2. Generate the response using the validated history with the configured 'ai' instance.
-    const { output } = await ai.generate({
+    const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       prompt: [
         { role: 'system', content: systemPrompt },
@@ -34,7 +34,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
       ],
     });
 
-    return output?.text ?? 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
+    return response.text ?? 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
   } catch (error) {
     console.error('[AssistantChatError]', error);
     if (error instanceof z.ZodError) {
