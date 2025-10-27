@@ -1,5 +1,9 @@
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { config } from 'dotenv';
+
+// Load environment variables from .env file
+config();
 
 // In Genkit v1, you configure plugins when you call `genkit()`.
 const ai = genkit({
