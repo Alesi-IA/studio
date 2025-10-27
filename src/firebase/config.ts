@@ -9,11 +9,12 @@
 
 // PEGA AQUÍ TU OBJETO DE CONFIGURACIÓN DE FIREBASE:
 export const firebaseConfig = {
-  apiKey: "TU_API_KEY_DE_FIREBASE_AQUI",
-  authDomain: "tu-proyecto.firebaseapp.com",
-  projectId: "tu-proyecto",
-  storageBucket: "tu-proyecto.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef1234567890abcdef",
+  apiKey: "AIzaSyC635786zZMQLcPywoEeCsS78DAhX0t_S4",
+  authDomain: "studio-7324678641-463b8.firebaseapp.com",
+  projectId: "studio-7324678641-463b8",
+  storageBucket: "studio-7324678641-463b8.firebasestorage.app",
+  messagingSenderId: "1058142614465",
+  appId: "1:1058142614465:web:6edbac373376b420cdf540",
+  // Esta línea es para Google Analytics. Es opcional. Si tu configuración no la incluye, puedes borrarla.
   measurementId: "G-ABCDEFGHIJ"
 };
