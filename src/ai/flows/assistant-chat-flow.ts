@@ -18,6 +18,12 @@ const HistorySchema = z.array(
 );
 
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
+  // CRITICAL FIX: The AI model cannot handle an empty history.
+  // We return a default greeting if the history is empty to start the conversation.
+  if (history.length === 0) {
+    return '¡Hola! Soy Canna-Toallín. ¿En qué te puedo ayudar hoy?';
+  }
+
   const systemPrompt = `Eres un asistente amigable y útil llamado Canna-Toallín. Tu especialidad es el cultivo de cannabis, pero puedes hablar de cualquier tema.
 Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.`;
 
@@ -26,7 +32,6 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     const validatedHistory = HistorySchema.parse(history);
 
     // 2. Generate the response using the validated history with the configured 'ai' instance.
-    // In Genkit v1.x, the system prompt is passed in the 'system' property, not inside the prompt array.
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
@@ -34,12 +39,12 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     });
 
     // In Genkit v1.x, the response text is accessed via the `text` property.
+    // Provide a fallback message if the response is unexpectedly null.
     return response.text ?? 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
   } catch (error) {
-    console.error('[AssistantChatError]', error);
+    console.error('[AssistantChatError] Details:', error);
     if (error instanceof z.ZodError) {
-      // This will give detailed information if the input format is wrong.
-      console.error('Zod validation error:', error.errors);
+      console.error('Zod validation error details:', error.errors);
       return 'Hubo un problema con el formato del historial de chat.';
     }
     // Propagate the actual error message for better debugging on the server action side.
