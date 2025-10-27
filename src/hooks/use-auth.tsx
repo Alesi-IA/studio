@@ -131,10 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       const authUpdates: { displayName?: string; photoURL?: string } = {};
-      if (updates.displayName) {
+      if (updates.displayName && updates.displayName !== firebaseUser.displayName) {
         authUpdates.displayName = updates.displayName;
       }
-      if (updates.photoURL) {
+      if (updates.photoURL && updates.photoURL !== firebaseUser.photoURL) {
         authUpdates.photoURL = updates.photoURL;
       }
 
@@ -145,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDocRef = doc(firestore, 'users', firebaseUser.uid);
       await updateDoc(userDocRef, updates);
       
+      // Do not toast for silent updates like saving a post
       if(!updates.savedPostIds){
           toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
       }
@@ -231,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // 3. Add experience points
     await addExperience(user.uid, 10);
-  }, [user?.uid, user?.displayName, user?.photoURL, storage, firestore, addExperience]);
+  }, [user, storage, firestore, addExperience]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
       // This is a mock implementation for admin impersonation.

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Search as SearchIcon, Sprout, Wheat, Grape, Award } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFirebase } from '@/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, startAt, orderBy } from 'firebase/firestore';
 import Link from 'next/link';
 import type { CannaGrowUser } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -72,19 +72,26 @@ export default function SearchPage() {
       try {
         const usersRef = collection(firestore, 'users');
         const searchTermLower = debouncedSearchTerm.toLowerCase();
+        const searchTermUpper = searchTermLower.charAt(0).toUpperCase() + searchTermLower.slice(1);
         
-        const q = query(usersRef);
+        // This query finds users whose displayName starts with the search term.
+        // Firestore is limited in its text search capabilities without a third-party service.
+        const q = query(
+          usersRef,
+          where('displayName', '>=', searchTermUpper),
+          where('displayName', '<=', searchTermUpper + '\uf8ff'),
+          limit(20)
+        );
+
         const querySnapshot = await getDocs(q);
-        const allUsers: CannaGrowUser[] = [];
+        const foundUsers: CannaGrowUser[] = [];
         querySnapshot.forEach(doc => {
-            // Ensure the document has a uid before pushing
-            if (doc.data().uid) {
-               allUsers.push({ ...doc.data(), uid: doc.id } as CannaGrowUser);
-            }
+            foundUsers.push({ ...doc.data(), uid: doc.id } as CannaGrowUser);
         });
 
-        const filteredUsers = allUsers.filter(user =>
-          user.displayName.toLowerCase().includes(searchTermLower)
+        // A secondary client-side filter for case-insensitivity, since Firestore is case-sensitive
+        const filteredUsers = foundUsers.filter(user => 
+            user.displayName?.toLowerCase().includes(searchTermLower)
         );
 
         setResults(filteredUsers);

@@ -43,7 +43,8 @@ export function XpRankDisplay({ currentXp, rankId, className }: XpRankDisplayPro
   
   const xpInRank = currentXp - rankMinXp;
   const xpForNextRank = rankMaxXp - rankMinXp + 1;
-  const progressPercentage = (xpInRank / xpForNextRank) * 100;
+  // Ensure we don't divide by zero and handle progress correctly
+  const progressPercentage = xpForNextRank > 0 ? (xpInRank / xpForNextRank) * 100 : 0;
   
   const litLeaves = Math.floor((progressPercentage / 100) * LEAF_COUNT);
 
