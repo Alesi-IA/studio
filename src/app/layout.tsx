@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { AuthProvider } from '@/hooks/use-auth';
 import { AppShell } from '@/components/layout/app-shell';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'CannaConnect',
@@ -35,6 +36,7 @@ export default function RootLayout({
               {children}
             </AppShell>
             <Toaster />
+            <FirebaseErrorListener />
           </AuthProvider>
         </FirebaseClientProvider>
       </body>

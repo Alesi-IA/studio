@@ -7,6 +7,7 @@ type SecurityRuleContext = {
 };
 
 interface SecurityRuleRequest {
+  // Simplified auth object to avoid heavy client-side dependencies.
   auth: { uid: string | null } | null;
   method: string;
   path: string;
@@ -16,25 +17,23 @@ interface SecurityRuleRequest {
 }
 
 /**
- * Builds the complete, simulated request object for the error message.
- * This simplified version does not rely on getAuth() to avoid bundling issues.
+ * Builds a simplified, simulated request object for the error message.
  * @param context The context of the failed Firestore operation.
- * @returns A structured request object.
+ * @returns A structured request object for debugging.
  */
 function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
   return {
-    // Auth object is simplified to avoid server-side dependencies in client code.
-    // A more advanced implementation might use a server-side logger.
-    auth: { uid: '(see client-side auth state)' },
+    // Auth object is simplified for client-side safety.
+    // The actual user UID will be available in the server logs if needed.
+    auth: { uid: '(see client-side auth state)' }, 
     method: context.operation,
     path: `/databases/(default)/documents/${context.path}`,
     resource: context.requestResourceData ? { data: context.requestResourceData } : undefined,
   };
 }
 
-
 /**
- * Builds the final, formatted error message for the LLM.
+ * Builds the final, formatted error message.
  * @param requestObject The simulated request object.
  * @returns A string containing the error message and the JSON payload.
  */
@@ -44,9 +43,8 @@ ${JSON.stringify(requestObject, null, 2)}`;
 }
 
 /**
- * A custom error class designed to be consumed by an LLM for debugging.
- * It structures the error information to mimic the request object
- * available in Firestore Security Rules.
+ * A custom error class designed for debugging Firestore permission errors.
+ * It structures the error information to mimic the request object available in Security Rules.
  */
 export class FirestorePermissionError extends Error {
   public readonly request: SecurityRuleRequest;
@@ -54,7 +52,7 @@ export class FirestorePermissionError extends Error {
   constructor(context: SecurityRuleContext) {
     const requestObject = buildRequestObject(context);
     super(buildErrorMessage(requestObject));
-    this.name = 'FirebaseError';
+    this.name = 'FirestorePermissionError';
     this.request = requestObject;
   }
 }
