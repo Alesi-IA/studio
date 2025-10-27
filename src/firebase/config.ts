@@ -1,12 +1,13 @@
+
 // 1. Ve a la consola de tu proyecto de Firebase.
 // 2. En la configuración del proyecto (el icono del engranaje), ve a la pestaña "General".
 // 3. En la sección "Tus apps", busca tu aplicación web.
 // 4. Selecciona la opción "SDK setup and configuration" y elige "Config".
 // 5. Copia el objeto de configuración y pégalo aquí, reemplazando el objeto de ejemplo.
 
-// EJEMPLO DE CÓMO DEBERÍA VERSE CON CLAVES FICTICIAS:
+// PEGA AQUÍ TU OBJETO DE CONFIGURACIÓN DE FIREBASE:
 export const firebaseConfig = {
-  apiKey: "AIzaSyC0s9umzyIGVi3yCPpaKCM7stWyEXAMPLE",
+  apiKey: "TU_API_KEY_DE_FIREBASE_AQUI",
   authDomain: "tu-proyecto.firebaseapp.com",
   projectId: "tu-proyecto",
   storageBucket: "tu-proyecto.appspot.com",
