@@ -8,6 +8,12 @@ import { z } from 'zod';
 // Load environment variables from .env file
 config();
 
+// Import flows here to ensure they are registered with Genkit
+import '@/app/analyze/actions';
+import '@/app/identify/actions';
+import '@/ai/flows/assistant-chat-flow';
+
+
 // In Genkit v1, you configure plugins when you call `genkit()`.
 export const ai = genkit({
   plugins: [googleAI()],
@@ -15,7 +21,8 @@ export const ai = genkit({
 });
 
 function isApiKeyConfigured() {
-    return !!process.env.GEMINI_API_KEY;
+    const key = process.env.GEMINI_API_KEY;
+    return !!key && key.length > 0 && key !== 'AIzaSyC0s9umzyIGVi3yCPpaKCM7stWyQW3McZM';
 }
 
 export { isApiKeyConfigured };

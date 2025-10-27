@@ -10,6 +10,7 @@ const NO_API_KEY_ERROR = "La clave API de Gemini no está configurada. Por favor
 
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
   if (!isApiKeyConfigured()) {
+    console.warn("Analysis attempted without API Key. Returning error to user.");
     return { data: null, error: NO_API_KEY_ERROR };
   }
   
