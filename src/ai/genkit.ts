@@ -2,7 +2,6 @@
 
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import { next } from '@genkit-ai/next';
 import { config } from 'dotenv';
 import { z } from 'zod';
 
@@ -10,8 +9,9 @@ import { z } from 'zod';
 config();
 
 // In Genkit v1, you configure plugins when you call `genkit()`.
+// For server-side usage in Next.js, we only need the model provider.
 export const ai = genkit({
-  plugins: [googleAI(), next({ dev: true })],
+  plugins: [googleAI()],
   enableTracingAndMetrics: true,
 });
 
