@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview Un chatbot asistente de cultivo.
+ * @fileOverview A cultivation assistant chatbot.
  *
- * - assistantChat - Responde a las preguntas del usuario sobre el cultivo de cannabis y otros temas.
+ * - assistantChat - Responds to user questions about cannabis cultivation and other topics.
  */
 
 import { ai } from '@/ai/genkit';
@@ -38,7 +38,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     }
 
     // 2. Generate the response using the validated history with the configured 'ai' instance.
-    // CORRECTED: Pass 'system' and 'prompt' as separate parameters.
+    // CORRECT: Pass 'system' and 'prompt' as separate parameters.
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
