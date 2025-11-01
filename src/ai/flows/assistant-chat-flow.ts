@@ -19,7 +19,7 @@ const HistorySchema = z.array(
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
   // CRITICAL FIX: The AI model cannot handle an empty history.
   // We return a default greeting if the history is empty to start the conversation.
-  if (history.length === 0) {
+  if (!history || history.length === 0) {
     return '¡Hola! Soy Canna-Toallín. ¿En qué te puedo ayudar hoy?';
   }
 
@@ -27,21 +27,11 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
 Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.`;
 
   try {
-    // 1. Validate the incoming history array using Zod's safeParse.
-    const validationResult = HistorySchema.safeParse(history);
-    
-    if (!validationResult.success) {
-      console.error('Zod validation error details:', validationResult.error.errors);
-      // Return a specific error if validation fails instead of crashing.
-      return 'Hubo un problema con el formato del historial de chat.';
-    }
-
-    // 2. Generate the response using the validated history with the configured 'ai' instance.
-    // CORRECT: Pass 'system' and 'prompt' as separate parameters.
+    // The history is passed directly as the prompt. Genkit handles the formatting.
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
-      prompt: validationResult.data, // Use the validated data which is the full chat history
+      prompt: history, 
     });
 
     // In Genkit v1.x, the response text is accessed via the `text` property.
