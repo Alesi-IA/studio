@@ -9,7 +9,6 @@ import { ai } from '@/ai/genkit';
 import type { ChatMessage } from '@/app/chatbot/types';
 import { z } from 'zod';
 
-// Zod schema for history validation. It expects an array of objects.
 const HistorySchema = z.array(
   z.object({
     role: z.enum(['user', 'model']),
