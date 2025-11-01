@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
+import { FirebaseError } from "firebase/app";
 
 export default function LoginPage() {
     const { logIn } = useAuth();
@@ -31,9 +32,22 @@ export default function LoginPage() {
         setError(null);
         try {
             await logIn(email, password);
-            // Redirection is now handled by the AuthProvider
+            // La redirección ahora es manejada por el AuthProvider
         } catch (err: any) {
-             setError("Las credenciales son incorrectas. Por favor, inténtalo de nuevo.");
+             if (err instanceof FirebaseError) {
+                switch (err.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                    case 'auth/invalid-credential':
+                        setError("Las credenciales son incorrectas. Por favor, inténtalo de nuevo.");
+                        break;
+                    default:
+                        setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.");
+                        break;
+                }
+            } else {
+                setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.");
+            }
         } finally {
             setLoading(false);
         }
