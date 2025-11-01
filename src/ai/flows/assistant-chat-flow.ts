@@ -7,14 +7,6 @@
 
 import { ai } from '@/ai/genkit';
 import type { ChatMessage } from '@/app/chatbot/types';
-import { z } from 'zod';
-
-const HistorySchema = z.array(
-  z.object({
-    role: z.enum(['user', 'model']),
-    content: z.string(),
-  })
-);
 
 export async function assistantChat(history: ChatMessage[]): Promise<string> {
   // CRITICAL FIX: The AI model cannot handle an empty history.
@@ -31,7 +23,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
-      prompt: history, 
+      prompt: history,
     });
 
     // In Genkit v1.x, the response text is accessed via the `text` property.
