@@ -42,7 +42,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
-      prompt: validationResult.data, // Use the validated data
+      prompt: validationResult.data, // Use the validated data which is the full chat history
     });
 
     // In Genkit v1.x, the response text is accessed via the `text` property.
