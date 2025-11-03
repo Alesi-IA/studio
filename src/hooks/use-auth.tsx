@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
@@ -9,7 +10,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp, getDocs, query, limit } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
@@ -78,6 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) throw new Error("Auth services not available");
     
+    // Check if any user exists to determine if this is the first registration
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, limit(1));
+    const existingUsersSnapshot = await getDocs(q);
+    const isFirstUser = existingUsersSnapshot.empty;
+
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const createdFbUser = userCredential.user;
     
@@ -93,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uid: createdFbUser.uid,
       email: email.toLowerCase(),
       displayName,
-      role: 'user',
+      role: isFirstUser ? 'owner' : 'user', // Assign 'owner' role if it's the first user
       photoURL,
       bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       createdAt: new Date().toISOString(),
@@ -107,7 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await setDoc(userDocRef, newUserProfile);
     await addExperience(createdFbUser.uid, 5);
-  }, [auth, firestore, addExperience]);
+
+    if (isFirstUser) {
+        toast({
+            title: '¡Bienvenido, Dueño!',
+            description: 'Tu cuenta ha sido creada con privilegios de administrador.'
+        })
+    }
+
+  }, [auth, firestore, addExperience, toast]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
     if (!auth) throw new Error("Auth service not available");
