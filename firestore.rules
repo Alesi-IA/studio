@@ -4,9 +4,9 @@ service cloud.firestore {
  
     // Reglas para perfiles de usuario
     match /users/{userId} {
-      // LECTURA: Cualquier usuario autenticado puede leer perfiles.
-      // Esto es necesario para el panel de admin y para buscar otros usuarios.
-      allow read: if request.auth != null;
+      // LECTURA: Un usuario autenticado solo puede leer su propio perfil.
+      // Los administradores pueden leer cualquier perfil (esto se podría añadir después si es necesario).
+      allow read: if request.auth != null && request.auth.uid == userId;
 
       // ESCRITURA: Solo el dueño del perfil o un administrador puede escribir.
       allow write: if request.auth.uid == userId ||
