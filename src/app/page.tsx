@@ -115,8 +115,10 @@ export default function FeedPage() {
       }
     };
 
-    fetchPosts();
-  }, [firestore, user?.uid, user?.followingIds]);
+    if (user && firestore) {
+      fetchPosts();
+    }
+  }, [firestore, user]);
 
   const handleCommentChange = (postId: string, text: string) => {
     setCommentStates(prev => ({ ...prev, [postId]: text }));
