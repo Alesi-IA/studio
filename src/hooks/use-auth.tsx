@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp, getDocs, query, limit } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
@@ -25,7 +25,7 @@ interface AuthContextType {
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
-  createPost: (description: string, imageUrl: string) => Promise<void>;
+  createPost: (description: string, imageUri: string) => Promise<void>;
   followUser: (targetUserId: string) => Promise<void>;
   unfollowUser: (targetUserId: string) => Promise<void>;
   addExperience: (userId: string, amount: number) => Promise<void>;
@@ -178,14 +178,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("User not logged in or Firebase services unavailable.");
     }
     
+    // 1. Convert Data URI to Blob for upload
     const fetchRes = await fetch(imageUri);
     const blob = await fetchRes.blob();
     const file = new File([blob], `post-${Date.now()}.jpg`, { type: blob.type });
 
-    const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
-    const uploadResult = await uploadBytesResumable(storageRef, file);
+    // 2. Upload image to Firebase Storage
+    const storageRef = ref(storage, `posts/${user.uid}/${file.name}`);
+    const uploadResult = await uploadBytes(storageRef, file);
     const permanentImageUrl = await getDownloadURL(uploadResult.ref);
 
+    // 3. Create post document in Firestore
     const postsCollectionRef = collection(firestore, 'posts');
     await addDoc(postsCollectionRef, {
       authorId: user.uid,
@@ -210,25 +213,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
         await runTransaction(firestore, async (transaction) => {
-            const [currentUserDoc, targetUserDoc] = await Promise.all([
-                transaction.get(currentUserRef),
-                transaction.get(targetUserRef)
-            ]);
-
-            if (!currentUserDoc.exists() || !targetUserDoc.exists()) {
-                throw "User document does not exist!";
-            }
-            
-            const newFollowingCount = (currentUserDoc.data().followingCount || 0) + 1;
-            const newFollowerCount = (targetUserDoc.data().followerCount || 0) + 1;
-
             transaction.update(currentUserRef, {
                 followingIds: arrayUnion(targetUserId),
-                followingCount: newFollowingCount
+                followingCount: increment(1)
             });
             transaction.update(targetUserRef, {
                 followerIds: arrayUnion(user.uid),
-                followerCount: newFollowerCount
+                followerCount: increment(1)
             });
         });
         refreshUserData();
@@ -246,25 +237,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
         await runTransaction(firestore, async (transaction) => {
-             const [currentUserDoc, targetUserDoc] = await Promise.all([
-                transaction.get(currentUserRef),
-                transaction.get(targetUserRef)
-            ]);
-
-            if (!currentUserDoc.exists() || !targetUserDoc.exists()) {
-                throw "User document does not exist!";
-            }
-
-            const newFollowingCount = Math.max(0, (currentUserDoc.data().followingCount || 0) - 1);
-            const newFollowerCount = Math.max(0, (targetUserDoc.data().followerCount || 0) - 1);
-
             transaction.update(currentUserRef, {
                 followingIds: arrayRemove(targetUserId),
-                followingCount: newFollowingCount
+                followingCount: increment(-1)
             });
             transaction.update(targetUserRef, {
                 followerIds: arrayRemove(user.uid),
-                followerCount: newFollowerCount
+                followerCount: increment(-1)
             });
         });
         refreshUserData();
@@ -299,7 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUserProfile,
     createPost,
     followUser,
-    unfollowUser,
+unfollowUser,
     addExperience,
     _injectUser,
   };

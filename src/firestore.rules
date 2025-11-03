@@ -5,27 +5,22 @@ service cloud.firestore {
 
     // Reglas para perfiles de usuario
     match /users/{userId} {
-      // LECTURA: Cualquier usuario autenticado puede leer perfiles.
+      // LECTURA: Cualquier usuario autenticado puede leer perfiles para verlos.
       allow read: if request.auth != null;
       
       // LISTADO: Solo los dueños/co-dueños pueden listar todos los usuarios (para el panel de admin).
       allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
 
-      // ESCRITURA:
-      // 1. El dueño del perfil puede modificarlo.
-      // 2. Un admin puede modificarlo.
-      // 3. Cualquiera puede actualizar los puntos de experiencia o los seguidores (para XP y sistema de follow).
-      allow write: if (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner']) ||
-                      (request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['experiencePoints', 'followerIds', 'followerCount']));
+      // ESCRITURA: Un usuario puede actualizar su propio perfil.
+      // Un administrador también puede actualizar cualquier perfil.
+      allow write: if request.auth.uid == userId ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
     }
 
     // Reglas para la colección de publicaciones
     match /posts/{postId} {
-      // LECTURA: Cualquiera autenticado puede leer publicaciones.
-      allow get: if request.auth != null;
-      
-      // LISTADO: Permite que los usuarios autenticados consulten la lista de publicaciones.
-      allow list: if request.auth != null;
+      // LECTURA y LISTADO: Cualquiera autenticado puede leer y listar publicaciones.
+      allow list, get: if request.auth != null;
 
       // CREACIÓN: Solo el autor puede crear su propia publicación.
       allow create: if request.auth.uid == request.resource.data.authorId;
@@ -40,7 +35,8 @@ service cloud.firestore {
 
     // Reglas para guías de usuario
     match /userGuides/{guideId} {
-        allow read: if true; // Cualquiera puede leer guías
+        // LECTURA: Cualquiera puede leer guías
+        allow read: if true; 
         
         // CREACIÓN: Un usuario autenticado puede crear una guía si el authorId es el suyo.
         allow create: if request.auth.uid == request.resource.data.authorId;
@@ -58,7 +54,8 @@ service cloud.firestore {
     
     // Reglas para términos del diccionario
     match /dictionaryTerms/{termId} {
-      allow read: if true; // Permite que todos lean el diccionario
+      // Cualquiera puede leer el diccionario
+      allow read: if true; 
     }
 
   }
