@@ -5,7 +5,6 @@ service cloud.firestore {
     // Reglas para perfiles de usuario
     match /users/{userId} {
       // LECTURA: Un usuario autenticado solo puede leer su propio perfil.
-      // Los administradores pueden leer cualquier perfil (esto se podría añadir después si es necesario).
       allow read: if request.auth != null && request.auth.uid == userId;
 
       // ESCRITURA: Solo el dueño del perfil o un administrador puede escribir.
@@ -13,18 +12,29 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
     }
 
-    // Reglas para publicaciones
+    // Reglas para la colección de publicaciones
     match /posts/{postId} {
-      // LECTURA: Cualquiera puede leer publicaciones.
-      allow read: if true;
-      // ESCRITURA: Solo el autor o un admin/moderador puede crear/eliminar.
-      // Los usuarios solo pueden actualizar sus propias publicaciones.
-      allow create, delete: if request.auth.uid == request.resource.data.authorId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
+      // LECTURA: Cualquiera autenticado puede leer publicaciones.
+      allow get: if request.auth != null;
+
+      // ESCRITURA: Solo el autor puede crear su propia publicación.
+      allow create: if request.auth.uid == request.resource.data.authorId;
+
+      // ACTUALIZACIÓN: Solo el autor puede actualizar su publicación.
       allow update: if request.auth.uid == resource.data.authorId;
+      
+      // ELIMINACIÓN: El autor o un moderador/admin pueden eliminar.
+      allow delete: if request.auth.uid == resource.data.authorId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
     }
 
-    // Reglas para comentarios
+    // LISTAR: Permite que los usuarios autenticados consulten la lista de publicaciones.
+    // Esto es CRUCIAL para que el feed principal funcione.
+    match /posts/{postId} {
+        allow list: if request.auth != null;
+    }
+
+    // Reglas para comentarios (subcolección) - Asumiendo que se migrará a esto en el futuro.
     match /posts/{postId}/comments/{commentId} {
       // LECTURA: Cualquiera puede leer comentarios.
       allow read: if true;
@@ -40,6 +50,16 @@ service cloud.firestore {
         allow create: if request.auth.uid == request.resource.data.authorId;
         allow update, delete: if request.auth.uid == resource.data.authorId ||
             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
+    }
+
+    // Reglas para tareas de cultivo
+    match /cultivationTasks/{taskId} {
+      allow read, write: if request.auth.uid == resource.data.authorId;
+    }
+    
+    // Reglas para términos del diccionario
+    match /dictionaryTerms/{termId} {
+      allow read: if true; // Permite que todos lean el diccionario
     }
 
   }
