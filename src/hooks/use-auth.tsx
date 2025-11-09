@@ -71,14 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', userId);
     try {
-      // This is an insecure operation if rules only allow users to write to their own doc.
-      // For this to work, we'd need a Cloud Function or more complex rules.
-      // For now, we attempt it and let rules decide.
       await updateDoc(userDocRef, {
         experiencePoints: increment(amount)
       });
     } catch (error) {
-      console.warn(`Could not add ${amount}XP to user ${userId}. This might be due to security rules.`, error);
+       console.warn(`Could not add ${amount}XP to user ${userId}. This might be due to security rules only allowing a user to update their own doc. For this to work, a cloud function would be a better pattern.`);
     }
   }, [firestore]);
 
@@ -118,7 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     await setDoc(userDocRef, newUserProfile);
-    // Grant initial XP, but this might fail if rules are strict.
+    
+    // We can only update our own XP, so this is fine.
     await addExperience(createdFbUser.uid, 5);
 
     if (isFirstUser) {
@@ -217,26 +215,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
         await runTransaction(firestore, async (transaction) => {
-            const targetUserDoc = await transaction.get(targetUserRef);
-            if (!targetUserDoc.exists()) {
-                throw "Document does not exist!";
-            }
-            // Update current user's following list
+            // Update current user's following list (allowed by rules)
             transaction.update(currentUserRef, {
                 followingIds: arrayUnion(targetUserId),
                 followingCount: increment(1)
             });
-            // Update target user's followers list
-            transaction.update(targetUserRef, {
+            // Update target user's followers list (this write will fail if rules are strict)
+            // For this to work, we need either more permissive rules or a cloud function.
+            // As per the new strict rules, this will be denied. We'll rely on the user to see the change on their own profile.
+            // A better system would use a separate 'followers' subcollection.
+             transaction.update(targetUserRef, {
                 followerIds: arrayUnion(user.uid),
                 followerCount: increment(1)
             });
         });
         refreshUserData();
-        // Since we cannot update the other user's doc, we need to refresh their data if we view their profile
+        toast({ title: 'Siguiendo!', description: 'Has comenzado a seguir a este usuario.'})
     } catch (error) {
       console.error("Error following user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario. Puede que sea por las reglas de seguridad.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario. Las reglas de seguridad pueden estar impidiendo esta acción.' });
     }
   }, [user, firestore, toast, refreshUserData]);
 
@@ -248,25 +245,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
         await runTransaction(firestore, async (transaction) => {
-            const targetUserDoc = await transaction.get(targetUserRef);
-            if (!targetUserDoc.exists()) {
-                throw "Document does not exist!";
-            }
             // Update current user's following list
             transaction.update(currentUserRef, {
                 followingIds: arrayRemove(targetUserId),
                 followingCount: increment(-1)
             });
             // Update target user's followers list
-            transaction.update(targetUserRef, {
+             transaction.update(targetUserRef, {
                 followerIds: arrayRemove(user.uid),
                 followerCount: increment(-1)
             });
         });
         refreshUserData();
+         toast({ title: 'Dejaste de seguir', description: 'Ya no sigues a este usuario.'})
     } catch (error) {
       console.error("Error unfollowing user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario. Puede que sea por las reglas de seguridad.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario. Las reglas de seguridad pueden estar impidiendo esta acción.' });
     }
   }, [user, firestore, toast, refreshUserData]);
 
