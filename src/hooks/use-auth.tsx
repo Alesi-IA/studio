@@ -71,11 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', userId);
     try {
+      // This is an insecure operation if rules only allow users to write to their own doc.
+      // For this to work, we'd need a Cloud Function or more complex rules.
+      // For now, we attempt it and let rules decide.
       await updateDoc(userDocRef, {
         experiencePoints: increment(amount)
       });
     } catch (error) {
-      console.error(`Failed to add ${amount}XP to user ${userId}:`, error);
+      console.warn(`Could not add ${amount}XP to user ${userId}. This might be due to security rules.`, error);
     }
   }, [firestore]);
 
@@ -115,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     await setDoc(userDocRef, newUserProfile);
+    // Grant initial XP, but this might fail if rules are strict.
     await addExperience(createdFbUser.uid, 5);
 
     if (isFirstUser) {
@@ -213,19 +217,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
         await runTransaction(firestore, async (transaction) => {
+            const targetUserDoc = await transaction.get(targetUserRef);
+            if (!targetUserDoc.exists()) {
+                throw "Document does not exist!";
+            }
+            // Update current user's following list
             transaction.update(currentUserRef, {
                 followingIds: arrayUnion(targetUserId),
                 followingCount: increment(1)
             });
+            // Update target user's followers list
             transaction.update(targetUserRef, {
                 followerIds: arrayUnion(user.uid),
                 followerCount: increment(1)
             });
         });
         refreshUserData();
+        // Since we cannot update the other user's doc, we need to refresh their data if we view their profile
     } catch (error) {
       console.error("Error following user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario. Puede que sea por las reglas de seguridad.' });
     }
   }, [user, firestore, toast, refreshUserData]);
 
@@ -237,10 +248,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
         await runTransaction(firestore, async (transaction) => {
+            const targetUserDoc = await transaction.get(targetUserRef);
+            if (!targetUserDoc.exists()) {
+                throw "Document does not exist!";
+            }
+            // Update current user's following list
             transaction.update(currentUserRef, {
                 followingIds: arrayRemove(targetUserId),
                 followingCount: increment(-1)
             });
+            // Update target user's followers list
             transaction.update(targetUserRef, {
                 followerIds: arrayRemove(user.uid),
                 followerCount: increment(-1)
@@ -249,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUserData();
     } catch (error) {
       console.error("Error unfollowing user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario. Puede que sea por las reglas de seguridad.' });
     }
   }, [user, firestore, toast, refreshUserData]);
 
@@ -278,7 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUserProfile,
     createPost,
     followUser,
-unfollowUser,
+    unfollowUser,
     addExperience,
     _injectUser,
   };

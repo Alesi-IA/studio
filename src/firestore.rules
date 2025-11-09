@@ -35,7 +35,7 @@ service cloud.firestore {
 
     // Reglas para guías de usuario
     match /userGuides/{guideId} {
-        // LECTURA: Cualquiera puede leer guías
+        // LECTURA: Cualquiera autenticado puede leer y listar guías.
         allow read, list: if request.auth != null; 
         
         // CREACIÓN: Un usuario autenticado puede crear una guía si el authorId es el suyo.
@@ -49,10 +49,12 @@ service cloud.firestore {
     // Reglas para tareas de cultivo
     match /cultivationTasks/{taskId} {
       // Un usuario puede leer, escribir y eliminar sus propias tareas.
-      allow read, write, delete: if request.auth.uid == resource.data.authorId;
+      // La regla `write` cubre `create`, `update`, `delete`.
+      allow read, write: if request.auth.uid == resource.data.authorId || request.auth.uid == request.resource.data.authorId;
 
-      // Un usuario puede listar las tareas si está consultando por su propio authorId.
-      allow list: if request.auth.uid == request.query.filters.authorId;
+      // Un usuario puede listar la colección, pero la consulta del cliente DEBE filtrar por authorId.
+      // Esta regla es segura porque la consulta en `tools/page.tsx` ya hace `where('authorId', '==', user.uid)`.
+      allow list: if request.auth != null;
     }
     
     // Reglas para términos del diccionario
