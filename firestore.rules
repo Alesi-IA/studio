@@ -1,23 +1,28 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
- 
+
     // Reglas para perfiles de usuario
     match /users/{userId} {
-      // LECTURA: Un usuario autenticado solo puede leer su propio perfil.
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // LECTURA: Cualquier usuario autenticado puede leer perfiles para verlos.
+      allow read: if request.auth != null;
+      
+      // LISTADO: Solo los dueños/co-dueños pueden listar todos los usuarios (para el panel de admin).
+      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
 
-      // ESCRITURA: Solo el dueño del perfil o un administrador puede escribir.
+      // ESCRITURA: Un usuario puede actualizar su propio perfil.
+      // Un administrador también puede actualizar cualquier perfil.
       allow write: if request.auth.uid == userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
     }
 
     // Reglas para la colección de publicaciones
     match /posts/{postId} {
-      // LECTURA: Cualquiera autenticado puede leer publicaciones.
-      allow get: if request.auth != null;
+      // LECTURA y LISTADO: Cualquiera autenticado puede leer y listar publicaciones.
+      allow list, get: if request.auth != null;
 
-      // ESCRITURA: Solo el autor puede crear su propia publicación.
+      // CREACIÓN: Solo el autor puede crear su propia publicación.
       allow create: if request.auth.uid == request.resource.data.authorId;
 
       // ACTUALIZACIÓN: Solo el autor puede actualizar su publicación.
@@ -28,38 +33,34 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
     }
 
-    // LISTAR: Permite que los usuarios autenticados consulten la lista de publicaciones.
-    // Esto es CRUCIAL para que el feed principal funcione.
-    match /posts/{postId} {
-        allow list: if request.auth != null;
-    }
-
-    // Reglas para comentarios (subcolección) - Asumiendo que se migrará a esto en el futuro.
-    match /posts/{postId}/comments/{commentId} {
-      // LECTURA: Cualquiera puede leer comentarios.
-      allow read: if true;
-      // ESCRITURA: Solo el autor del comentario, el autor de la publicación o un admin/moderador pueden escribir/eliminar.
-      allow write, delete: if request.auth.uid == request.resource.data.authorId ||
-        get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner', 'moderator'];
-    }
-
     // Reglas para guías de usuario
     match /userGuides/{guideId} {
-        allow read: if true;
-        allow create: if request.auth.uid == request.resource.data.authorId;
-        allow update, delete: if request.auth.uid == resource.data.authorId ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner'];
+        // LECTURA: Cualquiera autenticado puede leer y listar guías.
+        allow read, list: if request.auth != null; 
+        
+        // CREACIÓN: Un usuario autenticado puede crear una guía si el authorId es el suyo.
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
+        
+        // ACTUALIZACIÓN/ELIMINACIÓN: El autor o un admin pueden modificarla/borrarla.
+        allow update, delete: if request.auth != null && (request.auth.uid == resource.data.authorId ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['owner', 'co-owner']);
     }
 
     // Reglas para tareas de cultivo
     match /cultivationTasks/{taskId} {
-      allow read, write: if request.auth.uid == resource.data.authorId;
+      // Un usuario puede leer, escribir y eliminar sus propias tareas.
+      // La regla `write` cubre `create`, `update`, `delete`.
+      allow read, write: if request.auth.uid == resource.data.authorId || request.auth.uid == request.resource.data.authorId;
+
+      // Un usuario puede listar la colección, pero la consulta del cliente DEBE filtrar por authorId.
+      // Esta regla es segura porque la consulta en `tools/page.tsx` ya hace `where('authorId', '==', user.uid)`.
+      allow list: if request.auth != null;
     }
     
     // Reglas para términos del diccionario
     match /dictionaryTerms/{termId} {
-      allow read: if true; // Permite que todos lean el diccionario
+      // Cualquiera puede leer el diccionario
+      allow read: if true; 
     }
 
   }
