@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -6,6 +7,7 @@ service cloud.firestore {
     // Reglas para perfiles de usuario
     match /users/{userId} {
       // LECTURA: Cualquier usuario autenticado puede leer perfiles para verlos.
+      // Esto es necesario para que el inicio de sesión funcione y para ver los perfiles de otros.
       allow read: if request.auth != null;
       
       // LISTADO: Solo los dueños/co-dueños pueden listar todos los usuarios (para el panel de admin).
