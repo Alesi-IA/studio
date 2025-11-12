@@ -71,17 +71,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', userId);
     try {
+      // This is now allowed by security rules, as a user can update their own doc.
+      // For adding XP to OTHERS, this will be denied, which is expected. Cloud function is needed for that.
       await updateDoc(userDocRef, {
         experiencePoints: increment(amount)
       });
     } catch (error) {
-       console.warn(`Could not add ${amount}XP to user ${userId}. This might be due to security rules only allowing a user to update their own doc. For this to work, a cloud function would be a better pattern.`);
+       console.warn(`Could not add ${amount}XP to user ${userId}. This likely failed due to security rules if trying to update another user.`);
     }
   }, [firestore]);
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) throw new Error("Auth services not available");
     
+    // Check if any user exists to determine if this is the first registration
     const usersRef = collection(firestore, 'users');
     const q = query(usersRef, limit(1));
     const existingUsersSnapshot = await getDocs(q);
@@ -102,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uid: createdFbUser.uid,
       email: email.toLowerCase(),
       displayName,
-      role: isFirstUser ? 'owner' : 'user',
+      role: isFirstUser ? 'owner' : 'user', // Assign 'owner' role if this is the first user
       photoURL,
       bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       createdAt: new Date().toISOString(),
@@ -116,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await setDoc(userDocRef, newUserProfile);
     
-    // We can only update our own XP, so this is fine.
+    // Give initial XP
     await addExperience(createdFbUser.uid, 5);
 
     if (isFirstUser) {
@@ -208,23 +211,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, storage, firestore, addExperience]);
 
   const followUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || user.uid === targetUserId) return;
 
     const currentUserRef = doc(firestore, 'users', user.uid);
     const targetUserRef = doc(firestore, 'users', targetUserId);
 
     try {
         await runTransaction(firestore, async (transaction) => {
-            // Update current user's following list (allowed by rules)
             transaction.update(currentUserRef, {
                 followingIds: arrayUnion(targetUserId),
                 followingCount: increment(1)
             });
-            // Update target user's followers list (this write will fail if rules are strict)
-            // For this to work, we need either more permissive rules or a cloud function.
-            // As per the new strict rules, this will be denied. We'll rely on the user to see the change on their own profile.
-            // A better system would use a separate 'followers' subcollection.
-             transaction.update(targetUserRef, {
+            transaction.update(targetUserRef, {
                 followerIds: arrayUnion(user.uid),
                 followerCount: increment(1)
             });
@@ -233,25 +231,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({ title: 'Siguiendo!', description: 'Has comenzado a seguir a este usuario.'})
     } catch (error) {
       console.error("Error following user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario. Las reglas de seguridad pueden estar impidiendo esta acción.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
     }
   }, [user, firestore, toast, refreshUserData]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || user.uid === targetUserId) return;
     
     const currentUserRef = doc(firestore, 'users', user.uid);
     const targetUserRef = doc(firestore, 'users', targetUserId);
     
     try {
         await runTransaction(firestore, async (transaction) => {
-            // Update current user's following list
             transaction.update(currentUserRef, {
                 followingIds: arrayRemove(targetUserId),
                 followingCount: increment(-1)
             });
-            // Update target user's followers list
-             transaction.update(targetUserRef, {
+            transaction.update(targetUserRef, {
                 followerIds: arrayRemove(user.uid),
                 followerCount: increment(-1)
             });
@@ -260,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          toast({ title: 'Dejaste de seguir', description: 'Ya no sigues a este usuario.'})
     } catch (error) {
       console.error("Error unfollowing user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario. Las reglas de seguridad pueden estar impidiendo esta acción.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
     }
   }, [user, firestore, toast, refreshUserData]);
 
