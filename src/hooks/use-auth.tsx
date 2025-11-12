@@ -15,6 +15,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CannaGrowUser } from '@/types';
+import { FirebaseError } from 'firebase/app';
 
 interface AuthContextType {
   user: CannaGrowUser | null;
@@ -71,8 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', userId);
     try {
-      // This is now allowed by security rules, as a user can update their own doc.
-      // For adding XP to OTHERS, this will be denied, which is expected. Cloud function is needed for that.
       await updateDoc(userDocRef, {
         experiencePoints: increment(amount)
       });
@@ -83,12 +82,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) throw new Error("Auth services not available");
-    
-    // Check if any user exists to determine if this is the first registration
-    const usersRef = collection(firestore, 'users');
-    const q = query(usersRef, limit(1));
-    const existingUsersSnapshot = await getDocs(q);
-    const isFirstUser = existingUsersSnapshot.empty;
+
+    let isFirstUser = false;
+    try {
+        const usersRef = collection(firestore, 'users');
+        const q = query(usersRef, limit(1));
+        const existingUsersSnapshot = await getDocs(q);
+        isFirstUser = existingUsersSnapshot.empty;
+    } catch (e) {
+        if (e instanceof FirebaseError && e.code === 'permission-denied') {
+            console.warn('Permission denied to check for existing users. Assuming not the first user. This is expected for non-admin sign-ups.');
+            isFirstUser = false;
+        } else {
+            throw e;
+        }
+    }
 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const createdFbUser = userCredential.user;
@@ -105,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uid: createdFbUser.uid,
       email: email.toLowerCase(),
       displayName,
-      role: isFirstUser ? 'owner' : 'user', // Assign 'owner' role if this is the first user
+      role: isFirstUser ? 'owner' : 'user',
       photoURL,
       bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
       createdAt: new Date().toISOString(),
@@ -119,7 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await setDoc(userDocRef, newUserProfile);
     
-    // Give initial XP
     await addExperience(createdFbUser.uid, 5);
 
     if (isFirstUser) {
@@ -183,17 +190,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("User not logged in or Firebase services unavailable.");
     }
     
-    // 1. Convert Data URI to Blob for upload
     const fetchRes = await fetch(imageUri);
     const blob = await fetchRes.blob();
     const file = new File([blob], `post-${Date.now()}.jpg`, { type: blob.type });
 
-    // 2. Upload image to Firebase Storage
     const storageRef = ref(storage, `posts/${user.uid}/${file.name}`);
     const uploadResult = await uploadBytes(storageRef, file);
     const permanentImageUrl = await getDownloadURL(uploadResult.ref);
 
-    // 3. Create post document in Firestore
     const postsCollectionRef = collection(firestore, 'posts');
     await addDoc(postsCollectionRef, {
       authorId: user.uid,
