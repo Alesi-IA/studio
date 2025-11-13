@@ -37,25 +37,48 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const prototypeUser: CannaGrowUser = {
+  uid: 'prototype-user-001',
+  email: 'demo@cannagrow.app',
+  displayName: 'Canna-Demo',
+  role: 'owner',
+  photoURL: 'https://picsum.photos/seed/prototype/128/128',
+  bio: 'Navegando en modo prototipo. ¡Explorando el futuro del cultivo!',
+  createdAt: new Date().toISOString(),
+  experiencePoints: 550,
+  followerIds: [],
+  followingIds: [],
+  followerCount: 138,
+  followingCount: 42,
+  savedPostIds: [],
+};
+
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { auth, firestore, storage, user: firebaseUser, isUserLoading: isAuthServiceLoading } = useFirebase();
   
-  const userDocRef = useMemoFirebase(() => {
-    if (!firestore || !firebaseUser?.uid) return null;
-    return doc(firestore, 'users', firebaseUser.uid);
-  }, [firestore, firebaseUser?.uid]);
-  
-  const { data: user, isLoading: isProfileLoading, mutate: refreshUserData } = useDoc<CannaGrowUser>(userDocRef);
+  const [localUser, setLocalUser] = useState<CannaGrowUser | null>(null);
   
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
 
+  const user = localUser;
   const isOwner = user?.role === 'owner';
   const isModerator = user?.role === 'moderator' || user?.role === 'co-owner' || isOwner;
 
   useEffect(() => {
+    // --- MODO PROTOTIPO ---
+    // En lugar de esperar a Firebase Auth, inyectamos un usuario falso.
+    if (!user) {
+      setLocalUser(prototypeUser);
+    }
+    setLoading(false);
+    // --- FIN MODO PROTOTIPO ---
+    
+    /*
+    // --- Lógica de Firebase Auth (desactivada) ---
     const finalLoadingState = isAuthServiceLoading || (firebaseUser != null && isProfileLoading);
     setLoading(finalLoadingState);
 
@@ -68,7 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (!user && !isPublicRoute) {
       router.push('/login');
     }
-  }, [user, isAuthServiceLoading, isProfileLoading, pathname, router, firebaseUser]);
+    */
+  }, [user, pathname, router]);
 
   const addExperience = useCallback(async (userId: string, amount: number): Promise<void> => {
     if (!firestore) return;
@@ -83,238 +107,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [firestore]);
   
   const logInAsGuest = useCallback(async (): Promise<void> => {
-    if (!auth || !firestore) throw new Error("Auth services not available");
-
-    const userCredential = await signInAnonymously(auth);
-    const createdFbUser = userCredential.user;
-
-    const userDocRef = doc(firestore, 'users', createdFbUser.uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) {
-        const photoURL = `https://picsum.photos/seed/${createdFbUser.uid}/128/128`;
-        const displayName = `Invitado-${createdFbUser.uid.substring(0, 5)}`;
-        
-        await updateProfile(createdFbUser, {
-          displayName,
-          photoURL,
-        });
-
-        const newUserProfile: CannaGrowUser = {
-          uid: createdFbUser.uid,
-          email: `${displayName}@guest.com`,
-          displayName,
-          role: 'user',
-          photoURL,
-          bio: 'Explorando CannaGrow como invitado.',
-          createdAt: new Date().toISOString(),
-          experiencePoints: 0,
-          followerIds: [],
-          followingIds: [],
-          followerCount: 0,
-          followingCount: 0,
-          savedPostIds: [],
-        };
-        await setDoc(userDocRef, newUserProfile);
-    }
-  }, [auth, firestore]);
+    toast({ variant: 'destructive', title: 'Función Deshabilitada', description: 'El inicio de sesión real está desactivado en este modo prototipo.' });
+  }, [toast]);
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
-    if (!auth || !firestore) throw new Error("Auth services not available");
-
-    let isFirstUser = false;
-    try {
-        const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, limit(1));
-        const existingUsersSnapshot = await getDocs(q);
-        isFirstUser = existingUsersSnapshot.empty;
-    } catch (e) {
-        if (e instanceof FirebaseError && e.code === 'permission-denied') {
-            console.warn('Permission denied to check for existing users. Assuming not the first user. This is expected for non-admin sign-ups.');
-            isFirstUser = false;
-        } else {
-            throw e;
-        }
-    }
-
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const createdFbUser = userCredential.user;
-    
-    const photoURL = `https://picsum.photos/seed/${createdFbUser.uid}/128/128`;
-
-    await updateProfile(createdFbUser, {
-      displayName,
-      photoURL,
-    });
-    
-    const userDocRef = doc(firestore, 'users', createdFbUser.uid);
-    const newUserProfile: CannaGrowUser = {
-      uid: createdFbUser.uid,
-      email: email.toLowerCase(),
-      displayName,
-      role: isFirstUser ? 'owner' : 'user',
-      photoURL,
-      bio: 'Entusiasta del cultivo, aprendiendo y compartiendo mi viaje en CannaGrow.',
-      createdAt: new Date().toISOString(),
-      experiencePoints: 0,
-      followerIds: [],
-      followingIds: [],
-      followerCount: 0,
-      followingCount: 0,
-      savedPostIds: [],
-    };
-    
-    await setDoc(userDocRef, newUserProfile);
-    
-    await addExperience(createdFbUser.uid, 5);
-
-    if (isFirstUser) {
-        toast({
-            title: '¡Bienvenido, Dueño!',
-            description: 'Tu cuenta ha sido creada con privilegios de administrador.'
-        })
-    }
-
-  }, [auth, firestore, addExperience, toast]);
+     toast({ variant: 'destructive', title: 'Función Deshabilitada', description: 'El registro real está desactivado en este modo prototipo.' });
+  }, [toast]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
-    if (!auth) throw new Error("Auth service not available");
-    await signInWithEmailAndPassword(auth, email, password);
-  }, [auth]);
+    toast({ variant: 'destructive', title: 'Función Deshabilitada', description: 'El inicio de sesión real está desactivado en este modo prototipo.' });
+  }, [toast]);
 
   const logOut = useCallback(async () => {
-    if (!auth) return;
-    await signOut(auth);
-    if(typeof window !== 'undefined') {
-      sessionStorage.clear();
-    }
+    setLocalUser(null); // En modo prototipo, solo borramos el usuario local
+    toast({ title: 'Cerraste Sesión (Modo Prototipo)', description: 'Recarga la página para volver a iniciar sesión automáticamente.' });
     router.push('/login');
-  }, [auth, router]);
+  }, [router, toast]);
   
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<void> => {
-    if (!user || !firestore || !auth.currentUser) {
-       toast({ variant: 'destructive', title: 'Error', description: 'Debes iniciar sesión para actualizar tu perfil.' });
-       return;
-    };
-    
-    try {
-      const authUpdates: { displayName?: string; photoURL?: string } = {};
-      if (updates.displayName && updates.displayName !== auth.currentUser.displayName) {
-        authUpdates.displayName = updates.displayName;
-      }
-      if (updates.photoURL && updates.photoURL !== auth.currentUser.photoURL) {
-        authUpdates.photoURL = updates.photoURL;
-      }
-
-      if (Object.keys(authUpdates).length > 0) {
-        await updateProfile(auth.currentUser, authUpdates);
-      }
-
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await updateDoc(userDocRef, updates);
-      
-      if(!updates.savedPostIds){
-          toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
-      }
-      refreshUserData();
-
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo actualizar tu perfil.' });
-    }
-  }, [user, firestore, auth, toast, refreshUserData]);
+    if (!user) return;
+    setLocalUser(prev => ({...prev!, ...updates}));
+    toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado (en modo prototipo).' });
+  }, [user, toast]);
 
   const createPost = useCallback(async (description: string, imageUri: string) => {
-    if (!user || !storage || !firestore) {
-      throw new Error("User not logged in or Firebase services unavailable.");
-    }
-    
-    const fetchRes = await fetch(imageUri);
-    const blob = await fetchRes.blob();
-    const file = new File([blob], `post-${Date.now()}.jpg`, { type: blob.type });
-
-    const storageRef = ref(storage, `posts/${user.uid}/${file.name}`);
-    const uploadResult = await uploadBytes(storageRef, file);
-    const permanentImageUrl = await getDownloadURL(uploadResult.ref);
-
-    const postsCollectionRef = collection(firestore, 'posts');
-    await addDoc(postsCollectionRef, {
-      authorId: user.uid,
-      authorName: user.displayName,
-      authorAvatar: user.photoURL,
-      description: description,
-      imageUrl: permanentImageUrl,
-      createdAt: serverTimestamp(),
-      likes: 0,
-      awards: 0,
-      comments: [],
-    });
-
-    await addExperience(user.uid, 10);
-  }, [user, storage, firestore, addExperience]);
+    if (!user) return;
+    console.log('Post Creado (Modo Prototipo):', { description, imageUri });
+    toast({ title: '¡Publicación Creada!', description: 'Tu post se ha creado en modo prototipo.' });
+  }, [user, toast]);
 
   const followUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore || user.uid === targetUserId) return;
-
-    const currentUserRef = doc(firestore, 'users', user.uid);
-    const targetUserRef = doc(firestore, 'users', targetUserId);
-
-    try {
-        await runTransaction(firestore, async (transaction) => {
-            transaction.update(currentUserRef, {
-                followingIds: arrayUnion(targetUserId),
-                followingCount: increment(1)
-            });
-            transaction.update(targetUserRef, {
-                followerIds: arrayUnion(user.uid),
-                followerCount: increment(1)
-            });
-        });
-        refreshUserData();
-        toast({ title: 'Siguiendo!', description: 'Has comenzado a seguir a este usuario.'})
-    } catch (error) {
-      console.error("Error following user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo seguir al usuario.' });
-    }
-  }, [user, firestore, toast, refreshUserData]);
+    if (!user) return;
+     toast({ title: 'Siguiendo (Modo Prototipo)', description: `Ahora sigues al usuario ${targetUserId}.`});
+  }, [user, toast]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
-    if (!user || !firestore || user.uid === targetUserId) return;
-    
-    const currentUserRef = doc(firestore, 'users', user.uid);
-    const targetUserRef = doc(firestore, 'users', targetUserId);
-    
-    try {
-        await runTransaction(firestore, async (transaction) => {
-            transaction.update(currentUserRef, {
-                followingIds: arrayRemove(targetUserId),
-                followingCount: increment(-1)
-            });
-            transaction.update(targetUserRef, {
-                followerIds: arrayRemove(user.uid),
-                followerCount: increment(-1)
-            });
-        });
-        refreshUserData();
-         toast({ title: 'Dejaste de seguir', description: 'Ya no sigues a este usuario.'})
-    } catch (error) {
-      console.error("Error unfollowing user:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo dejar de seguir al usuario.' });
-    }
-  }, [user, firestore, toast, refreshUserData]);
+    if (!user) return;
+    toast({ title: 'Dejaste de Seguir (Modo Prototipo)', description: `Ya no sigues a ${targetUserId}.`});
+  }, [user, toast]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
-      console.warn("User impersonation is a prototype feature and not secure.");
-      
-      const isPublicRoute = pathname === '/login' || pathname === '/register';
-      router.push('/');
-      
-      toast({
-        title: 'Suplantación Exitosa (Prototipo)',
-        description: `Navegando como ${injectedUser.displayName}. Recarga la página si es necesario.`,
-      });
-
-  }, [toast, router, pathname]);
+      setLocalUser(injectedUser);
+  }, []);
   
 
   const value = {
