@@ -9,6 +9,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  signInAnonymously,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, increment, runTransaction, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp, getDocs, query, limit } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -24,6 +25,7 @@ interface AuthContextType {
   isModerator: boolean;
   signUp: (displayName: string, email: string, pass: string) => Promise<void>;
   logIn: (email: string, pass: string) => Promise<void>;
+  logInAsGuest: () => Promise<void>;
   logOut: () => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
   createPost: (description: string, imageUri: string) => Promise<void>;
@@ -79,6 +81,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
        console.warn(`Could not add ${amount}XP to user ${userId}. This likely failed due to security rules if trying to update another user.`);
     }
   }, [firestore]);
+  
+  const logInAsGuest = useCallback(async (): Promise<void> => {
+    if (!auth || !firestore) throw new Error("Auth services not available");
+
+    const userCredential = await signInAnonymously(auth);
+    const createdFbUser = userCredential.user;
+
+    const userDocRef = doc(firestore, 'users', createdFbUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+        const photoURL = `https://picsum.photos/seed/${createdFbUser.uid}/128/128`;
+        const displayName = `Invitado-${createdFbUser.uid.substring(0, 5)}`;
+        
+        await updateProfile(createdFbUser, {
+          displayName,
+          photoURL,
+        });
+
+        const newUserProfile: CannaGrowUser = {
+          uid: createdFbUser.uid,
+          email: `${displayName}@guest.com`,
+          displayName,
+          role: 'user',
+          photoURL,
+          bio: 'Explorando CannaGrow como invitado.',
+          createdAt: new Date().toISOString(),
+          experiencePoints: 0,
+          followerIds: [],
+          followingIds: [],
+          followerCount: 0,
+          followingCount: 0,
+          savedPostIds: [],
+        };
+        await setDoc(userDocRef, newUserProfile);
+    }
+  }, [auth, firestore]);
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
     if (!auth || !firestore) throw new Error("Auth services not available");
@@ -285,6 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isModerator,
     signUp,
     logIn,
+    logInAsGuest,
     logOut,
     updateUserProfile,
     createPost,

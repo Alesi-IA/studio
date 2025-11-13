@@ -12,42 +12,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { FirebaseError } from "firebase/app";
 
 export default function LoginPage() {
-    const { logIn } = useAuth();
+    const { logInAsGuest } = useAuth();
     const router = useRouter();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleGuestLogin = async () => {
         setLoading(true);
         setError(null);
         try {
-            await logIn(email, password);
-            // La redirección ahora es manejada por el AuthProvider
+            await logInAsGuest();
+            // La redirección es manejada por el AuthProvider
         } catch (err: any) {
-             if (err instanceof FirebaseError) {
-                switch (err.code) {
-                    case 'auth/user-not-found':
-                    case 'auth/wrong-password':
-                    case 'auth/invalid-credential':
-                        setError("Las credenciales son incorrectas. Por favor, inténtalo de nuevo.");
-                        break;
-                    default:
-                        setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.");
-                        break;
-                }
-            } else {
-                setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.");
-            }
+            setError("No se pudo iniciar sesión como invitado. Por favor, inténtalo de nuevo.");
+            console.error('Guest login failed', err);
         } finally {
             setLoading(false);
         }
@@ -57,50 +40,21 @@ export default function LoginPage() {
   return (
     <Card className="mx-auto max-w-sm">
        <CardHeader className="text-center">
-        <CannaGrowLogo className="mx-auto" />
+        <CannaGrowLogo className="mx-auto mb-2" />
         <CardTitle className="text-2xl font-headline font-bold">CannaGrow</CardTitle>
         <CardDescription>
-          Ingresa tu email para acceder a tu cuenta
+          Bienvenido a tu compañero de cultivo.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleLogin}>
-            <div className="grid gap-4">
-            <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
-                />
-            </div>
-            <div className="grid gap-2">
-                <div className="flex items-center">
-                <Label htmlFor="password">Contraseña</Label>
-                <Link
-                    href="#"
-                    className="ml-auto inline-block text-sm underline"
-                >
-                    ¿Olvidaste tu contraseña?
-                </Link>
-                </div>
-                <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
-            </div>
-             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
-                 {loading ? <Loader2 className="animate-spin" /> : 'Iniciar sesión'}
-            </Button>
-            </div>
-        </form>
+        <div className="grid gap-4">
+          <Button onClick={handleGuestLogin} className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" /> : 'Entrar como invitado'}
+          </Button>
+          {error && <p className="text-sm text-center text-destructive">{error}</p>}
+        </div>
         <div className="mt-4 text-center text-sm">
-          ¿No tienes una cuenta?{" "}
-          <Link href="/register" className="underline">
-            Regístrate
-          </Link>
+          El registro por email está deshabilitado en este proyecto.
         </div>
       </CardContent>
     </Card>
