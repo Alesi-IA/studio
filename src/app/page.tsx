@@ -43,7 +43,6 @@ import { useFirebase } from '@/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 
 export default function FeedPage() {
-  const { firestore } = useFirebase();
   const { user, isModerator, addExperience, updateUserProfile } = useAuth();
   const { toast } = useToast();
 
@@ -58,78 +57,19 @@ export default function FeedPage() {
   const [awardedPosts, setAwardedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Initialize state from sessionStorage on client mount
-    const savedLiked = sessionStorage.getItem('likedPosts');
-    if (savedLiked) {
-      setLikedPosts(new Set(JSON.parse(savedLiked)));
-    }
-    const savedAwarded = sessionStorage.getItem('awardedPosts');
-    if (savedAwarded) {
-      setAwardedPosts(new Set(JSON.parse(savedAwarded)));
-    }
+    // In prototype mode, we don't fetch real posts. We can show a loading state then an empty state.
+    setLoading(true);
+    setTimeout(() => {
+      setPosts([]); // Set to empty array after a delay
+      setLoading(false);
+    }, 1000);
   }, []);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      if (!firestore || !user?.uid) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-
-      try {
-          const authorIdsToFetch = [...(user.followingIds || []), user.uid];
-          
-          if (authorIdsToFetch.length === 0) {
-              setPosts([]);
-              setLoading(false);
-              return;
-          }
-
-          const postsQuery = query(
-              collection(firestore, "posts"), 
-              where("authorId", "in", authorIdsToFetch)
-          );
-
-          const querySnapshot = await getDocs(postsQuery);
-          let fetchedPosts: Post[] = [];
-          querySnapshot.forEach(doc => {
-              fetchedPosts.push({ id: doc.id, ...doc.data() } as Post);
-          });
-          
-          // Sort posts on the client-side
-          fetchedPosts.sort((a, b) => {
-              const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-              const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-              return dateB - dateA;
-          });
-
-          setPosts(fetchedPosts);
-
-      } catch(e) {
-        console.error("Failed to fetch posts", e)
-        toast({ variant: 'destructive', title: 'Error al cargar el feed', description: 'No se pudieron obtener las publicaciones.' })
-        setPosts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user && firestore) {
-      fetchPosts();
-    }
-  }, [firestore, user]);
 
   const handleCommentChange = (postId: string, text: string) => {
     setCommentStates(prev => ({ ...prev, [postId]: text }));
   };
 
-  const persistInteractions = (key: 'likedPosts' | 'awardedPosts', newSet: Set<string>) => {
-    if (typeof window !== 'undefined') {
-        sessionStorage.setItem(key, JSON.stringify(Array.from(newSet)));
-    }
-  };
-  
   const handleToggleSave = async (postId: string) => {
     if (!user) return;
     const isCurrentlySaved = user.savedPostIds?.includes(postId) ?? false;
@@ -146,7 +86,7 @@ export default function FeedPage() {
 
 
   const handleToggleLike = async (post: Post) => {
-    if (!firestore || !user) return;
+    if (!user) return;
     const newLikedPosts = new Set(likedPosts);
     const alreadyLiked = newLikedPosts.has(post.id);
 
@@ -156,13 +96,10 @@ export default function FeedPage() {
       newLikedPosts.add(post.id);
     }
     setLikedPosts(newLikedPosts);
-    persistInteractions('likedPosts', newLikedPosts);
 
-    const postRef = doc(firestore, 'posts', post.id);
     const currentLikes = post.likes || 0;
     const newLikes = alreadyLiked ? currentLikes - 1 : currentLikes + 1;
-    await updateDoc(postRef, { likes: newLikes });
-
+    
     setPosts(prevPosts => prevPosts.map(p => p.id === post.id ? { ...p, likes: newLikes } : p));
     
     if (!alreadyLiked && user.uid !== post.authorId) {
@@ -172,9 +109,7 @@ export default function FeedPage() {
 
   const handleAddComment = async (postId: string) => {
     const commentText = commentStates[postId];
-    if (!commentText?.trim() || !user || !firestore) return;
-    
-    const postRef = doc(firestore, 'posts', postId);
+    if (!commentText?.trim() || !user) return;
     
     const newComment = {
       id: `comment-${postId}-${Date.now()}`,
@@ -184,10 +119,6 @@ export default function FeedPage() {
       text: commentText,
       createdAt: new Date().toISOString(),
     };
-
-    await updateDoc(postRef, {
-        comments: arrayUnion(newComment)
-    });
 
     const post = posts.find(p => p.id === postId);
     if (post && post.authorId !== user.uid) {
@@ -201,17 +132,13 @@ export default function FeedPage() {
   };
 
   const handleGiveAward = async (post: Post) => {
-    if (!user || !firestore || user.uid === post.authorId || awardedPosts.has(post.id)) return;
+    if (!user || user.uid === post.authorId || awardedPosts.has(post.id)) return;
 
     const newAwardedPosts = new Set(awardedPosts);
     newAwardedPosts.add(post.id);
     setAwardedPosts(newAwardedPosts);
-    persistInteractions('awardedPosts', newAwardedPosts);
 
-    const postRef = doc(firestore, 'posts', post.id);
     const newAwards = (post.awards || 0) + 1;
-    await updateDoc(postRef, { awards: newAwards });
-
     setPosts(prevPosts => prevPosts.map(p => p.id === post.id ? { ...p, awards: newAwards } : p));
     
     addExperience(post.authorId, 35); // +35 XP for an award
@@ -223,16 +150,8 @@ export default function FeedPage() {
   };
 
   const handleDelete = async (postToDelete: Post) => {
-    if (!firestore) return;
-    try {
-        const postRef = doc(firestore, 'posts', postToDelete.id);
-        await deleteDoc(postRef);
-        setPosts(posts.filter(p => p.id !== postToDelete.id));
-        toast({ title: 'Publicación eliminada' });
-    } catch (error) {
-        console.error("Error al eliminar la publicación: ", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo eliminar la publicación.' });
-    }
+    setPosts(posts.filter(p => p.id !== postToDelete.id));
+    toast({ title: 'Publicación eliminada (simulado)' });
   };
 
   const handleEditClick = (post: Post) => {
@@ -241,16 +160,13 @@ export default function FeedPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingPost || !firestore) return;
-    
-    const postRef = doc(firestore, 'posts', editingPost.id);
-    await updateDoc(postRef, { description: editingDescription });
+    if (!editingPost) return;
     
     setPosts(posts.map(p => 
         p.id === editingPost.id ? { ...p, description: editingDescription } : p
     ));
     setEditingPost(null);
-    toast({ title: 'Publicación actualizada' });
+    toast({ title: 'Publicación actualizada (simulado)' });
   };
 
   return (
@@ -281,7 +197,7 @@ export default function FeedPage() {
               <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg flex flex-col items-center gap-4">
                 <BookHeart className="h-16 w-16" />
                 <h3 className="font-headline text-2xl font-semibold">Tu feed está vacío</h3>
-                <p className="max-w-md">Cuando sigas a otros cultivadores, sus publicaciones aparecerán aquí. ¡Usa la pestaña de búsqueda para encontrar gente!</p>
+                <p className="max-w-md">En una aplicación real, cuando sigas a otros cultivadores, sus publicaciones aparecerán aquí. ¡Usa la pestaña de búsqueda para encontrar gente!</p>
               </div>
             )}
 

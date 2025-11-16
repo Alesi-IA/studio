@@ -3,19 +3,16 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useToast } from './use-toast';
-import type { CannaGrowUser, Post } from '@/types';
-import { usePathname, useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import type { CannaGrowUser } from '@/types';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: CannaGrowUser | null;
   loading: boolean;
   isOwner: boolean;
   isModerator: boolean;
-  signUp: (displayName: string, email: string, pass: string) => Promise<void>;
-  logIn: (email: string, pass: string) => Promise<void>;
+  signUp: () => Promise<void>;
+  logIn: () => Promise<void>;
   logInAsGuest: () => Promise<void>;
   logOut: () => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
@@ -50,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [localUser, setLocalUser] = useState<CannaGrowUser | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { firestore, storage } = useFirebase();
   const router = useRouter();
 
   // This is the core of the prototype mode.
@@ -97,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [localUser, toast]);
   
   const createPost = useCallback(async (description: string, imageUri: string) => {
-    if (!localUser || !storage || !firestore) throw new Error("User or services not available");
+    if (!localUser) throw new Error("User not available");
 
     toast({
       title: 'Creando publicación (simulado)...',
@@ -105,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     console.log('Simulating post creation:', { description, imageUri });
     addExperience(localUser.uid, 10);
-  }, [localUser, storage, firestore, addExperience, toast]);
+  }, [localUser, addExperience, toast]);
 
   const followUser = useCallback(async (targetUserId: string) => {
       console.log(`Simulating following user: ${targetUserId}`);
