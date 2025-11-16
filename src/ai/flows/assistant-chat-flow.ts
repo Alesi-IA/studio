@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A cultivation assistant chatbot.
@@ -24,7 +25,7 @@ Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.
     const formattedHistory = history.map(message => message.content);
 
     const response = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
+      model: 'googleai/gemini-1.5-pro',
       system: systemPrompt,
       prompt: formattedHistory,
     });

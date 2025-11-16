@@ -1,3 +1,4 @@
+
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -24,7 +25,7 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
 
   try {
     const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
+      model: 'googleai/gemini-1.5-pro',
       prompt: `Eres un experto en identificación y salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis.
 
 1.  **Identifica la Cepa:** Determina la cepa más probable de la planta.
