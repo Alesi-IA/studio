@@ -1,7 +1,7 @@
 'use server';
 
 import { assistantChat } from "@/ai/flows/assistant-chat-flow";
-import { isApiKeyConfigured } from "@/ai/genkit";
+import { isApiKeyConfigured } from "@/ai/utils";
 import type { ChatMessage } from "./types";
 
 const NO_API_KEY_ERROR = "La clave API de Gemini no está configurada. Por favor, añádela a tu archivo .env para usar las funciones de IA.";

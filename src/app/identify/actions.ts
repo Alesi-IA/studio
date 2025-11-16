@@ -1,6 +1,7 @@
 'use server';
 
-import { ai, isApiKeyConfigured } from '@/ai/genkit';
+import { ai } from '@/ai/genkit';
+import { isApiKeyConfigured } from '@/ai/utils';
 import { IdentifyStrainInputSchema, IdentifyStrainOutputSchema } from '@/app/ai/schemas';
 import type { IdentifyStrainOutput } from './types';
 
