@@ -25,7 +25,7 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
 
   try {
     const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-pro',
+      model: 'googleai/gemini-pro',
       prompt: `Eres un experto en la salud de plantas de cannabis. Analiza la imagen proporcionada de una planta de cannabis en busca de posibles problemas, como deficiencias de nutrientes, plagas o enfermedades. Proporciona una lista de los problemas identificados y sugerencias para solucionarlos.
 
 TODA tu respuesta debe ser en español.
