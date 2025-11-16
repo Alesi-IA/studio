@@ -19,11 +19,14 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
 Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.`;
 
   try {
-    // The history is passed directly as the prompt. Genkit handles the formatting.
+    // The history needs to be mapped to a simple array of strings for the `generate` function.
+    // The `ChatMessage` object structure is not directly supported as a prompt part.
+    const formattedHistory = history.map(message => message.content);
+
     const response = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       system: systemPrompt,
-      prompt: history,
+      prompt: formattedHistory,
     });
 
     // In Genkit v1.x, the response text is accessed via the `text` property.
