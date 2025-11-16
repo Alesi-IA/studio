@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [auth, firestore, toast]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
-    if (!auth) return;
+    if (!auth) throw new Error("Auth service not available.");
     await signInWithEmailAndPassword(auth, email, password);
   }, [auth]);
 
@@ -248,7 +248,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
       // This function is for admin impersonation and should be used with care.
       // For now, it will just log a warning in production environments.
-      console.warn("User injection is an admin-only feature and is disabled in this context.");
+      if (process.env.NODE_ENV === 'production') {
+        console.warn("User injection is an admin-only feature and is disabled in production.");
+        return;
+      }
+      // This part of the logic is complex and would require a significant change
+      // to the auth state management, so it's stubbed out for now.
+      console.log("Injecting user:", injectedUser.displayName);
   }, []);
   
 

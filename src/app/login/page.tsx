@@ -19,12 +19,10 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { FirebaseError } from "firebase/app";
-import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
     const { logIn, logInAsGuest } = useAuth();
     const router = useRouter();
-    const { toast } = useToast();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -43,6 +41,8 @@ export default function LoginPage() {
             if (err instanceof FirebaseError) {
                 if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
                     message = "Email o contraseña incorrectos.";
+                } else {
+                    message = `Error: ${err.message}`;
                 }
             }
             setError(message);
@@ -59,7 +59,11 @@ export default function LoginPage() {
             await logInAsGuest();
             router.push('/');
         } catch (err: any) {
-            setError("No se pudo iniciar sesión como invitado. Por favor, inténtalo de nuevo.");
+             let message = "No se pudo iniciar sesión como invitado.";
+             if (err instanceof FirebaseError) {
+                message = `Error: ${err.message}`;
+             }
+            setError(message);
             console.error('Guest login failed', err);
         } finally {
             setLoading(false);

@@ -44,6 +44,8 @@ export default function RegisterPage() {
                     message = "Este email ya está registrado. Por favor, inicia sesión.";
                 } else if (err.code === 'auth/weak-password') {
                     message = "La contraseña es demasiado débil. Debe tener al menos 6 caracteres.";
+                } else {
+                    message = `Error: ${err.message}`;
                 }
             }
             setError(message);
