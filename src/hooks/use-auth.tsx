@@ -37,7 +37,7 @@ const prototypeUser: CannaGrowUser = {
   followingIds: ['user-2', 'user-3', 'user-4'],
   followerCount: 1200,
   followingCount: 88,
-  savedPostIds: [],
+  savedPostIds: ['post-1'],
 };
 
 
@@ -61,8 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setLocalUser(null);
     toast({ title: "Sesión Cerrada" });
-    // In a real app, we'd redirect. Here, we can just clear the user.
-    // To simulate a full logout, we can reload the page which will re-inject the user.
+    // In a real app, this would redirect. In prototype, we can reload to reset state.
     window.location.reload();
   };
 

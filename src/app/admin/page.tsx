@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -25,10 +26,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, Timestamp } from 'firebase/firestore';
 import { subMonths, format, isAfter, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import type { CannaGrowUser } from '@/types';
 
 const roleIcons = {
   owner: <Crown className="mr-1 h-3 w-3" />,
@@ -51,10 +51,26 @@ const roleNames: Record<string, string> = {
   user: 'Usuario',
 };
 
+// --- DATOS DE DEMOSTRACIÓN ---
+// Reemplazamos la llamada a Firestore con datos estáticos para el modo prototipo.
+const demoUsers: CannaGrowUser[] = [
+    { uid: 'prototype-user-001', displayName: 'CannaOwner', email: 'owner@cannaconnect.app', role: 'owner', photoURL: 'https://picsum.photos/seed/prototype-user-001/128/128', createdAt: new Date().toISOString() },
+    { uid: 'user-2', displayName: 'CultivadorPro', email: 'pro@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-2/40/40', createdAt: subDays(new Date(), 2).toISOString() },
+    { uid: 'user-3', displayName: 'MariaJuana', email: 'mj@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-3/40/40', createdAt: subDays(new Date(), 10).toISOString() },
+    { uid: 'user-4', displayName: 'ElVerde', email: 'verde@grower.com', role: 'moderator', photoURL: 'https://picsum.photos/seed/user-4/40/40', createdAt: subDays(new Date(), 45).toISOString() },
+    { uid: 'user-5', displayName: 'CosechaFeliz', email: 'feliz@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-5/40/40', createdAt: subDays(new Date(), 100).toISOString() },
+];
+
+const demoPosts = [
+    { id: '1', authorId: 'prototype-user-001' },
+    { id: '2', authorId: 'user-2' },
+    { id: '3', authorId: 'user-3' },
+    { id: '4', authorId: 'user-2' },
+];
+// --- FIN DE DATOS DE DEMOSTRACIÓN ---
 
 export default function AdminPage() {
   const { _injectUser, user: currentUser, isOwner } = useAuth();
-  const { firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -65,11 +81,11 @@ export default function AdminPage() {
     user: false,
   });
 
-  const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users')) : null, [firestore]);
-  const postsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'posts')) : null, [firestore]);
-  
-  const { data: usersData, isLoading: isLoadingUsers } = useCollection(usersQuery);
-  const { data: postsData, isLoading: isLoadingPosts } = useCollection(postsQuery);
+  // Usamos los datos de demostración en lugar de llamar a Firestore
+  const usersData = demoUsers;
+  const postsData = demoPosts;
+  const isLoadingUsers = false;
+  const isLoadingPosts = false;
 
   const totalUsers = useMemo(() => usersData?.length || 0, [usersData]);
   const totalPosts = useMemo(() => postsData?.length || 0, [postsData]);
@@ -79,7 +95,7 @@ export default function AdminPage() {
     const twentyFourHoursAgo = subDays(new Date(), 1);
     return usersData.filter(user => {
       if (!user.createdAt) return false;
-      const userDate = user.createdAt instanceof Timestamp ? user.createdAt.toDate() : new Date(user.createdAt);
+      const userDate = new Date(user.createdAt);
       return isAfter(userDate, twentyFourHoursAgo);
     }).length;
   }, [usersData]);
@@ -113,14 +129,7 @@ export default function AdminPage() {
     if (usersData) {
         usersData.forEach(user => {
             if (user.createdAt) {
-                let userDate: Date;
-                if (user.createdAt instanceof Timestamp) {
-                  userDate = user.createdAt.toDate();
-                } else if (typeof user.createdAt === 'string') {
-                  userDate = new Date(user.createdAt);
-                } else {
-                  return; // Skip if createdAt is not a recognizable format
-                }
+                let userDate = new Date(user.createdAt);
                 const monthName = format(userDate, 'MMM', { locale: es });
                 const monthIndex = months.findIndex(m => m.name.toLowerCase() === monthName.toLowerCase());
                 if (monthIndex > -1) {
@@ -133,15 +142,8 @@ export default function AdminPage() {
   }, [usersData]);
   
 
-  const handleImpersonate = (targetUser: any) => {
-    const userToImpersonate = {
-      uid: targetUser.uid,
-      email: targetUser.email,
-      displayName: targetUser.displayName,
-      role: targetUser.role,
-      photoURL: targetUser.photoURL
-    };
-    _injectUser(userToImpersonate);
+  const handleImpersonate = (targetUser: CannaGrowUser) => {
+    _injectUser(targetUser);
     toast({
       title: 'Suplantación Exitosa',
       description: `Ahora estás navegando como ${targetUser.displayName}.`,
@@ -286,7 +288,7 @@ export default function AdminPage() {
                             Cargando usuarios...
                         </TableCell>
                     </TableRow>
-                  ) : filteredUsers && filteredUsers.length > 0 ? filteredUsers.map((user: any) => (
+                  ) : filteredUsers && filteredUsers.length > 0 ? filteredUsers.map((user: CannaGrowUser) => (
                     <TableRow key={user.uid}>
                       <TableCell>
                         <div className="font-medium">{user.displayName}</div>
@@ -325,5 +327,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
