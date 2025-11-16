@@ -21,7 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { UserGuideCard } from '@/components/user-guide-card';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { XpRankDisplay } from '@/components/xp-rank-display';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 
 export const rankConfig = {
@@ -52,15 +52,21 @@ const getRank = (user: CannaGrowUser | null) => {
     return rankConfig[0];
 };
 
-interface ProfilePageProps {
-  params: {
-    id: string;
-  };
-}
+const demoPosts: Post[] = [
+    { id: 'post-1', authorId: 'prototype-user-001', authorName: 'CannaOwner', imageUrl: 'https://picsum.photos/seed/p1/800/1000', description: '¡Mi primera cosecha del año!', createdAt: new Date().toISOString(), likes: 13, awards: 1, comments: [], imageHint: 'cannabis plant' },
+    { id: 'post-2', authorId: 'prototype-user-001', authorName: 'CannaOwner', imageUrl: 'https://picsum.photos/seed/p2/800/1000', description: 'Probando una nueva técnica de LST.', createdAt: new Date().toISOString(), likes: 25, awards: 0, comments: [], imageHint: 'cannabis flower' },
+    { id: 'post-3', authorId: 'prototype-user-001', authorName: 'CannaOwner', imageUrl: 'https://picsum.photos/seed/p3/800/1000', description: 'Estos cogollos huelen increíble.', createdAt: new Date().toISOString(), likes: 42, awards: 3, comments: [], imageHint: 'cannabis bud' },
+];
+const demoGuides: UserGuide[] = [
+    { id: 'guide-1', authorId: 'prototype-user-001', authorName: 'CannaOwner', title: 'Guía Definitiva de Nutrientes', content: 'Aquí explico todo sobre N-P-K...', createdAt: new Date().toISOString(), likedBy: [], comments: [] },
+];
 
-export default function ProfilePage({ params }: ProfilePageProps) {
+
+export default function ProfilePage() {
   const { user: currentUser, loading: authLoading, logOut, addExperience, followUser, unfollowUser, updateUserProfile, prototypeUser } = useAuth();
   const router = useRouter();
+  const params = useParams();
+  const profileId = params.id as string;
 
   const [profileUser, setProfileUser] = useState<CannaGrowUser | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -78,36 +84,38 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
-  const isOwnProfile = currentUser?.uid === params.id;
-  const isFollowing = useMemo(() => currentUser?.followingIds?.includes(params.id) || false, [currentUser, params.id]);
+  const isOwnProfile = currentUser?.uid === profileId;
+  const isFollowing = useMemo(() => currentUser?.followingIds?.includes(profileId) || false, [currentUser, profileId]);
   
   const rank = useMemo(() => getRank(profileUser), [profileUser]);
 
   useEffect(() => {
     setProfileLoading(true);
-    // In prototype mode, we only have one user.
-    if (params.id === prototypeUser.uid) {
+    if (profileId === prototypeUser.uid) {
         setProfileUser(prototypeUser);
+        setUserPosts(demoPosts);
+        setUserGuides(demoGuides);
+        setSavedPostsState(demoPosts.slice(0,1));
     } else {
-        // In a real app, you'd fetch other users. Here we show a placeholder.
         setProfileUser({
-            uid: params.id,
-            displayName: `Usuario ${params.id.slice(0,4)}`,
+            uid: profileId,
+            displayName: `Usuario ${profileId.slice(0,4)}`,
             email: 'other@user.com',
             role: 'user',
-            photoURL: `https://picsum.photos/seed/${params.id}/128/128`,
+            photoURL: `https://picsum.photos/seed/${profileId}/128/128`,
             bio: 'Otro cultivador de la comunidad.',
             createdAt: new Date().toISOString(),
             experiencePoints: 150,
             followerCount: 42,
-            followingCount: 5
+            followingCount: 5,
+            followingIds: [],
         });
+        setUserPosts([]); 
+        setUserGuides([]);
+        setSavedPostsState([]);
     }
-    setUserPosts([]); // No real posts to show for other users in prototype
-    setUserGuides([]);
-    setSavedPostsState([]);
     setProfileLoading(false);
-  }, [params.id, prototypeUser]);
+  }, [profileId, prototypeUser]);
 
 
   const handleFollowToggle = async () => {
@@ -452,3 +460,4 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   );
 }
 
+    
