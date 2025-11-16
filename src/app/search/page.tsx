@@ -7,8 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Loader2, Search as SearchIcon, Sprout, Wheat, Grape, Award } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useFirebase } from '@/firebase';
-import { collection, query, getDocs, where, limit, startAt, orderBy } from 'firebase/firestore';
 import Link from 'next/link';
 import type { CannaGrowUser } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +37,13 @@ const getRank = (user: CannaGrowUser) => {
     return rankConfig[0];
 };
 
+const demoUsers: CannaGrowUser[] = [
+    { uid: 'user-2', displayName: 'CultivadorPro', email: 'pro@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-2/40/40', experiencePoints: 250, createdAt: '' },
+    { uid: 'user-3', displayName: 'MariaJuana', email: 'mj@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-3/40/40', experiencePoints: 80, createdAt: '' },
+    { uid: 'user-4', displayName: 'ElVerde', email: 'verde@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-4/40/40', experiencePoints: 1200, createdAt: '' },
+];
+
+
 // Debounce hook
 function useDebounce(value: string, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -54,7 +59,6 @@ function useDebounce(value: string, delay: number) {
 }
 
 export default function SearchPage() {
-  const { firestore } = useFirebase();
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<CannaGrowUser[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,49 +66,23 @@ export default function SearchPage() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   useEffect(() => {
-    const searchUsers = async () => {
-      if (!firestore || !debouncedSearchTerm.trim()) {
+    const searchUsers = () => {
+      if (!debouncedSearchTerm.trim()) {
         setResults([]);
-        setLoading(false);
         return;
       }
       setLoading(true);
-      try {
-        const usersRef = collection(firestore, 'users');
-        const searchTermLower = debouncedSearchTerm.toLowerCase();
-        const searchTermUpper = searchTermLower.charAt(0).toUpperCase() + searchTermLower.slice(1);
-        
-        // This query finds users whose displayName starts with the search term.
-        // Firestore is limited in its text search capabilities without a third-party service.
-        const q = query(
-          usersRef,
-          where('displayName', '>=', searchTermUpper),
-          where('displayName', '<=', searchTermUpper + '\uf8ff'),
-          limit(20)
-        );
-
-        const querySnapshot = await getDocs(q);
-        const foundUsers: CannaGrowUser[] = [];
-        querySnapshot.forEach(doc => {
-            foundUsers.push({ ...doc.data(), uid: doc.id } as CannaGrowUser);
-        });
-
-        // A secondary client-side filter for case-insensitivity, since Firestore is case-sensitive
-        const filteredUsers = foundUsers.filter(user => 
-            user.displayName?.toLowerCase().includes(searchTermLower)
-        );
-
+      const filteredUsers = demoUsers.filter(user => 
+          user.displayName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      );
+      setTimeout(() => {
         setResults(filteredUsers);
-      } catch (error) {
-        console.error("Error searching users: ", error);
-        setResults([]);
-      } finally {
         setLoading(false);
-      }
+      }, 500); // Simulate network delay
     };
 
     searchUsers();
-  }, [debouncedSearchTerm, firestore]);
+  }, [debouncedSearchTerm]);
 
   return (
     <div className="w-full">

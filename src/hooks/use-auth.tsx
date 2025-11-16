@@ -8,12 +8,10 @@ import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: CannaGrowUser | null;
+  prototypeUser: CannaGrowUser;
   loading: boolean;
   isOwner: boolean;
   isModerator: boolean;
-  signUp: () => Promise<void>;
-  logIn: () => Promise<void>;
-  logInAsGuest: () => Promise<void>;
   logOut: () => Promise<void>;
   updateUserProfile: (updates: Partial<CannaGrowUser>) => Promise<void>;
   createPost: (description: string, imageUri: string) => Promise<void>;
@@ -59,16 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isOwner = localUser?.role === 'owner';
   const isModerator = localUser?.role === 'moderator' || localUser?.role === 'co-owner' || isOwner;
 
-  const showDisabledToast = () => {
-    toast({
-      title: "Modo Prototipo",
-      description: "El registro y el inicio de sesión están deshabilitados. Ya has iniciado sesión como usuario de demostración.",
-    });
-  };
-
-  const signUp = async () => { showDisabledToast(); };
-  const logIn = async () => { showDisabledToast(); };
-  const logInAsGuest = async () => { showDisabledToast(); };
   const logOut = async () => {
     setLoading(true);
     setLocalUser(null);
@@ -83,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLocalUser(prev => prev ? ({ ...prev, experiencePoints: (prev.experiencePoints || 0) + amount }) : null);
     }
     console.log(`Simulating adding ${amount}XP to ${userId}`);
-    toast({ title: `+${amount} XP`, description: `Experiencia añadida a ${userId}.` });
+    toast({ title: `+${amount} XP`, description: `Experiencia añadida (simulado).` });
   }, [localUser, toast]);
 
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<void> => {
@@ -104,12 +92,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [localUser, addExperience, toast]);
 
   const followUser = useCallback(async (targetUserId: string) => {
-      console.log(`Simulating following user: ${targetUserId}`);
+      setLocalUser(prev => {
+        if (!prev) return null;
+        const newFollowingIds = [...(prev.followingIds || []), targetUserId];
+        return { ...prev, followingIds: newFollowingIds, followingCount: (prev.followingCount || 0) + 1 };
+      });
       toast({ title: "Ahora sigues a este usuario (simulado)." });
   }, [toast]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
-      console.log(`Simulating unfollowing user: ${targetUserId}`);
+      setLocalUser(prev => {
+        if (!prev) return null;
+        const newFollowingIds = (prev.followingIds || []).filter(id => id !== targetUserId);
+        return { ...prev, followingIds: newFollowingIds, followingCount: Math.max(0, (prev.followingCount || 0) - 1) };
+      });
       toast({ title: "Has dejado de seguir a este usuario (simulado)." });
   }, [toast]);
   
@@ -119,12 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = {
     user: localUser,
+    prototypeUser,
     loading,
     isOwner,
     isModerator,
-    signUp,
-    logIn,
-    logInAsGuest,
     logOut,
     updateUserProfile,
     createPost,

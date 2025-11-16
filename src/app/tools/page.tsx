@@ -27,8 +27,6 @@ import { useAuth } from '@/hooks/use-auth';
 import type { UserGuide, CultivationTask, DictionaryTerm } from '@/types';
 import { Textarea } from '@/components/ui/textarea';
 import { UserGuideCard } from '@/components/user-guide-card';
-import { useFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, getDocs, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 
 const officialGuides = [
@@ -50,12 +48,32 @@ const officialGuides = [
   },
 ];
 
+const demoUserGuides: UserGuide[] = [
+    {
+        id: 'ug-1',
+        authorId: 'user-2',
+        authorName: 'CultivadorPro',
+        authorAvatar: 'https://picsum.photos/seed/user-2/40/40',
+        title: 'Mi técnica de LST para aumentar la producción',
+        content: 'El Low Stress Training (LST) es clave. Consiste en doblar suavemente las ramas para que la luz llegue a más partes de la planta...',
+        createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+        likedBy: ['user-3', 'user-4'],
+        comments: []
+    }
+];
+
+const demoDictionary: DictionaryTerm[] = [
+    { id: 'dt-1', term: 'Autofloreciente', definition: 'Variedad de cannabis que florece automáticamente según su edad, no por el ciclo de luz. Ideal para principiantes.'},
+    { id: 'dt-2', term: 'Feminizada', definition: 'Semilla de cannabis genéticamente modificada para producir solo plantas hembra, que son las que producen cogollos.'},
+    { id: 'dt-3', term: 'Tricomas', definition: 'Pequeñas glándulas de resina en las flores y hojas de cannabis que contienen cannabinoides como el THC y el CBD. Parecen pequeños cristales.'},
+];
+
+
 export default function ToolsPage() {
     const { user, addExperience } = useAuth();
-    const { firestore } = useFirebase();
 
     const [tasks, setTasks] = useState<CultivationTask[]>([]);
-    const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+    const [isLoadingTasks, setIsLoadingTasks] = useState(false);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<CultivationTask | null>(null);
     const [newTaskLabel, setNewTaskLabel] = useState('');
@@ -63,71 +81,16 @@ export default function ToolsPage() {
     const [guideSearch, setGuideSearch] = useState('');
     const [dictSearch, setDictSearch] = useState('');
     
-    const [userGuides, setUserGuides] = useState<UserGuide[]>([]);
-    const [isLoadingGuides, setIsLoadingGuides] = useState(true);
+    const [userGuides, setUserGuides] = useState<UserGuide[]>(demoUserGuides);
+    const [isLoadingGuides, setIsLoadingGuides] = useState(false);
     const [isGuideDialogOpen, setIsGuideDialogOpen] = useState(false);
     const [isSubmittingGuide, setIsSubmittingGuide] = useState(false);
     const [newGuideTitle, setNewGuideTitle] = useState('');
     const [newGuideContent, setNewGuideContent] = useState('');
     const [userGuideSearch, setUserGuideSearch] = useState('');
     
-    const [dictionary, setDictionary] = useState<DictionaryTerm[]>([]);
-    const [isLoadingDictionary, setIsLoadingDictionary] = useState(true);
-
-    const loadDictionary = useCallback(async () => {
-        if (!firestore) return;
-        setIsLoadingDictionary(true);
-        try {
-            const termsQuery = query(collection(firestore, 'dictionaryTerms'));
-            const querySnapshot = await getDocs(termsQuery);
-            const termsFromDb = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DictionaryTerm));
-            setDictionary(termsFromDb);
-        } catch (error) {
-            console.error("Error loading dictionary:", error);
-        } finally {
-            setIsLoadingDictionary(false);
-        }
-    }, [firestore]);
-
-
-    const loadTasks = useCallback(async () => {
-        if (!firestore || !user) return;
-        setIsLoadingTasks(true);
-        try {
-            const tasksQuery = query(collection(firestore, 'cultivationTasks'), where('authorId', '==', user.uid));
-            const querySnapshot = await getDocs(tasksQuery);
-            const tasksFromDb = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                return { 
-                    id: doc.id, 
-                    ...data,
-                    date: data.date.toDate() // Convert Firestore Timestamp to Date
-                } as CultivationTask;
-            });
-            setTasks(tasksFromDb);
-        } catch (error) {
-            console.error("Error loading tasks:", error);
-        } finally {
-            setIsLoadingTasks(false);
-        }
-    }, [firestore, user]);
-
-    const loadUserGuides = useCallback(async () => {
-        if (!firestore) return;
-        setIsLoadingGuides(true);
-        const guidesQuery = query(collection(firestore, 'userGuides'));
-        const querySnapshot = await getDocs(guidesQuery);
-        const guidesFromDb = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserGuide));
-        guidesFromDb.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setUserGuides(guidesFromDb);
-        setIsLoadingGuides(false);
-    }, [firestore]);
-
-    useEffect(() => {
-        loadUserGuides();
-        loadTasks();
-        loadDictionary();
-    }, [loadUserGuides, loadTasks, loadDictionary]);
+    const [dictionary, setDictionary] = useState<DictionaryTerm[]>(demoDictionary);
+    const [isLoadingDictionary, setIsLoadingDictionary] = useState(false);
 
     const filteredUserGuides = useMemo(() => {
         if (!userGuideSearch.trim()) {
@@ -142,44 +105,18 @@ export default function ToolsPage() {
 
     const handleSaveGuide = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newGuideTitle.trim() || !newGuideContent.trim() || !user || !firestore) return;
-
+        if (!newGuideTitle.trim() || !newGuideContent.trim() || !user) return;
         setIsSubmittingGuide(true);
-        
-        try {
-            const guidesCollectionRef = collection(firestore, 'userGuides');
-            await addDoc(guidesCollectionRef, {
-                authorId: user.uid,
-                authorName: user.displayName || 'Anónimo',
-                authorAvatar: user.photoURL,
-                title: newGuideTitle,
-                content: newGuideContent,
-                createdAt: new Date().toISOString(),
-                likedBy: [],
-                comments: []
-            });
-
-            addExperience(user.uid, 20); // +20 XP for writing a guide
-            await loadUserGuides();
-            
-            setIsGuideDialogOpen(false);
-            setNewGuideTitle('');
-            setNewGuideContent('');
-        } catch (error) {
-            console.error("Error creating guide:", error);
-        } finally {
-            setIsSubmittingGuide(false);
-        }
+        console.log('Simulating guide creation');
+        addExperience(user.uid, 20); // +20 XP for writing a guide
+        setIsGuideDialogOpen(false);
+        setNewGuideTitle('');
+        setNewGuideContent('');
+        setIsSubmittingGuide(false);
     };
 
     const handleToggleTask = async (taskId: string) => {
-        if (!firestore) return;
-        const task = tasks.find(t => t.id === taskId);
-        if (!task) return;
-
-        const taskRef = doc(firestore, 'cultivationTasks', taskId);
-        await updateDoc(taskRef, { completed: !task.completed });
-        loadTasks(); // Reload tasks to reflect the change
+        setTasks(prevTasks => prevTasks.map(t => t.id === taskId ? {...t, completed: !t.completed} : t));
     };
     
     const handleOpenEditDialog = (task: CultivationTask) => {
@@ -196,38 +133,34 @@ export default function ToolsPage() {
     
     const handleSaveTask = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newTaskLabel.trim() || !user || !firestore) return;
+        if (!newTaskLabel.trim() || !user) return;
 
         if (editingTask) {
-            const taskRef = doc(firestore, 'cultivationTasks', editingTask.id);
-            await updateDoc(taskRef, { label: newTaskLabel });
+            setTasks(prevTasks => prevTasks.map(t => t.id === editingTask.id ? {...t, label: newTaskLabel} : t));
         } else {
-            const tasksCollectionRef = collection(firestore, 'cultivationTasks');
-            await addDoc(tasksCollectionRef, {
+            const newTask: CultivationTask = {
+                id: `task-${Date.now()}`,
                 authorId: user.uid,
                 label: newTaskLabel,
                 completed: false,
-                date: new Date() // New tasks are for today
-            });
+                date: new Date()
+            };
+            setTasks(prevTasks => [...prevTasks, newTask]);
         }
         
-        await loadTasks();
         setIsTaskDialogOpen(false);
         setNewTaskLabel('');
         setEditingTask(null);
     };
 
     const handleDeleteTask = async (taskId: string) => {
-        if (!firestore) return;
-        const taskRef = doc(firestore, 'cultivationTasks', taskId);
-        await deleteDoc(taskRef);
-        loadTasks(); // Reload tasks
+        setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
     };
     
-    const tasksToday = tasks.filter(task => format(task.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd'));
+    const tasksToday = tasks.filter(task => format(new Date(task.date), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd'));
 
     const modifiers = useMemo(() => {
-        const taskDays = tasks.map(task => task.date);
+        const taskDays = tasks.map(task => new Date(task.date));
         if (!cultivationStartDate) return { hasTasks: taskDays };
 
         const germinationStart = cultivationStartDate;
@@ -443,7 +376,7 @@ export default function ToolsPage() {
                                             key={guide.id}
                                             guide={guide}
                                             currentUser={user}
-                                            onUpdate={loadUserGuides}
+                                            onUpdate={() => {}}
                                         />
                                     ))
                                 ) : (

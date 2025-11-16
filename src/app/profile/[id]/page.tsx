@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import type { Post, UserGuide, CannaGrowUser } from '@/types';
-import { useState, useEffect, useCallback, useMemo, use } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,8 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { UserGuideCard } from '@/components/user-guide-card';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { XpRankDisplay } from '@/components/xp-rank-display';
-import { useFirebase, useDoc } from '@/firebase';
-import { doc, collection, query, where, getDocs, updateDoc, arrayUnion, getDoc, runTransaction, increment } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 
 export const rankConfig = {
@@ -60,14 +59,14 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ params }: ProfilePageProps) {
-  const resolvedParams = use(params);
-  const { user: currentUser, loading: authLoading, logOut, addExperience, followUser, unfollowUser, updateUserProfile } = useAuth();
-  const { firestore } = useFirebase();
+  const { user: currentUser, loading: authLoading, logOut, addExperience, followUser, unfollowUser, updateUserProfile, prototypeUser } = useAuth();
+  const router = useRouter();
+
+  const [profileUser, setProfileUser] = useState<CannaGrowUser | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
   const [isFollowHovered, setIsFollowHovered] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
-
-  const userDocRef = useMemo(() => firestore ? doc(firestore, 'users', resolvedParams.id) : null, [firestore, resolvedParams.id]);
-  const { data: profileUser, isLoading: profileLoading } = useDoc<CannaGrowUser>(userDocRef);
   
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [userGuides, setUserGuides] = useState<UserGuide[]>([]);
@@ -79,18 +78,37 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
-  const isOwnProfile = currentUser?.uid === resolvedParams.id; 
-  const isFollowing = useMemo(() => currentUser?.followingIds?.includes(resolvedParams.id) || false, [currentUser, resolvedParams.id]);
+  const isOwnProfile = currentUser?.uid === params.id;
+  const isFollowing = useMemo(() => currentUser?.followingIds?.includes(params.id) || false, [currentUser, params.id]);
   
   const rank = useMemo(() => getRank(profileUser), [profileUser]);
 
   useEffect(() => {
-    // Initialize liked posts from sessionStorage on client mount
-    const savedLiked = sessionStorage.getItem('likedPosts');
-    if (savedLiked) {
-      setLikedPosts(new Set(JSON.parse(savedLiked)));
+    setProfileLoading(true);
+    // In prototype mode, we only have one user.
+    if (params.id === prototypeUser.uid) {
+        setProfileUser(prototypeUser);
+    } else {
+        // In a real app, you'd fetch other users. Here we show a placeholder.
+        setProfileUser({
+            uid: params.id,
+            displayName: `Usuario ${params.id.slice(0,4)}`,
+            email: 'other@user.com',
+            role: 'user',
+            photoURL: `https://picsum.photos/seed/${params.id}/128/128`,
+            bio: 'Otro cultivador de la comunidad.',
+            createdAt: new Date().toISOString(),
+            experiencePoints: 150,
+            followerCount: 42,
+            followingCount: 5
+        });
     }
-  }, []);
+    setUserPosts([]); // No real posts to show for other users in prototype
+    setUserGuides([]);
+    setSavedPostsState([]);
+    setProfileLoading(false);
+  }, [params.id, prototypeUser]);
+
 
   const handleFollowToggle = async () => {
     if (!currentUser || !profileUser || isOwnProfile || isFollowLoading) return;
@@ -104,149 +122,25 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     setIsFollowLoading(false);
   };
 
-
-  const loadPostsAndState = useCallback(async () => {
-    if (!profileUser?.uid || !firestore) return;
-
-    // Fetch user posts
-    const postsQuery = query(
-      collection(firestore, "posts"),
-      where("authorId", "==", profileUser.uid)
-    );
-    const postsSnapshot = await getDocs(postsQuery);
-    let myPosts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
-    myPosts.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-        return dateB.getTime() - dateA.getTime();
-    });
-    setUserPosts(myPosts);
-    
-    // Fetch user guides from Firestore
-    const guidesQuery = query(
-      collection(firestore, 'userGuides'),
-      where('authorId', '==', profileUser.uid)
-    );
-    const guidesSnapshot = await getDocs(guidesQuery);
-    const myGuides = guidesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserGuide));
-    setUserGuides(myGuides);
-
-
-    if (isOwnProfile && currentUser?.savedPostIds) {
-      const savedPostIds = currentUser.savedPostIds;
-      const fetchedSavedPosts: Post[] = [];
-      if (savedPostIds.length > 0) {
-        const postPromises = savedPostIds.map(id => getDoc(doc(firestore, "posts", id)));
-        const postDocs = await Promise.all(postPromises);
-        postDocs.forEach(doc => {
-          if (doc.exists()) {
-            fetchedSavedPosts.push({ id: doc.id, ...doc.data() } as Post);
-          }
-        });
-      }
-      setSavedPostsState(fetchedSavedPosts);
-    }
-
-  }, [profileUser?.uid, isOwnProfile, firestore, currentUser?.savedPostIds]);
-
-  useEffect(() => {
-    if (profileUser) {
-      loadPostsAndState();
-    }
-  }, [profileUser, loadPostsAndState]);
-
-
   const handleLogout = async () => {
     await logOut();
+    router.push('/login');
   }
 
   const handleToggleLike = async (postId: string) => {
-    if (!selectedPost || !currentUser || !firestore) return;
-    
-    const newLikedPosts = new Set(likedPosts);
-    let updatedLikes = selectedPost.likes || 0;
-
-    if (newLikedPosts.has(postId)) {
-      newLikedPosts.delete(postId);
-      updatedLikes--;
-    } else {
-      newLikedPosts.add(postId);
-      updatedLikes++;
-      if (selectedPost.authorId !== currentUser.uid) {
-        addExperience(selectedPost.authorId, 15);
-      }
-    }
-
-    setLikedPosts(newLikedPosts);
-    const updatedPost = { ...selectedPost, likes: updatedLikes };
-    setSelectedPost(updatedPost);
-
-    const postRef = doc(firestore, 'posts', postId);
-    await updateDoc(postRef, { likes: updatedLikes });
-
-
-    const updatePostInState = (p: Post) => p.id === postId ? updatedPost : p;
-    setUserPosts(userPosts.map(updatePostInState));
-    setSavedPostsState(savedPostsState.map(updatePostInState));
-    
-    sessionStorage.setItem('likedPosts', JSON.stringify(Array.from(newLikedPosts)));
+    if (!selectedPost || !currentUser) return;
+    console.log('Simulating like toggle');
   };
   
   const handleAddComment = async (postId: string) => {
-    if (!commentText.trim() || !currentUser || !selectedPost || !firestore) return;
-    
-    if(selectedPost.authorId !== currentUser.uid) {
-        addExperience(selectedPost.authorId, 20);
-    }
-
-    const newComment = {
-      id: `comment-${postId}-${Date.now()}`,
-      authorName: currentUser.displayName || 'Tú',
-      authorId: currentUser.uid,
-      authorAvatar: currentUser.photoURL,
-      text: commentText,
-      createdAt: new Date().toISOString(),
-    };
-
-    const postRef = doc(firestore, 'posts', postId);
-    await updateDoc(postRef, {
-        comments: arrayUnion(newComment)
-    });
-
-    const updatedPost = { ...selectedPost, comments: [...(selectedPost.comments || []), newComment] };
-    setSelectedPost(updatedPost);
-
-    const updatePostInState = (p: Post) => p.id === postId ? updatedPost : p;
-    setUserPosts(userPosts.map(updatePostInState));
-    setSavedPostsState(savedPostsState.map(updatePostInState));
-    
+    if (!commentText.trim() || !currentUser || !selectedPost) return;
+    console.log('Simulating add comment');
     setCommentText('');
   };
   
   const handleToggleSave = async (postId: string) => {
     if (!currentUser) return;
-    const isCurrentlySaved = currentUser.savedPostIds?.includes(postId) ?? false;
-    let newSavedPostIds;
-    
-    if (isCurrentlySaved) {
-      newSavedPostIds = currentUser.savedPostIds?.filter(id => id !== postId);
-    } else {
-      newSavedPostIds = [...(currentUser.savedPostIds || []), postId];
-    }
-    
-    await updateUserProfile({ savedPostIds: newSavedPostIds });
-    
-    // Optimistically update local state for saved posts tab
-    if (isOwnProfile) {
-        if (isCurrentlySaved) {
-            setSavedPostsState(prev => prev.filter(p => p.id !== postId));
-        } else {
-            const postToAdd = userPosts.find(p => p.id === postId) || selectedPost;
-            if (postToAdd) {
-                setSavedPostsState(prev => [...prev, postToAdd]);
-            }
-        }
-    }
+    console.log('Simulating save toggle');
   };
 
   if (authLoading || profileLoading) {
@@ -557,3 +451,4 @@ export default function ProfilePage({ params }: ProfilePageProps) {
     </div>
   );
 }
+
