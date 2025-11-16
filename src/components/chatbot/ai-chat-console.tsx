@@ -1,16 +1,18 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, User } from 'lucide-react';
+import { Loader2, Send, User, AlertTriangle } from 'lucide-react';
 import { TowlieIcon } from '../icons/towlie';
 import { handleChat } from '@/app/chatbot/actions';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import type { ChatMessage } from '@/app/chatbot/types';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 const AssistantAvatar = () => (
     <Avatar>
@@ -36,9 +38,25 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Effect to fetch initial greeting
+  useEffect(() => {
+    const getInitialGreeting = async () => {
+      setLoading(true);
+      const response = await handleChat([]); // Pass empty history to get the greeting
+      if (response.data) {
+        setMessages([response.data]);
+      } else if (response.error) {
+        setError(response.error);
+      }
+      setLoading(false);
+    };
+    getInitialGreeting();
+  }, []);
 
   useEffect(() => {
     const viewport = scrollAreaRef.current?.querySelector('[data-viewport]');
@@ -59,20 +77,18 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
     setMessages(newMessages);
     setInput('');
     setLoading(true);
+    setError(null);
 
     try {
-      // Pass only the current conversation history to the action
       const response = await handleChat(newMessages);
       
       if (response.error || !response.data) {
-        const errorMessage: ChatMessage = { role: 'model', content: response.error || 'Lo siento, estoy un poco perdido. ¿Qué decías?' };
-        setMessages(prev => [...prev, errorMessage]);
+        setError(response.error || 'Lo siento, estoy un poco perdido. ¿Qué decías?');
       } else {
         setMessages(prev => [...prev, response.data]);
       }
-    } catch (error) {
-      const errorMessage: ChatMessage = { role: 'model', content: 'Vaya, parece que se me cruzaron los cables. Inténtalo de nuevo.' };
-      setMessages(prev => [...prev, errorMessage]);
+    } catch (err) {
+      setError('Vaya, parece que se me cruzaron los cables. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -93,18 +109,6 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
 
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="space-y-8 p-6">
-            <motion.div 
-              className="flex items-start gap-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-                <AssistantAvatar />
-                <div className="rounded-2xl rounded-tl-none bg-muted p-4 max-w-[85%] text-sm shadow-sm">
-                    <p>¡Hola! Soy Canna-Toallín. Puedes preguntarme sobre cultivo o cualquier otra cosa. ¿En qué te puedo ayudar hoy?</p>
-                </div>
-            </motion.div>
-            
             <AnimatePresence>
             {messages.map((m, i) => (
               <motion.div 
@@ -145,6 +149,14 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
                         </p>
                     </div>
                 </motion.div>
+            )}
+
+            {error && (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Error del Asistente</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
             )}
         </div>
       </ScrollArea>

@@ -20,26 +20,24 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
 Mantén tus respuestas relativamente concisas y con un tono relajado y amigable.`;
 
   try {
-    // The history needs to be mapped to a simple array of strings for the `generate` function.
-    // The `ChatMessage` object structure is not directly supported as a prompt part.
-    const formattedHistory = history.map(message => message.content);
-
     const response = await ai.generate({
       model: 'googleai/gemini-pro',
       system: systemPrompt,
-      prompt: formattedHistory,
+      prompt: history.map(m => m.content), // Pass only the content strings
     });
 
-    // In Genkit v1.x, the response text is accessed via the `text` property.
-    // Provide a fallback message if the response is unexpectedly null.
     return response.text ?? 'Parece que me quedé sin palabras. ¿Podrías intentarlo de nuevo?';
   } catch (error) {
     console.error('[AssistantChatError] Details:', error);
-    // Propagate the actual error message for better debugging on the server action side.
+    // Propagate a user-friendly and specific error message for better debugging.
     if (error instanceof Error) {
-        throw new Error(error.message);
+        // Provide a more helpful message for common API key issues.
+        if (error.message.includes('API key not valid')) {
+            return 'La clave API de Gemini no es válida. Por favor, verifica que esté configurada correctamente en tus variables de entorno.';
+        }
+        return `La IA devolvió un error: ${error.message}`;
     }
     // Generic error for any other issue (e.g., AI model failure).
-    throw new Error('Vaya, parece que se me cruzaron los cables. No pude procesar esa pregunta.');
+    return 'Vaya, parece que se me cruzaron los cables. No pude procesar esa pregunta.';
   }
 }
