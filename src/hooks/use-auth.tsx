@@ -37,48 +37,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const prototypeUser: CannaGrowUser = {
-  uid: 'prototype-user-001',
-  email: 'demo@cannagrow.app',
-  displayName: 'Canna-Demo',
-  role: 'owner',
-  photoURL: 'https://picsum.photos/seed/prototype/128/128',
-  bio: 'Navegando en modo prototipo. ¡Explorando el futuro del cultivo!',
-  createdAt: new Date().toISOString(),
-  experiencePoints: 550,
-  followerIds: [],
-  followingIds: [],
-  followerCount: 138,
-  followingCount: 42,
-  savedPostIds: [],
-};
-
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { auth, firestore, storage, user: firebaseUser, isUserLoading: isAuthServiceLoading } = useFirebase();
   
-  const [localUser, setLocalUser] = useState<CannaGrowUser | null>(null);
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !firebaseUser) return null;
+    return doc(firestore, 'users', firebaseUser.uid);
+  }, [firestore, firebaseUser]);
+
+  const { data: profile, isLoading: isProfileLoading } = useDoc<CannaGrowUser>(userDocRef);
   
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
 
-  const user = localUser;
+  const user = profile;
   const isOwner = user?.role === 'owner';
   const isModerator = user?.role === 'moderator' || user?.role === 'co-owner' || isOwner;
 
   useEffect(() => {
-    // --- MODO PROTOTIPO ---
-    // En lugar de esperar a Firebase Auth, inyectamos un usuario falso.
-    if (!user) {
-      setLocalUser(prototypeUser);
-    }
-    setLoading(false);
-    // --- FIN MODO PROTOTIPO ---
-    
-    /*
-    // --- Lógica de Firebase Auth (desactivada) ---
     const finalLoadingState = isAuthServiceLoading || (firebaseUser != null && isProfileLoading);
     setLoading(finalLoadingState);
 
@@ -91,8 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (!user && !isPublicRoute) {
       router.push('/login');
     }
-    */
-  }, [user, pathname, router]);
+  }, [user, firebaseUser, isAuthServiceLoading, isProfileLoading, pathname, router]);
 
   const addExperience = useCallback(async (userId: string, amount: number): Promise<void> => {
     if (!firestore) return;
@@ -107,47 +84,171 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [firestore]);
   
   const logInAsGuest = useCallback(async (): Promise<void> => {
-    toast({ variant: 'destructive', title: 'Función Deshabilitada', description: 'El inicio de sesión real está desactivado en este modo prototipo.' });
-  }, [toast]);
+    if (!auth || !firestore) throw new Error("Auth services not available");
+
+    const userCredential = await signInAnonymously(auth);
+    const createdFbUser = userCredential.user;
+    
+    const userDocRef = doc(firestore, 'users', createdFbUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      const photoURL = `https://picsum.photos/seed/${createdFbUser.uid}/128/128`;
+      const newUser: CannaGrowUser = {
+        uid: createdFbUser.uid,
+        email: createdFbUser.email || `guest_${createdFbUser.uid}@example.com`,
+        displayName: `Invitado_${createdFbUser.uid.substring(0, 5)}`,
+        role: 'user',
+        photoURL,
+        bio: 'Explorando CannaConnect como invitado.',
+        createdAt: new Date().toISOString(),
+        experiencePoints: 0,
+        followerIds: [],
+        followingIds: [],
+        followerCount: 0,
+        followingCount: 0,
+        savedPostIds: [],
+      };
+      await setDoc(userDocRef, newUser);
+    }
+  }, [auth, firestore]);
 
   const signUp = useCallback(async (displayName: string, email: string, password: string): Promise<void> => {
-     toast({ variant: 'destructive', title: 'Función Deshabilitada', description: 'El registro real está desactivado en este modo prototipo.' });
-  }, [toast]);
+    if (!auth || !firestore) {
+      throw new Error("Servicios de autenticación no disponibles.");
+    }
+
+    const usersRef = collection(firestore, 'users');
+    let role: CannaGrowUser['role'] = 'user';
+
+    try {
+      const q = query(usersRef, limit(1));
+      const existingUsersSnapshot = await getDocs(q);
+      
+      if (existingUsersSnapshot.empty) {
+        role = 'owner';
+      }
+    } catch (error) {
+      console.warn("Could not query users to determine role, defaulting to 'user'. This is expected on first signup due to security rules.", error);
+    }
+
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const createdFbUser = userCredential.user;
+    
+    const photoURL = `https://picsum.photos/seed/${createdFbUser.uid}/128/128`;
+    await updateProfile(createdFbUser, { displayName, photoURL });
+    
+    const newUser: CannaGrowUser = {
+      uid: createdFbUser.uid,
+      email: createdFbUser.email!,
+      displayName: displayName,
+      role: role,
+      photoURL: photoURL,
+      bio: '',
+      createdAt: new Date().toISOString(),
+      experiencePoints: 0,
+      followerIds: [],
+      followingIds: [],
+      followerCount: 0,
+      followingCount: 0,
+      savedPostIds: [],
+    };
+    
+    await setDoc(doc(firestore, 'users', createdFbUser.uid), newUser);
+    
+    if (role === 'owner') {
+        toast({ title: "¡Bienvenido, Dueño!", description: "Tu cuenta de administrador ha sido creada." });
+    }
+
+  }, [auth, firestore, toast]);
 
   const logIn = useCallback(async (email: string, password: string): Promise<void> => {
-    toast({ variant: 'destructive', title: 'Función Deshabilitada', description: 'El inicio de sesión real está desactivado en este modo prototipo.' });
-  }, [toast]);
+    if (!auth) return;
+    await signInWithEmailAndPassword(auth, email, password);
+  }, [auth]);
 
   const logOut = useCallback(async () => {
-    setLocalUser(null); // En modo prototipo, solo borramos el usuario local
-    toast({ title: 'Cerraste Sesión (Modo Prototipo)', description: 'Recarga la página para volver a iniciar sesión automáticamente.' });
+    if (!auth) return;
+    await signOut(auth);
     router.push('/login');
-  }, [router, toast]);
+  }, [auth, router]);
   
   const updateUserProfile = useCallback(async (updates: Partial<CannaGrowUser>): Promise<void> => {
-    if (!user) return;
-    setLocalUser(prev => ({...prev!, ...updates}));
-    toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado (en modo prototipo).' });
-  }, [user, toast]);
+    if (!user || !firestore) return;
+    const userDocRef = doc(firestore, 'users', user.uid);
+    await updateDoc(userDocRef, updates);
+    toast({ title: '¡Éxito!', description: 'Tu perfil ha sido actualizado.' });
+  }, [user, firestore, toast]);
 
   const createPost = useCallback(async (description: string, imageUri: string) => {
-    if (!user) return;
-    console.log('Post Creado (Modo Prototipo):', { description, imageUri });
-    toast({ title: '¡Publicación Creada!', description: 'Tu post se ha creado en modo prototipo.' });
-  }, [user, toast]);
+    if (!user || !storage || !firestore) throw new Error("User or services not available");
+
+    const fetchRes = await fetch(imageUri);
+    const blob = await fetchRes.blob();
+    const file = new File([blob], `post-${Date.now()}.jpg`, { type: blob.type });
+
+    const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
+    const uploadResult = await uploadBytes(storageRef, file);
+    const permanentImageUrl = await getDownloadURL(uploadResult.ref);
+
+    const postsCollectionRef = collection(firestore, 'posts');
+    await addDoc(postsCollectionRef, {
+        authorId: user.uid,
+        authorName: user.displayName,
+        authorAvatar: user.photoURL,
+        description: description,
+        imageUrl: permanentImageUrl,
+        createdAt: serverTimestamp(),
+        likes: 0,
+        awards: 0,
+        comments: [],
+    });
+    
+    addExperience(user.uid, 10);
+  }, [user, storage, firestore, addExperience]);
 
   const followUser = useCallback(async (targetUserId: string) => {
-    if (!user) return;
-     toast({ title: 'Siguiendo (Modo Prototipo)', description: `Ahora sigues al usuario ${targetUserId}.`});
-  }, [user, toast]);
+    if (!user || !firestore || user.uid === targetUserId) return;
+
+    const currentUserRef = doc(firestore, 'users', user.uid);
+    const targetUserRef = doc(firestore, 'users', targetUserId);
+
+    await runTransaction(firestore, async (transaction) => {
+      transaction.update(currentUserRef, { 
+        followingIds: arrayUnion(targetUserId),
+        followingCount: increment(1)
+      });
+      transaction.update(targetUserRef, { 
+        followerIds: arrayUnion(user.uid),
+        followerCount: increment(1)
+      });
+    });
+
+  }, [user, firestore]);
 
   const unfollowUser = useCallback(async (targetUserId: string) => {
-    if (!user) return;
-    toast({ title: 'Dejaste de Seguir (Modo Prototipo)', description: `Ya no sigues a ${targetUserId}.`});
-  }, [user, toast]);
+    if (!user || !firestore) return;
+
+    const currentUserRef = doc(firestore, 'users', user.uid);
+    const targetUserRef = doc(firestore, 'users', targetUserId);
+
+    await runTransaction(firestore, async (transaction) => {
+      transaction.update(currentUserRef, { 
+        followingIds: arrayRemove(targetUserId),
+        followingCount: increment(-1)
+      });
+      transaction.update(targetUserRef, { 
+        followerIds: arrayRemove(user.uid),
+        followerCount: increment(-1)
+      });
+    });
+
+  }, [user, firestore]);
 
   const _injectUser = useCallback((injectedUser: CannaGrowUser) => {
-      setLocalUser(injectedUser);
+      // This function is for admin impersonation and should be used with care.
+      // For now, it will just log a warning in production environments.
+      console.warn("User injection is an admin-only feature and is disabled in this context.");
   }, []);
   
 

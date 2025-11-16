@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link"
@@ -9,25 +10,54 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { FirebaseError } from "firebase/app";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-    const { logInAsGuest } = useAuth();
+    const { logIn, logInAsGuest } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
+
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            await logIn(email, password);
+            router.push('/');
+        } catch (err: any) {
+            let message = "No se pudo iniciar sesión. Por favor, comprueba tus credenciales.";
+            if (err instanceof FirebaseError) {
+                if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                    message = "Email o contraseña incorrectos.";
+                }
+            }
+            setError(message);
+            console.error('Login failed', err);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     const handleGuestLogin = async () => {
         setLoading(true);
         setError(null);
         try {
             await logInAsGuest();
-            // La redirección es manejada por el AuthProvider
+            router.push('/');
         } catch (err: any) {
             setError("No se pudo iniciar sesión como invitado. Por favor, inténtalo de nuevo.");
             console.error('Guest login failed', err);
@@ -39,24 +69,68 @@ export default function LoginPage() {
 
   return (
     <Card className="mx-auto max-w-sm">
-       <CardHeader className="text-center">
-        <CannaGrowLogo className="mx-auto mb-2" />
-        <CardTitle className="text-2xl font-headline font-bold">CannaGrow</CardTitle>
-        <CardDescription>
-          Bienvenido a tu compañero de cultivo.
+      <CardHeader>
+        <CannaGrowLogo className="mx-auto mb-4" />
+        <CardTitle className="text-2xl font-headline text-center">Iniciar Sesión</CardTitle>
+        <CardDescription className="text-center">
+          Introduce tus datos para acceder a tu jardín.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4">
-          <Button onClick={handleGuestLogin} className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : 'Entrar como invitado'}
-          </Button>
+        <form onSubmit={handleLogin} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="tu@email.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <div className="grid gap-2">
+            <div className="flex items-center">
+              <Label htmlFor="password">Contraseña</Label>
+              <Link href="#" className="ml-auto inline-block text-sm underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+            <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+            />
+          </div>
           {error && <p className="text-sm text-center text-destructive">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" /> : 'Iniciar Sesión'}
+          </Button>
+        </form>
+        <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                O continuar con
+                </span>
+            </div>
         </div>
-        <div className="mt-4 text-center text-sm">
-          El registro por email está deshabilitado en este proyecto.
-        </div>
+        <Button variant="outline" className="w-full" onClick={handleGuestLogin} disabled={loading}>
+          Entrar como Invitado
+        </Button>
       </CardContent>
+      <CardFooter className="text-center text-sm">
+        ¿No tienes una cuenta?{" "}
+        <Link href="/register" className="underline ml-1">
+          Regístrate
+        </Link>
+      </CardFooter>
     </Card>
   )
 }
