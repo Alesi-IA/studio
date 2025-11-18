@@ -7,7 +7,6 @@ import { Plus } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useFirebase } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import type { CannaGrowUser } from '@/types';
 import Link from 'next/link';
 import { Skeleton } from './ui/skeleton';
@@ -48,67 +47,27 @@ function StorySkeleton() {
 
 export function StoryReel() {
   const { user } = useAuth();
-  const { firestore } = useFirebase();
-  const [followingWithStories, setFollowingWithStories] = useState<Array<CannaGrowUser & { hasStory: boolean }>>([]);
   const [loading, setLoading] = useState(true);
 
+  // In prototype mode, we don't fetch stories. We just show the current user's circle.
   useEffect(() => {
-    const fetchFollowingUsers = async () => {
-      if (!user || !firestore || !user.followingIds || user.followingIds.length === 0) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      try {
-
-        const userPromises = user.followingIds.map(async (id) => {
-            const userDoc = await getDoc(doc(firestore, 'users', id));
-            if (!userDoc.exists()) return null;
-            
-            const userData = userDoc.data() as CannaGrowUser;
-
-            // Simple logic to simulate active stories without a complex query
-            // This is more performant and avoids needing an index.
-            const hashCode = (s: string) => s.split('').reduce((a,b) => (((a << 5) - a) + b.charCodeAt(0))|0, 0);
-            const hasRecentStory = Math.abs(hashCode(userData.uid)) % 4 === 0; // ~25% of users will appear to have a story
-            
-            return { ...userData, hasStory: hasRecentStory };
-        });
-
-        const users = (await Promise.all(userPromises)).filter(Boolean) as Array<CannaGrowUser & { hasStory: boolean }>;
-        
-        users.sort((a, b) => (b.hasStory ? 1 : 0) - (a.hasStory ? 1 : 0));
-        setFollowingWithStories(users);
-
-      } catch (error) {
-        console.error("Error fetching following users for stories:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFollowingUsers();
-  }, [user, firestore]);
+    setLoading(false);
+  }, []);
 
   return (
     <div className="w-full border-b">
         <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex gap-4 p-4">
-                {user && (
+                {loading ? (
+                  <StorySkeleton />
+                ) : user && (
                     <StoryCircle 
                         user={user}
-                        hasStory={false} // User's own story logic can be added here
+                        hasStory={false}
                         isCurrentUser
                     />
                 )}
-                {loading && Array.from({length: 5}).map((_, i) => <StorySkeleton key={i} />)}
-                {!loading && followingWithStories.map(followingUser => (
-                     <StoryCircle 
-                        key={followingUser.uid}
-                        user={followingUser}
-                        hasStory={followingUser.hasStory}
-                    />
-                ))}
+                {/* Placeholder for other stories in a real scenario */}
             </div>
             <ScrollBar orientation="horizontal" className="h-2" />
         </ScrollArea>
