@@ -5,8 +5,9 @@ import { PageHeader } from '@/components/page-header';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Search as SearchIcon, Sprout, Wheat, Grape, Award } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import type { CannaGrowUser } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -38,9 +39,9 @@ const getRank = (user: CannaGrowUser) => {
 };
 
 const demoUsers: CannaGrowUser[] = [
-    { uid: 'user-2', displayName: 'CultivadorPro', email: 'pro@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-2/40/40', experiencePoints: 250, createdAt: '' },
-    { uid: 'user-3', displayName: 'MariaJuana', email: 'mj@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-3/40/40', experiencePoints: 80, createdAt: '' },
-    { uid: 'user-4', displayName: 'ElVerde', email: 'verde@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-4/40/40', experiencePoints: 1200, createdAt: '' },
+    { uid: 'user-2', displayName: 'CultivadorPro', email: 'pro@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-2/128/128', experiencePoints: 250, createdAt: '' },
+    { uid: 'user-3', displayName: 'MariaJuana', email: 'mj@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-3/128/128', experiencePoints: 80, createdAt: '' },
+    { uid: 'user-4', displayName: 'ElVerde', email: 'verde@grower.com', role: 'user', photoURL: 'https://picsum.photos/seed/user-4/128/128', experiencePoints: 1200, createdAt: '' },
 ];
 
 
@@ -60,38 +61,27 @@ function useDebounce(value: string, delay: number) {
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [results, setResults] = useState<CannaGrowUser[]>([]);
-  const [loading, setLoading] = useState(false);
-
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  useEffect(() => {
-    const searchUsers = () => {
-      if (!debouncedSearchTerm.trim()) {
-        setResults([]);
-        return;
-      }
-      setLoading(true);
-      const filteredUsers = demoUsers.filter(user => 
-          user.displayName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-      );
-      setTimeout(() => {
-        setResults(filteredUsers);
-        setLoading(false);
-      }, 500); // Simulate network delay
-    };
-
-    searchUsers();
+  const filteredUsers = useMemo(() => {
+    if (!debouncedSearchTerm.trim()) {
+      // Show all demo users if search is empty
+      return demoUsers;
+    }
+    // Filter users based on search term
+    return demoUsers.filter(user => 
+        user.displayName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    );
   }, [debouncedSearchTerm]);
 
   return (
     <div className="w-full">
       <PageHeader
-        title="Buscar"
-        description="Encuentra a otros cultivadores en la comunidad."
+        title="Descubrir"
+        description="Encuentra y conecta con otros cultivadores en la comunidad."
       />
       <div className="p-4 md:p-8">
-        <div className="relative mx-auto max-w-xl">
+        <div className="relative mx-auto max-w-xl mb-8">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Buscar por nombre de usuario..." 
@@ -101,53 +91,40 @@ export default function SearchPage() {
           />
         </div>
 
-        <div className="mt-8 max-w-xl mx-auto space-y-4">
-          {loading && (
-            <div className="flex justify-center items-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="max-w-5xl mx-auto">
+          {filteredUsers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {filteredUsers.map((user) => {
+                 const rank = getRank(user);
+                 return (
+                    <Card key={user.uid} className="flex flex-col text-center">
+                        <CardHeader>
+                            <Avatar className="h-24 w-24 mx-auto border-4 border-primary/20">
+                                <AvatarImage src={user.photoURL} alt={user.displayName} />
+                                <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                        </CardHeader>
+                        <CardContent className="flex-grow">
+                            <CardTitle className="text-xl">{user.displayName}</CardTitle>
+                            <Badge variant="outline" className={cn("gap-1 text-xs mt-2", rank.badgeClass)}>
+                                <rank.icon className="h-3 w-3" />
+                                {rank.label}
+                            </Badge>
+                        </CardContent>
+                        <CardFooter>
+                            <Button variant="outline" className="w-full" asChild>
+                                <Link href={`/profile/${user.uid}`}>Ver Perfil</Link>
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                 )
+              })}
             </div>
-          )}
-
-          {!loading && debouncedSearchTerm && results.length === 0 && (
+          ) : (
             <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
                 <p className="font-semibold">No se encontraron usuarios</p>
                 <p className="text-sm">Intenta con otro término de búsqueda.</p>
             </div>
-          )}
-          
-           {!loading && !debouncedSearchTerm && (
-            <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-lg">
-                <p className="font-semibold">Busca y Conecta</p>
-                <p className="text-sm">Usa la barra de búsqueda para encontrar amigos, expertos y otros cultivadores.</p>
-            </div>
-          )}
-
-          {!loading && results.length > 0 && (
-            <ul className="divide-y divide-border rounded-lg border">
-              {results.map((user) => {
-                 const rank = getRank(user);
-                 return (
-                    <li key={user.uid} className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-12 w-12">
-                                <AvatarImage src={user.photoURL} alt={user.displayName} />
-                                <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="font-semibold">{user.displayName}</p>
-                                <Badge variant="outline" className={cn("gap-1 text-xs", rank.badgeClass)}>
-                                    <rank.icon className="h-3 w-3" />
-                                    {rank.label}
-                                </Badge>
-                            </div>
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href={`/profile/${user.uid}`}>Ver Perfil</Link>
-                        </Button>
-                    </li>
-                 )
-              })}
-            </ul>
           )}
         </div>
       </div>
