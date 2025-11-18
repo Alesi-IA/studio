@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Bot, BrainCircuit, Droplets, Edit, Leaf, Lightbulb, Loader2, ScanEye, Send, Upload, Save } from 'lucide-react';
+import { AlertTriangle, Flame, BrainCircuit, Droplets, Edit, Leaf, Lightbulb, Loader2, ScanEye, Send, Upload, Save } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -165,7 +165,7 @@ function IdentificationResult({ result }: { result: any }) {
             <CardContent className="space-y-4">
               <PotencyBar label="THC" value={result.potency.thc} colorClass="from-green-400 to-green-600" icon={Leaf} />
               <PotencyBar label="CBD" value={result.potency.cbd} colorClass="from-blue-400 to-blue-600" icon={Droplets} />
-              <PotencyBar label="Energía (Hype)" value={result.potency.energy} colorClass="from-yellow-400 to-orange-500" icon={Bot} />
+              <PotencyBar label="Energía (Hype)" value={result.potency.energy} colorClass="from-yellow-400 to-orange-500" icon={Flame} />
             </CardContent>
           </Card>
           <Card>
@@ -306,7 +306,7 @@ export function AnalysisForm({ analysisType, formTitle, formDescription, buttonT
     setLoading(false);
   };
 
-  const Icon = analysisType === 'identify' ? ScanEye : Bot;
+  const Icon = analysisType === 'identify' ? ScanEye : Flame;
 
   return (
     <div className="mx-auto max-w-5xl">
