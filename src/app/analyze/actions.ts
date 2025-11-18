@@ -24,10 +24,14 @@ const demoAnalysisResult: AnalyzePlantOutput = {
 // --- FIN DE DATOS DE DEMOSTRACIÓN ---
 
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
+  // MODO DEMO: Forzamos la devolución de datos de ejemplo para revisión de UI.
+  console.warn("Analysis is in DEMO mode. Returning example data.");
+  return new Promise(resolve => setTimeout(() => resolve({ data: demoAnalysisResult, error: null }), 1500));
+  
+  /*
+  // Lógica original de la API (desactivada temporalmente)
   if (!isApiKeyConfigured()) {
-    console.warn("Analysis attempted without API Key. Returning DEMO data.");
-    // Devuelve datos de demostración si la clave no está configurada.
-    return new Promise(resolve => setTimeout(() => resolve({ data: demoAnalysisResult, error: null }), 1500));
+    return { data: null, error: NO_API_KEY_ERROR };
   }
   
   const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
@@ -60,10 +64,10 @@ Responde en formato JSON.
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
     console.error('Analysis failed:', errorMessage);
-    // Provide a more specific error message if it's an API key issue.
     if (errorMessage.includes('API key not valid')) {
        return { data: null, error: 'La clave API de Gemini no es válida. Por favor, verifica que esté configurada correctamente.' };
     }
     return { data: null, error: `No se pudo analizar la planta. ${errorMessage}` };
   }
+  */
 }

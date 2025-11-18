@@ -26,11 +26,14 @@ const demoIdentificationResult: IdentifyStrainOutput = {
 // --- FIN DE DATOS DE DEMOSTRACIÓN ---
 
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
+  // MODO DEMO: Forzamos la devolución de datos de ejemplo para revisión de UI.
+  console.warn("Identification is in DEMO mode. Returning example data.");
+  return new Promise(resolve => setTimeout(() => resolve({ data: demoIdentificationResult, error: null }), 1500));
+
+  /*
+  // Lógica original de la API (desactivada temporalmente)
   if (!isApiKeyConfigured()) {
-    console.warn("Identification attempted without API Key. Returning DEMO data.");
-    // Devuelve datos de demostración si la clave no está configurada.
-    // Simulamos un pequeño retraso para que parezca una llamada de red.
-    return new Promise(resolve => setTimeout(() => resolve({ data: demoIdentificationResult, error: null }), 1500));
+    return { data: null, error: NO_API_KEY_ERROR };
   }
   
   const validatedInput = IdentifyStrainInputSchema.safeParse({ photoDataUri });
@@ -67,10 +70,10 @@ Responde en formato JSON.
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
     console.error('Identification failed:', errorMessage);
-    // Provide a more specific error message if it's an API key issue.
     if (errorMessage.includes('API key not valid')) {
        return { data: null, error: 'La clave API de Gemini no es válida. Por favor, verifica que esté configurada correctamente.' };
     }
     return { data: null, error: `No se pudo identificar la cepa. ${errorMessage}` };
   }
+  */
 }
