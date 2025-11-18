@@ -2,28 +2,24 @@
 'use server';
 
 import { assistantChat } from "@/ai/flows/assistant-chat-flow";
-import { isApiKeyConfigured } from "@/ai/utils";
 import type { ChatMessage } from "./types";
 
-const NO_API_KEY_ERROR = "La clave API de Gemini no está configurada. Por favor, añádela a tu archivo .env para usar las funciones de IA.";
+const FEATURE_DISABLED_ERROR = "El chatbot de IA requiere el plan de pago (Blaze) de Firebase. Por favor, actualiza tu proyecto para habilitarlo.";
+
 
 export async function handleChat(history: ChatMessage[]): Promise<{ data: ChatMessage | null; error: string | null }> {
-  // Verification is still useful for immediate feedback without an API call.
-  if (!isApiKeyConfigured() && history.length > 0) {
-    console.error("Chatbot action failed: Gemini API Key is not configured.");
-    return { data: null, error: NO_API_KEY_ERROR };
+  // Si la longitud del historial es 0, es la solicitud del saludo inicial, la permitimos.
+  if (history.length === 0) {
+    try {
+      const result = await assistantChat(history);
+      return { data: { role: 'model', content: result }, error: null };
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
+      return { data: null, error: `Se produjo un error inesperado en el servidor: ${errorMessage}` };
+    }
   }
 
-  try {
-    const result = await assistantChat(history);
-    // Return an error if the assistant flow itself returned an error message
-    if (result.startsWith('La IA devolvió un error:') || result.startsWith('La clave API de Gemini no es válida')) {
-        return { data: null, error: result };
-    }
-    return { data: { role: 'model', content: result }, error: null };
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error desconocido.';
-    console.error('Chatbot action failed:', errorMessage);
-    return { data: null, error: `Se produjo un error inesperado en el servidor: ${errorMessage}` };
-  }
+  // Si hay historial, significa que el usuario está intentando interactuar. Devolvemos el error.
+  console.warn("Chatbot is in SAFE DEMO mode. Returning feature disabled error.");
+  return { data: null, error: FEATURE_DISABLED_ERROR };
 }
