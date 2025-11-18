@@ -38,7 +38,7 @@ export default function MessagesPage() {
 
                     <h2 className="text-3xl font-headline font-bold mb-2">Canna-Toallín</h2>
                     <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                        Sigue sin funcionar
+                        Tu asistente de cultivo inteligente. ¡Ahora con análisis de imágenes! Sube una foto y haz una pregunta.
                     </p>
                     
                     <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>

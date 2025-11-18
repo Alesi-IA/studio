@@ -2,10 +2,11 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, User, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, User, AlertTriangle, Paperclip, X } from 'lucide-react';
 import { TowlieIcon } from '../icons/towlie';
 import { handleChat } from '@/app/chatbot/actions';
 import { Avatar, AvatarFallback } from '../ui/avatar';
@@ -13,6 +14,7 @@ import type { ChatMessage } from '@/app/chatbot/types';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 const AssistantAvatar = () => (
     <Avatar>
@@ -37,11 +39,17 @@ interface AiChatConsoleProps {
 export function AiChatConsole({ onClose }: AiChatConsoleProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  const { toast } = useToast();
 
   // Effect to fetch initial greeting
   useEffect(() => {
@@ -67,15 +75,49 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
     }
   }, [messages]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) { // 4MB limit
+        toast({
+          variant: 'destructive',
+          title: 'Imagen demasiado grande',
+          description: 'Por favor, selecciona una imagen de menos de 4MB.',
+        });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+        setImageData(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    setImageData(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && !imageData) || loading) return;
 
-    const userMessage: ChatMessage = { role: 'user', content: input };
+    const userMessage: ChatMessage = { 
+      role: 'user', 
+      content: input,
+      imageUrl: imageData || undefined // Pass image data if it exists
+    };
+
     const newMessages: ChatMessage[] = [...messages, userMessage];
     
     setMessages(newMessages);
     setInput('');
+    removeImage(); // Clear image after sending
     setLoading(true);
     setError(null);
 
@@ -126,7 +168,12 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
                     ? 'bg-primary text-primary-foreground rounded-br-none' 
                     : 'bg-muted rounded-tl-none'
                 )}>
-                  <p>{m.content}</p>
+                  {m.imageUrl && (
+                    <div className="relative aspect-square w-48 mb-2 rounded-md overflow-hidden">
+                      <Image src={m.imageUrl} alt="Imagen subida por el usuario" fill className="object-cover"/>
+                    </div>
+                  )}
+                  {m.content && <p>{m.content}</p>}
                 </div>
                  {m.role === 'user' && (
                     <UserAvatar />
@@ -160,8 +207,30 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
             )}
         </div>
       </ScrollArea>
-      <footer className="p-4 bg-transparent mt-auto shrink-0">
-        <form ref={formRef} onSubmit={handleSubmit} className="relative">
+      <footer className="p-4 bg-transparent mt-auto shrink-0 border-t">
+        {imagePreview && (
+          <div className="relative w-24 h-24 mb-2 p-2 border rounded-md">
+            <Image src={imagePreview} alt="Image preview" fill className="object-cover rounded" />
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+              onClick={removeImage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <form ref={formRef} onSubmit={handleSubmit} className="relative flex items-center gap-2">
+            <Button 
+              type="button" 
+              size="icon" 
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
             <Input
                 ref={inputRef}
                 value={input}
@@ -172,11 +241,18 @@ export function AiChatConsole({ onClose }: AiChatConsoleProps) {
                     formRef.current?.requestSubmit();
                   }
                 }}
-                placeholder="Escribe tu pregunta aquí..."
+                placeholder="Escribe tu pregunta o sube una foto..."
                 className="pr-12 h-12 rounded-full text-base border-2 border-border/80 focus:border-primary shadow-inner"
                 disabled={loading}
             />
-            <Button type="submit" size="icon" className="absolute right-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full" disabled={loading || !input.trim()}>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              onChange={handleImageChange}
+            />
+            <Button type="submit" size="icon" className="absolute right-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full" disabled={loading || (!input.trim() && !imageData)}>
                 <Send className="h-4 w-4" />
             </Button>
         </form>
