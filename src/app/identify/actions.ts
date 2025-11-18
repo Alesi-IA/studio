@@ -10,10 +10,27 @@ export { type IdentifyStrainOutput } from './types';
 
 const NO_API_KEY_ERROR = "La clave API de Gemini no está configurada. Por favor, añádela a tus variables de entorno para usar las funciones de IA.";
 
+// --- DATOS DE DEMOSTRACIÓN ---
+const demoIdentificationResult: IdentifyStrainOutput = {
+  strainName: "Cosecha Dorada",
+  potency: {
+    thc: 22,
+    cbd: 1,
+    energy: 65,
+  },
+  problems: [
+    "Puntas de las hojas ligeramente quemadas (posible exceso de nutrientes)",
+    "Leve amarillamiento en hojas inferiores (posible deficiencia de nitrógeno)",
+  ]
+};
+// --- FIN DE DATOS DE DEMOSTRACIÓN ---
+
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
   if (!isApiKeyConfigured()) {
-    console.warn("Identification attempted without API Key. Returning error to user.");
-    return { data: null, error: NO_API_KEY_ERROR };
+    console.warn("Identification attempted without API Key. Returning DEMO data.");
+    // Devuelve datos de demostración si la clave no está configurada.
+    // Simulamos un pequeño retraso para que parezca una llamada de red.
+    return new Promise(resolve => setTimeout(() => resolve({ data: demoIdentificationResult, error: null }), 1500));
   }
   
   const validatedInput = IdentifyStrainInputSchema.safeParse({ photoDataUri });

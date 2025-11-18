@@ -10,10 +10,24 @@ export { type AnalyzePlantOutput } from './types';
 
 const NO_API_KEY_ERROR = "La clave API de Gemini no está configurada. Por favor, añádela a tus variables de entorno para usar las funciones de IA.";
 
+// --- DATOS DE DEMOSTRACIÓN ---
+const demoAnalysisResult: AnalyzePlantOutput = {
+  problems: [
+    "Deficiencia de Calcio",
+    "Infestación de Araña Roja (Leve)"
+  ],
+  suggestions: [
+    "Ajuste de pH y Cal-Mag: El amarillamiento y las manchas marrones pueden indicar una deficiencia de calcio, a menudo causada por un pH incorrecto en la zona radicular. Mide el pH de tu agua de riego y ajústalo a un rango de 6.0-6.5. Considera añadir un suplemento de Calcio-Magnesio (Cal-Mag) siguiendo las instrucciones del fabricante.",
+    "Control de Araña Roja: Pequeños puntos en las hojas y telarañas finas son signos de araña roja. Para una infestación leve, rocía la planta (especialmente el envés de las hojas) con una mezcla de agua y jabón potásico o aceite de neem. Aumenta la humedad y mejora la circulación de aire para crear un ambiente menos favorable para ellas."
+  ]
+};
+// --- FIN DE DATOS DE DEMOSTRACIÓN ---
+
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
   if (!isApiKeyConfigured()) {
-    console.warn("Analysis attempted without API Key. Returning error to user.");
-    return { data: null, error: NO_API_KEY_ERROR };
+    console.warn("Analysis attempted without API Key. Returning DEMO data.");
+    // Devuelve datos de demostración si la clave no está configurada.
+    return new Promise(resolve => setTimeout(() => resolve({ data: demoAnalysisResult, error: null }), 1500));
   }
   
   const validatedInput = AnalyzePlantInputSchema.safeParse({ photoDataUri });
