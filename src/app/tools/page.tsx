@@ -199,7 +199,7 @@ export default function ToolsPage() {
                     <TooltipTrigger asChild>
                         <div {...props} className={cn(props.className, 'relative')}>
                             {props.children}
-                            <LunarIcon className="absolute bottom-1 right-1 h-3 w-3 text-muted-foreground opacity-50" />
+                            <LunarIcon {...lunarPhase.iconProps} className="absolute bottom-1 right-1 h-3 w-3 text-muted-foreground opacity-50" />
                         </div>
                     </TooltipTrigger>
                     <TooltipContent>
