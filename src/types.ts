@@ -1,5 +1,6 @@
 
 
+
 export interface PostComment {
     id: string;
     authorId: string;
@@ -47,12 +48,16 @@ export interface UserGuide {
     comments: UserGuideComment[];
 }
 
+export type CultivationPhase = 'germination' | 'vegetative' | 'flowering' | 'custom';
+
 export interface CultivationTask {
     id: string;
     authorId: string;
     label: string;
+    description?: string;
     completed: boolean;
     date: any; // Using `any` to match current usage, can be refined to `Timestamp` or `string`
+    phase?: CultivationPhase;
 }
 
 export interface DictionaryTerm {

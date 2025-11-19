@@ -9,25 +9,27 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Plus, Search, Trash2, SquarePen, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, Trash2, SquarePen, Calendar as CalendarIcon, Loader2, Info } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { addDays, format } from 'date-fns';
+import { addDays, format, startOfDay } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import type { UserGuide, CultivationTask, DictionaryTerm } from '@/types';
 import { Textarea } from '@/components/ui/textarea';
 import { UserGuideCard } from '@/components/user-guide-card';
-
+import { predefinedTasks, CultivationPhase } from '@/lib/cultivation-plan';
+import { getLunarPhase, LunarPhaseInfo } from '@/lib/lunar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const officialGuides = [
   {
@@ -69,15 +71,31 @@ const demoDictionary: DictionaryTerm[] = [
 ];
 
 
+function generatePlan(startDate: Date, authorId: string): CultivationTask[] {
+    return predefinedTasks.map(taskTemplate => ({
+        id: `task-${authorId}-${taskTemplate.day}-${Math.random()}`,
+        authorId: authorId,
+        label: taskTemplate.name,
+        description: taskTemplate.description,
+        completed: false,
+        date: addDays(startOfDay(startDate), taskTemplate.day - 1),
+        phase: taskTemplate.phase,
+    }));
+}
+
+
 export default function ToolsPage() {
     const { user, addExperience } = useAuth();
-
     const [tasks, setTasks] = useState<CultivationTask[]>([]);
     const [isLoadingTasks, setIsLoadingTasks] = useState(false);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<CultivationTask | null>(null);
     const [newTaskLabel, setNewTaskLabel] = useState('');
+    const [newTaskDescription, setNewTaskDescription] = useState('');
     const [cultivationStartDate, setCultivationStartDate] = useState<Date | undefined>(new Date());
+    
+    const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
+
     const [guideSearch, setGuideSearch] = useState('');
     const [dictSearch, setDictSearch] = useState('');
     
@@ -91,6 +109,15 @@ export default function ToolsPage() {
     
     const [dictionary, setDictionary] = useState<DictionaryTerm[]>(demoDictionary);
     const [isLoadingDictionary, setIsLoadingDictionary] = useState(false);
+
+    useEffect(() => {
+        if (cultivationStartDate && user) {
+            const newPlan = generatePlan(cultivationStartDate, user.uid);
+            setTasks(newPlan);
+        } else {
+            setTasks([]);
+        }
+    }, [cultivationStartDate, user]);
 
     const filteredUserGuides = useMemo(() => {
         if (!userGuideSearch.trim()) {
@@ -122,12 +149,15 @@ export default function ToolsPage() {
     const handleOpenEditDialog = (task: CultivationTask) => {
         setEditingTask(task);
         setNewTaskLabel(task.label);
+        setNewTaskDescription(task.description || '');
         setIsTaskDialogOpen(true);
     };
 
     const handleOpenNewDialog = () => {
+        if (!selectedDate) return;
         setEditingTask(null);
         setNewTaskLabel('');
+        setNewTaskDescription('');
         setIsTaskDialogOpen(true);
     }
     
@@ -136,47 +166,84 @@ export default function ToolsPage() {
         if (!newTaskLabel.trim() || !user) return;
 
         if (editingTask) {
-            setTasks(prevTasks => prevTasks.map(t => t.id === editingTask.id ? {...t, label: newTaskLabel} : t));
+            setTasks(prevTasks => prevTasks.map(t => t.id === editingTask.id ? {...t, label: newTaskLabel, description: newTaskDescription } : t));
         } else {
             const newTask: CultivationTask = {
                 id: `task-${Date.now()}`,
                 authorId: user.uid,
                 label: newTaskLabel,
+                description: newTaskDescription,
                 completed: false,
-                date: new Date()
+                date: selectedDate || new Date()
             };
             setTasks(prevTasks => [...prevTasks, newTask]);
         }
         
         setIsTaskDialogOpen(false);
         setNewTaskLabel('');
+        setNewTaskDescription('');
         setEditingTask(null);
     };
 
     const handleDeleteTask = async (taskId: string) => {
         setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
     };
+
+    const DayWithLunarPhase = ({ date, ...props }: { date: Date } & any) => {
+        const lunarPhase = useMemo(() => getLunarPhase(date), [date]);
+        const LunarIcon = lunarPhase.icon;
     
-    const tasksToday = tasks.filter(task => format(new Date(task.date), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd'));
-
+        return (
+            <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div {...props} className={cn(props.className, 'relative')}>
+                            {props.children}
+                            <LunarIcon className="absolute bottom-1 right-1 h-3 w-3 text-muted-foreground opacity-50" />
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p className="font-semibold">{lunarPhase.phaseName}</p>
+                        <p className="text-xs text-muted-foreground">{lunarPhase.advice}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    };
+    
+    const tasksForSelectedDate = useMemo(() => {
+        if (!selectedDate) return [];
+        return tasks.filter(task => format(new Date(task.date), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd'));
+    }, [tasks, selectedDate]);
+    
     const modifiers = useMemo(() => {
-        const taskDays = tasks.map(task => new Date(task.date));
-        if (!cultivationStartDate) return { hasTasks: taskDays };
+        const taskDays = tasks.reduce((acc, task) => {
+            const day = startOfDay(new Date(task.date)).toISOString();
+            if (!acc.has(day)) acc.set(day, { date: new Date(day), tasks: [] });
+            acc.get(day)!.tasks.push(task);
+            return acc;
+        }, new Map<string, { date: Date; tasks: CultivationTask[] }>());
+        
+        if (!cultivationStartDate) return { hasTasks: Array.from(taskDays.values()).map(v => v.date) };
 
-        const germinationStart = cultivationStartDate;
-        const germinationEnd = addDays(germinationStart, 6);
+        const getPhaseStyle = (phase: CultivationPhase) => {
+            switch(phase) {
+                case 'germination': return 'germination-modifier';
+                case 'vegetative': return 'vegetative-modifier';
+                case 'flowering': return 'flowering-modifier';
+                default: return '';
+            }
+        };
 
-        const vegetativeStart = addDays(germinationEnd, 1);
-        const vegetativeEnd = addDays(vegetativeStart, 29);
-
-        const floweringStart = addDays(vegetativeEnd, 1);
-        const floweringEnd = addDays(floweringStart, 59);
-
+        const phaseModifiers = {
+            germination: { from: addDays(cultivationStartDate, 0), to: addDays(cultivationStartDate, 6) },
+            vegetative: { from: addDays(cultivationStartDate, 7), to: addDays(cultivationStartDate, 36) },
+            flowering: { from: addDays(cultivationStartDate, 37), to: addDays(cultivationStartDate, 90) },
+        };
+        
         return {
-            germination: { from: germinationStart, to: germinationEnd },
-            vegetative: { from: vegetativeStart, to: vegetativeEnd },
-            flowering: { from: floweringStart, to: floweringEnd },
-            hasTasks: taskDays,
+            ...phaseModifiers,
+            hasTasks: Array.from(taskDays.values()).map(v => v.date),
         };
     }, [cultivationStartDate, tasks]);
 
@@ -195,38 +262,46 @@ export default function ToolsPage() {
                 description="Tu centro de mando para un cultivo exitoso."
             />
             <div className="p-4 md:p-8">
-                <Tabs defaultValue="calendar" className="w-full">
+                <Tabs defaultValue="planner" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-                        <TabsTrigger value="calendar">Calendario y Tareas</TabsTrigger>
+                        <TabsTrigger value="planner">Planificador Inteligente</TabsTrigger>
                         <TabsTrigger value="guides">Guías Oficiales</TabsTrigger>
                         <TabsTrigger value="user-guides">Guías de Usuarios</TabsTrigger>
                         <TabsTrigger value="dictionary">Diccionario</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="calendar" className="mt-6">
+                    <TabsContent value="planner" className="mt-6">
                         <div className="grid gap-8 lg:grid-cols-3">
                             <Card className="lg:col-span-2">
                                 <CardHeader>
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                        <CardTitle>Calendario de Cultivo</CardTitle>
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <CardTitle>Plan de Cultivo</CardTitle>
+                                            <CardDescription>Selecciona una fecha para ver y gestionar tareas.</CardDescription>
+                                        </div>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-[240px] justify-start text-left font-normal",
-                                                    !cultivationStartDate && "text-muted-foreground"
-                                                )}
+                                                    variant={"outline"}
+                                                    className={cn(
+                                                        "w-full sm:w-[280px] justify-start text-left font-normal",
+                                                        !cultivationStartDate && "text-muted-foreground"
+                                                    )}
+                                                    disabled={!user}
                                                 >
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {cultivationStartDate ? format(cultivationStartDate, "PPP") : <span>Elige una fecha de inicio</span>}
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {cultivationStartDate ? `Inicio del cultivo: ${format(cultivationStartDate, "PPP")}` : "Elige una fecha de inicio"}
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
+                                            <PopoverContent className="w-auto p-0" align="end">
                                                 <Calendar
-                                                mode="single"
-                                                selected={cultivationStartDate}
-                                                onSelect={setCultivationStartDate}
-                                                initialFocus
+                                                    mode="single"
+                                                    selected={cultivationStartDate}
+                                                    onSelect={(date) => {
+                                                        setCultivationStartDate(date);
+                                                        if (date) setSelectedDate(date);
+                                                    }}
+                                                    initialFocus
+                                                    disabled={!user}
                                                 />
                                             </PopoverContent>
                                         </Popover>
@@ -235,7 +310,8 @@ export default function ToolsPage() {
                                 <CardContent className="p-2 md:p-6 flex flex-col items-center">
                                     <Calendar
                                         mode="single"
-                                        selected={new Date()}
+                                        selected={selectedDate}
+                                        onSelect={(date) => setSelectedDate(date || new Date())}
                                         className="flex justify-center"
                                         modifiers={modifiers}
                                         modifiersClassNames={{
@@ -244,23 +320,31 @@ export default function ToolsPage() {
                                             flowering: 'flowering-modifier',
                                             hasTasks: 'has-tasks-modifier',
                                         }}
+                                        components={{
+                                            Day: DayWithLunarPhase,
+                                        }}
                                         footer={
-                                            <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm">
+                                            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-4 text-sm">
                                                 <div className="flex items-center gap-2"><Badge className="bg-accent text-accent-foreground hover:bg-accent/80">Germinación</Badge></div>
                                                 <div className="flex items-center gap-2"><Badge className="bg-primary text-primary-foreground hover:bg-primary/80">Vegetativo</Badge></div>
                                                 <div className="flex items-center gap-2"><Badge className="bg-secondary text-secondary-foreground hover:bg-secondary/80">Floración</Badge></div>
-                                                <div className="flex items-center gap-2"><span className="relative flex h-2 w-2 rounded-full bg-foreground"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground/50 opacity-75"></span></span> Día con tareas</div>
+                                                <div className="flex items-center gap-2"><span className="relative flex h-2 w-2 rounded-full bg-foreground" />Día con tareas</div>
                                             </div>
                                         }
                                     />
                                 </CardContent>
                             </Card>
                             <Card>
-                                <CardHeader className="flex flex-row items-center justify-between">
-                                    <CardTitle>Tareas de Hoy</CardTitle>
-                                    <Button size="sm" onClick={handleOpenNewDialog} disabled={!user}>
-                                        <Plus className="-ml-1 h-4 w-4" />
-                                        Nueva
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle>Tareas para {format(selectedDate, "d 'de' MMMM")}</CardTitle>
+                                        <CardDescription>
+                                            {getLunarPhase(selectedDate).advice}
+                                        </CardDescription>
+                                    </div>
+                                    <Button size="icon" variant="outline" onClick={handleOpenNewDialog} disabled={!user}>
+                                        <Plus className="h-4 w-4" />
+                                        <span className="sr-only">Añadir Tarea</span>
                                     </Button>
                                 </CardHeader>
                                 <CardContent>
@@ -269,52 +353,59 @@ export default function ToolsPage() {
                                             <div className="flex items-center justify-center p-4">
                                                 <Loader2 className="h-6 w-6 animate-spin" />
                                             </div>
-                                        ) : tasksToday.length > 0 ? tasksToday.map((task) => (
-                                            <div key={task.id} className="flex items-center space-x-3 group">
-                                                <Checkbox id={task.id} checked={task.completed} onCheckedChange={() => handleToggleTask(task.id)} />
-                                                <label
-                                                    htmlFor={task.id}
-                                                    className={`flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${task.completed ? 'line-through text-muted-foreground' : ''}`}
-                                                >
-                                                    {task.label}
-                                                </label>
-                                                <AlertDialog>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent>
-                                                            <DropdownMenuItem onClick={() => handleOpenEditDialog(task)}>
-                                                                <SquarePen className="mr-2 h-4 w-4" />
-                                                                Editar
-                                                            </DropdownMenuItem>
-                                                            <AlertDialogTrigger asChild>
-                                                                <DropdownMenuItem className="text-destructive">
-                                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                                    Eliminar
-                                                                </DropdownMenuItem>
-                                                            </AlertDialogTrigger>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>¿Seguro que quieres eliminar esta tarea?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                Esta acción no se puede deshacer.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDeleteTask(task.id)}>Eliminar</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </div>
-                                        )) : (
-                                            <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-lg">
-                                                <p className="text-sm">No hay tareas para hoy. ¡Añade una!</p>
+                                        ) : tasksForSelectedDate.length > 0 ? (
+                                            <Accordion type="single" collapsible className="w-full">
+                                                {tasksForSelectedDate.map((task) => (
+                                                     <AccordionItem value={task.id} key={task.id}>
+                                                        <div className="flex items-center group">
+                                                             <Checkbox id={task.id} checked={task.completed} onCheckedChange={() => handleToggleTask(task.id)} className="mr-3" />
+                                                            <AccordionTrigger className={cn("flex-1 text-sm py-3", task.completed ? 'line-through text-muted-foreground' : '')}>
+                                                                {task.label}
+                                                            </AccordionTrigger>
+                                                            <AlertDialog>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                                                                            <MoreHorizontal className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent>
+                                                                        <DropdownMenuItem onClick={() => handleOpenEditDialog(task)}>
+                                                                            <SquarePen className="mr-2 h-4 w-4" />
+                                                                            Editar
+                                                                        </DropdownMenuItem>
+                                                                        <AlertDialogTrigger asChild>
+                                                                            <DropdownMenuItem className="text-destructive">
+                                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                                Eliminar
+                                                                            </DropdownMenuItem>
+                                                                        </AlertDialogTrigger>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>¿Seguro que quieres eliminar esta tarea?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            Esta acción no se puede deshacer.
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDeleteTask(task.id)}>Eliminar</AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </div>
+                                                        <AccordionContent className="pl-7 text-xs text-muted-foreground">
+                                                            {task.description || 'No hay descripción para esta tarea.'}
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                ))}
+                                            </Accordion>
+                                        ) : (
+                                            <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                                                <p className="font-semibold">Sin tareas programadas</p>
+                                                <p className="text-sm mt-1">¡Un día tranquilo para tus plantas!</p>
                                             </div>
                                         )}
                                     </div>
@@ -337,7 +428,7 @@ export default function ToolsPage() {
                             {filteredOfficialGuides.map((guide, index) => (
                                 <AccordionItem value={`item-${index}`} key={index}>
                                 <AccordionTrigger>{guide.title}</AccordionTrigger>
-                                <AccordionContent>{guide.content}</AccordionContent>
+                                <AccordionContent className="whitespace-pre-line">{guide.content}</AccordionContent>
                                 </AccordionItem>
                             ))}
                             </Accordion>
@@ -437,6 +528,15 @@ export default function ToolsPage() {
                                     value={newTaskLabel}
                                     onChange={(e) => setNewTaskLabel(e.target.value)}
                                     placeholder="Ej: Revisar el pH del agua"
+                                />
+                            </div>
+                             <div className="grid gap-2">
+                                <Label htmlFor="task-description">Descripción (Opcional)</Label>
+                                <Textarea
+                                    id="task-description"
+                                    value={newTaskDescription}
+                                    onChange={(e) => setNewTaskDescription(e.target.value)}
+                                    placeholder="Añade detalles sobre la tarea..."
                                 />
                             </div>
                         </div>
