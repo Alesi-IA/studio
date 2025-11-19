@@ -5,11 +5,21 @@ import type { IdentifyStrainOutput } from './types';
 
 export { type IdentifyStrainOutput } from './types';
 
-const FEATURE_DISABLED_ERROR = "Esta función de IA requiere el plan de pago (Blaze) de Firebase. Por favor, actualiza tu proyecto para habilitarla.";
-
+const DEMO_IDENTIFICATION_DATA: IdentifyStrainOutput = {
+  strainName: 'Cosecha Dorada',
+  potency: {
+    thc: 22,
+    cbd: 1,
+    energy: 65,
+  },
+  problems: [
+    'Puntas ligeramente quemadas (posible exceso de nutrientes)',
+    'Hojas inferiores un poco amarillas (posible deficiencia de Nitrógeno)',
+  ],
+};
 
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
-  // MODO DEMO SEGURO: Devuelve un error para evitar llamadas a la API que requieren un plan de pago.
-  console.warn("Identification is in SAFE DEMO mode. Returning feature disabled error.");
-  return new Promise(resolve => setTimeout(() => resolve({ data: null, error: FEATURE_DISABLED_ERROR }), 500));
+  // SAFE DEMO MODE: Return structured demo data to showcase the UI.
+  console.warn("Identification is in SAFE DEMO mode. Returning demo data.");
+  return new Promise(resolve => setTimeout(() => resolve({ data: DEMO_IDENTIFICATION_DATA, error: null }), 1500));
 }

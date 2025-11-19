@@ -4,11 +4,11 @@
 import { assistantChat } from "@/ai/flows/assistant-chat-flow";
 import type { ChatMessage } from "./types";
 
-const FEATURE_DISABLED_ERROR = "El chatbot de IA requiere el plan de pago (Blaze) de Firebase. Por favor, actualiza tu proyecto para habilitarlo.";
+const DEMO_CHAT_RESPONSE = "En una aplicación completamente funcional, analizaría tu pregunta y la imagen para darte una respuesta detallada. Por ahora, esta es una demostración. ¡Sigue explorando la app!";
 
 
 export async function handleChat(history: ChatMessage[]): Promise<{ data: ChatMessage | null; error: string | null }> {
-  // Si la longitud del historial es 0, es la solicitud del saludo inicial, la permitimos.
+  // If the history length is 0, it's the request for the initial greeting, we allow it.
   if (history.length === 0) {
     try {
       const result = await assistantChat(history);
@@ -19,7 +19,7 @@ export async function handleChat(history: ChatMessage[]): Promise<{ data: ChatMe
     }
   }
 
-  // Si hay historial, significa que el usuario está intentando interactuar. Devolvemos el error.
-  console.warn("Chatbot is in SAFE DEMO mode. Returning feature disabled error.");
-  return { data: null, error: FEATURE_DISABLED_ERROR };
+  // If there is history, it means the user is trying to interact. Return a friendly demo message.
+  console.warn("Chatbot is in SAFE DEMO mode. Returning demo response.");
+  return { data: { role: 'model', content: DEMO_CHAT_RESPONSE }, error: null };
 }
