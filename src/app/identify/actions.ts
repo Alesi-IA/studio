@@ -4,8 +4,8 @@ import type { IdentifyStrainOutput } from './types';
 export { type IdentifyStrainOutput } from './types';
 
 // --- PUNTO DE INTEGRACIÓN PARA EL USUARIO ---
-// Modelo Qwen-VL en Hugging Face para identificación de cepas.
-const HUGGINGFACE_QWEN_VL_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen-VL-Chat";
+// Usaremos OpenRouter para la identificación de cepas.
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const DEMO_IDENTIFICATION_DATA: IdentifyStrainOutput = {
   strainName: 'Cosecha Dorada (Demo)',
@@ -22,7 +22,7 @@ const DEMO_IDENTIFICATION_DATA: IdentifyStrainOutput = {
 
 
 /**
- * Handles strain identification by sending an image to a Hugging Face model.
+ * Handles strain identification by sending an image to an OpenRouter model.
  * NOTE: This is a placeholder implementation.
  * @param photoDataUri The image of the plant as a data URI.
  * @returns A promise that resolves to the identification result.
@@ -30,51 +30,75 @@ const DEMO_IDENTIFICATION_DATA: IdentifyStrainOutput = {
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
   
   // --- PUNTO DE INTEGRACIÓN PARA EL USUARIO ---
-  // Aquí es donde realizarías la llamada real a la API de Hugging Face.
+  // Aquí es donde realizarías la llamada real a la API de OpenRouter.
   // Necesitarás tu clave API, que deberías haber configurado en el archivo .env
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
 
-  if (!apiKey || apiKey === 'YOUR_HUGGINGFACE_API_KEY_HERE') {
-    console.warn("Hugging Face API key not configured. Returning demo data for identification.");
+  if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
+    console.warn("OpenRouter API key not configured. Returning demo data for identification.");
     return new Promise(resolve => setTimeout(() => resolve({ data: DEMO_IDENTIFICATION_DATA, error: null }), 1500));
   }
 
-  try {
-    // 1. Convert Data URI to Blob for upload
-    const fetchRes = await fetch(photoDataUri);
-    const blob = await fetchRes.blob();
+  // Modelo multimodal recomendado para análisis de imagen en OpenRouter.
+  // Puedes cambiarlo por otros como "anthropic/claude-3-sonnet" o "openai/gpt-4o"
+  const model = "anthropic/claude-3-haiku"; 
 
+  const prompt = `
+    Analiza la siguiente imagen de una planta de cannabis en su fase de floración.
+    Basándote en la forma de los cogollos, la estructura de la planta y las hojas, identifica la cepa más probable.
+    Estima la potencia (THC, CBD) y el nivel de energía (0-100, donde 100 es muy energético/sativo).
+    Además, identifica posibles problemas de salud de la planta.
+    Responde ÚNICAMENTE con un objeto JSON que siga esta estructura:
+    {
+      "strainName": "Nombre de la Cepa",
+      "potency": { "thc": 22, "cbd": 1, "energy": 65 },
+      "problems": ["lista de problemas como strings"]
+    }
+    No incluyas explicaciones adicionales fuera del JSON.
+  `;
+
+  try {
     /*
-    // EJEMPLO DE CÓDIGO PARA LLAMAR A LA API DE HUGGING FACE
-    const response = await fetch(HUGGINGFACE_QWEN_VL_URL, {
+    // EJEMPLO DE CÓDIGO PARA LLAMAR A LA API DE OPENROUTER CON IMÁGENES
+    const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": blob.type,
-        // Puede que necesites pasar un prompt específico en los headers o cuerpo,
-        // dependiendo de cómo uses el modelo de inferencia. Revisa la doc de Hugging Face.
+        "Content-Type": "application/json"
       },
-      body: blob, // Envía la imagen directamente en el cuerpo
+      body: JSON.stringify({
+        "model": model,
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              { "type": "text", "text": prompt },
+              { "type": "image_url", "image_url": { "url": photoDataUri } }
+            ]
+          }
+        ],
+        "response_format": { "type": "json_object" } // Pedir respuesta en formato JSON
+      })
     });
 
     if (!response.ok) {
         const errorData = await response.json();
-        console.error("Hugging Face API Error:", errorData);
-        return { data: null, error: `Error desde Hugging Face: ${errorData.error || response.statusText}` };
+        console.error("OpenRouter API Error:", errorData);
+        return { data: null, error: `Error desde OpenRouter: ${errorData.error?.message || response.statusText}` };
     }
 
     const result = await response.json();
+    const jsonResponse = JSON.parse(result.choices[0].message.content);
     
-    // Aquí necesitarías procesar la respuesta de Qwen-VL para que coincida con la estructura de 'IdentifyStrainOutput'.
-    // Esto es un ejemplo y depende de cómo responda el modelo exactamente.
+    // Aquí validamos que la respuesta del modelo tenga la estructura esperada.
     const formattedData: IdentifyStrainOutput = {
-        strainName: result.strain_name || 'Desconocida', // Suponiendo que el modelo devuelve 'strain_name'
+        strainName: jsonResponse.strainName || 'Desconocida',
         potency: {
-            thc: result.potency?.thc || 0,
-            cbd: result.potency?.cbd || 0,
-            energy: result.potency?.energy || 0,
+            thc: jsonResponse.potency?.thc || 0,
+            cbd: jsonResponse.potency?.cbd || 0,
+            energy: jsonResponse.potency?.energy || 0,
         },
-        problems: result.problems || [],
+        problems: jsonResponse.problems || [],
     };
 
     return { data: formattedData, error: null };
@@ -86,7 +110,7 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
     return new Promise(resolve => setTimeout(() => resolve({ data: DEMO_IDENTIFICATION_DATA, error: null }), 1500));
     
   } catch (error) {
-    console.error('[HuggingFaceIdentificationError] Details:', error);
+    console.error('[OpenRouterIdentificationError] Details:', error);
     if (error instanceof Error) {
       return { data: null, error: `Hubo un error al procesar la identificación: ${error.message}` };
     }
