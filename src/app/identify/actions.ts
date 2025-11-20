@@ -58,7 +58,7 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
   `;
 
   try {
-    /*
+    
     // EJEMPLO DE CÓDIGO PARA LLAMAR A LA API DE OPENROUTER CON IMÁGENES
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
@@ -102,12 +102,7 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
     };
 
     return { data: formattedData, error: null };
-    */
-
-    // Por ahora, devolvemos una respuesta de demostración.
-    // Descomenta el bloque anterior y elimina esta línea cuando estés listo para conectar la API.
-    console.warn("Identification is in SAFE DEMO mode. Returning demo data.");
-    return new Promise(resolve => setTimeout(() => resolve({ data: DEMO_IDENTIFICATION_DATA, error: null }), 1500));
+    
     
   } catch (error) {
     console.error('[OpenRouterIdentificationError] Details:', error);

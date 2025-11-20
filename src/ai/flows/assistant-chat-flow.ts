@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A cultivation assistant chatbot powered by OpenRouter.
@@ -33,7 +34,7 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
   const model = "openai/gpt-3.5-turbo"; // O el modelo que prefieras de OpenRouter
 
   try {
-    /*
+    
     // EJEMPLO DE CÓDIGO PARA LLAMAR A LA API DE OPENROUTER
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -56,11 +57,7 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
     const data = await response.json();
     const textResponse = data.choices[0].message.content;
     return textResponse;
-    */
-
-    // Por ahora, devolvemos una respuesta de demostración.
-    // Descomenta el bloque anterior y elimina esta línea cuando estés listo para conectar la API.
-    return DEMO_CHAT_RESPONSE;
+    
 
   } catch (error) {
     console.error('[OpenRouterChatError] Details:', error);
