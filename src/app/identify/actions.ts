@@ -7,23 +7,8 @@ export { type IdentifyStrainOutput } from './types';
 // Usaremos OpenRouter para la identificación de cepas.
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-const DEMO_IDENTIFICATION_DATA: IdentifyStrainOutput = {
-  strainName: 'Cosecha Dorada (Demo)',
-  potency: {
-    thc: 22,
-    cbd: 1,
-    energy: 65,
-  },
-  problems: [
-    'Puntas ligeramente quemadas (posible exceso de nutrientes)',
-    'Hojas inferiores un poco amarillas (posible deficiencia de Nitrógeno)',
-  ],
-};
-
-
 /**
  * Handles strain identification by sending an image to an OpenRouter model.
- * NOTE: This is a placeholder implementation.
  * @param photoDataUri The image of the plant as a data URI.
  * @returns A promise that resolves to the identification result.
  */
@@ -35,12 +20,12 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
-    console.warn("OpenRouter API key not configured. Returning demo data for identification.");
-    return new Promise(resolve => setTimeout(() => resolve({ data: DEMO_IDENTIFICATION_DATA, error: null }), 1500));
+    const errorMsg = "La clave API de OpenRouter no está configurada. Por favor, añádela al archivo .env para activar la identificación de cepas.";
+    console.error(errorMsg);
+    return { data: null, error: errorMsg };
   }
 
   // Modelo multimodal recomendado para análisis de imagen en OpenRouter.
-  // Puedes cambiarlo por otros como "anthropic/claude-3-sonnet" o "openai/gpt-4o"
   const model = "anthropic/claude-3-haiku"; 
 
   const prompt = `
@@ -54,12 +39,12 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
       "potency": { "thc": 22, "cbd": 1, "energy": 65 },
       "problems": ["lista de problemas como strings"]
     }
-    No incluyas explicaciones adicionales fuera del JSON.
+    No incluyas explicaciones adicionales fuera del JSON. Si la imagen no es una planta de cannabis, responde con un JSON con 'strainName' como 'No es una planta de cannabis'.
   `;
 
   try {
     
-    // EJEMPLO DE CÓDIGO PARA LLAMAR A LA API DE OPENROUTER CON IMÁGENES
+    // CÓDIGO REAL PARA LLAMAR A LA API DE OPENROUTER CON IMÁGENES
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
       headers: {

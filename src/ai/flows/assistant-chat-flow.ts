@@ -7,11 +7,8 @@
  */
 import type { ChatMessage } from '@/app/chatbot/types';
 
-const DEMO_CHAT_RESPONSE = "En una aplicación completamente funcional, mi cerebro de IA (conectado a OpenRouter) analizaría tu pregunta para darte una respuesta detallada. Por ahora, esta es una demostración. ¡Sigue explorando la app!";
-
 /**
  * Handles the chat logic by sending the history to OpenRouter.
- * NOTE: This is a placeholder implementation.
  * @param history The chat history.
  * @returns A promise that resolves to the assistant's response.
  */
@@ -27,15 +24,16 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
-    console.warn("OpenRouter API key not configured. Returning demo response.");
-    return DEMO_CHAT_RESPONSE;
+    const errorMsg = "La clave API de OpenRouter no está configurada. Por favor, añádela al archivo .env para activar el chatbot.";
+    console.error(errorMsg);
+    return errorMsg;
   }
 
-  const model = "openai/gpt-3.5-turbo"; // O el modelo que prefieras de OpenRouter
+  const model = "meta-llama/llama-3.1-8b-instruct:free";
 
   try {
     
-    // EJEMPLO DE CÓDIGO PARA LLAMAR A LA API DE OPENROUTER
+    // CÓDIGO REAL PARA LLAMAR A LA API DE OPENROUTER
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
