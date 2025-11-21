@@ -25,8 +25,8 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
     return { data: null, error: errorMsg };
   }
 
-  // Modelo multimodal recomendado para análisis de imagen en OpenRouter.
-  const model = "anthropic/claude-3-haiku"; 
+  // Modelo multimodal para análisis de imagen en OpenRouter.
+  const model = "qwen/qwen2.5-vl-32b-instruct:free"; 
 
   const prompt = `
     Analiza la siguiente imagen de una planta de cannabis en su fase de floración.
