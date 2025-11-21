@@ -17,10 +17,6 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
     return '¡Hola! Soy Canna-Toallín, ahora conectado a OpenRouter. ¿En qué te puedo ayudar?';
   }
 
-  // --- PUNTO DE INTEGRACIÓN PARA EL USUARIO ---
-  // Aquí es donde realizarías la llamada real a la API de OpenRouter.
-  // Necesitarás tu clave API de OpenRouter, que deberías haber configurado en el archivo .env
-
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
@@ -32,8 +28,6 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
   const model = "meta-llama/llama-3.1-8b-instruct:free";
 
   try {
-    
-    // CÓDIGO REAL PARA LLAMAR A LA API DE OPENROUTER
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -57,7 +51,6 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
     const data = await response.json();
     const textResponse = data.choices[0].message.content;
     return textResponse;
-    
 
   } catch (error) {
     console.error('[OpenRouterChatError] Details:', error);

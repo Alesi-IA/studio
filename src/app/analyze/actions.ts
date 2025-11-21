@@ -3,8 +3,6 @@
 import type { AnalyzePlantOutput } from './types';
 export { type AnalyzePlantOutput } from './types';
 
-// --- PUNTO DE INTEGRACIÓN PARA EL USUARIO ---
-// Usaremos OpenRouter para el análisis de problemas.
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 /**
@@ -14,9 +12,6 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
  */
 export async function handleAnalysis(photoDataUri: string): Promise<{ data: AnalyzePlantOutput | null; error: string | null }> {
 
-  // --- PUNTO DE INTEGRACIÓN PARA EL USUARIO ---
-  // Aquí es donde realizarías la llamada real a la API de OpenRouter.
-  // Necesitarás tu clave API, que deberías haber configurado en el archivo .env
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
@@ -25,7 +20,6 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
     return { data: null, error: errorMsg };
   }
 
-  // Modelo multimodal para análisis de imagen en OpenRouter.
   const model = "qwen/qwen2.5-vl-32b-instruct:free"; 
 
   const prompt = `
@@ -40,8 +34,6 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
   `;
 
   try {
-    
-    // CÓDIGO REAL PARA LLAMAR A LA API DE OPENROUTER CON IMÁGENES
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
       headers: {
@@ -61,7 +53,7 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
             ]
           }
         ],
-        "response_format": { "type": "json_object" } // Pedir respuesta en formato JSON
+        "response_format": { "type": "json_object" }
       })
     });
 
@@ -74,14 +66,12 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
     const result = await response.json();
     const jsonResponse = JSON.parse(result.choices[0].message.content);
     
-    // Aquí validamos que la respuesta del modelo tenga la estructura esperada.
     const formattedData: AnalyzePlantOutput = {
         problems: jsonResponse.problems || [],
         suggestions: jsonResponse.suggestions || [],
     };
 
     return { data: formattedData, error: null };
-    
 
   } catch (error) {
     console.error('[OpenRouterAnalysisError] Details:', error);

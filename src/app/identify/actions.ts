@@ -3,8 +3,6 @@
 import type { IdentifyStrainOutput } from './types';
 export { type IdentifyStrainOutput } from './types';
 
-// --- PUNTO DE INTEGRACIÓN PARA EL USUARIO ---
-// Usaremos OpenRouter para la identificación de cepas.
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 /**
@@ -14,9 +12,6 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
  */
 export async function handleStrainIdentification(photoDataUri: string): Promise<{ data: IdentifyStrainOutput | null; error: string | null }> {
   
-  // --- PUNTO DE INTEGRACIÓN PARA EL USUARIO ---
-  // Aquí es donde realizarías la llamada real a la API de OpenRouter.
-  // Necesitarás tu clave API, que deberías haber configurado en el archivo .env
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_OPENROUTER_API_KEY_HERE') {
@@ -25,7 +20,6 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
     return { data: null, error: errorMsg };
   }
 
-  // Modelo multimodal para análisis de imagen en OpenRouter.
   const model = "qwen/qwen2.5-vl-32b-instruct:free"; 
 
   const prompt = `
@@ -44,7 +38,6 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
 
   try {
     
-    // CÓDIGO REAL PARA LLAMAR A LA API DE OPENROUTER CON IMÁGENES
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
       headers: {
@@ -64,7 +57,7 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
             ]
           }
         ],
-        "response_format": { "type": "json_object" } // Pedir respuesta en formato JSON
+        "response_format": { "type": "json_object" }
       })
     });
 
@@ -77,7 +70,6 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
     const result = await response.json();
     const jsonResponse = JSON.parse(result.choices[0].message.content);
     
-    // Aquí validamos que la respuesta del modelo tenga la estructura esperada.
     const formattedData: IdentifyStrainOutput = {
         strainName: jsonResponse.strainName || 'Desconocida',
         potency: {
@@ -89,7 +81,6 @@ export async function handleStrainIdentification(photoDataUri: string): Promise<
     };
 
     return { data: formattedData, error: null };
-    
     
   } catch (error) {
     console.error('[OpenRouterIdentificationError] Details:', error);
