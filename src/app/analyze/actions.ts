@@ -46,7 +46,9 @@ export async function handleAnalysis(photoDataUri: string): Promise<{ data: Anal
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://canna-connect.app", // Añadido para validación
+        "X-Title": "CannaConnect", // Añadido para validación
       },
       body: JSON.stringify({
         "model": model,

@@ -38,7 +38,9 @@ export async function assistantChat(history: ChatMessage[]): Promise<string> {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://canna-connect.app", // Añadido para validación
+        "X-Title": "CannaConnect", // Añadido para validación
       },
       body: JSON.stringify({
         "model": model,
