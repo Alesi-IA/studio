@@ -1,7 +1,7 @@
 {
-    "name": "CannaConnect",
-    "short_name": "CannaConnect",
-    "description": "Tu compañero de cultivo de cannabis.",
+    "name": "CannaGrow",
+    "short_name": "CannaGrow",
+    "description": "Tu compañero de cultivo.",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#4A4E69",
